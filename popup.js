@@ -20,11 +20,11 @@ function invertPage() {
     let css = `
               position: fixed;
               pointer-events: none;
-              top: 0;
+              top: 50px;
               left: 0;
               width: 100vw;
               height: 100vh;
-              background-color: #${hexStr}ffffff;
+              background-color: #${hexStr}eeeeee;
               mix-blend-mode: difference;
               z-index: 1; 
               `;
