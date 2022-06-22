@@ -1,6 +1,8 @@
 // for slider
-let alpha = document.getElementById("alpha");
-alpha.addEventListener("change", async () => {
+let slider = document.getElementById("slider");
+slider.addEventListener("change", async () => {
+  let strength = slider.value;
+  chrome.storage.sync.set({ strength })
   let [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   chrome.scripting.executeScript({
     target: { tabId: tab.id },
@@ -8,9 +10,9 @@ alpha.addEventListener("change", async () => {
   });
 });
 
-function invertPage() {
-  chrome.storage.sync.get("alpha", ({ alpha }) => {
-    hexStr = alpha.toString(16);
+function invertPage(strength) {
+  chrome.storage.sync.get("strength", ({ strength }) => {
+    hexStr = strength.toString(16);
     console.log(hexStr)
 
     // create a dark mode div so it can be selected dynamically on future toggles
