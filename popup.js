@@ -1,24 +1,36 @@
-// Initialize butotn with users's prefered color
-let changeColor = document.getElementById("changeColor");
-
-chrome.storage.sync.get("color", ({ color }) => {
-  changeColor.style.backgroundColor = color;
-});
-
-// When the button is clicked, inject setPageBackgroundColor into current page
-changeColor.addEventListener("click", async () => {
+// for slider
+let alpha = document.getElementById("alpha");
+alpha.addEventListener("change", async () => {
   let [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-
   chrome.scripting.executeScript({
     target: { tabId: tab.id },
-    function: setPageBackgroundColor,
+    function: invertPage,
   });
 });
 
-// The body of this function will be execuetd as a content script inside the
-// current page
-function setPageBackgroundColor() {
-  chrome.storage.sync.get("color", ({ color }) => {
-    document.body.style.backgroundColor = color;
+function invertPage() {
+  chrome.storage.sync.get("alpha", ({ alpha }) => {
+    hexStr = alpha.toString(16);
+    console.log(hexStr)
+
+    // create a dark mode div so it can be selected dynamically on future toggles
+    div = document.createElement("div");
+    div.id = "darkDiv";
+
+    let css = `
+              position: fixed;
+              pointer-events: none;
+              top: 0;
+              left: 0;
+              width: 100vw;
+              height: 100vh;
+              background-color: #${hexStr}ffffff;
+              mix-blend-mode: difference;
+              z-index: 1; 
+              `;
+
+    // apply the dark mode to the div and append to the webpage
+    div.setAttribute("style", css);
+    document.body.appendChild(div);
   });
 }
