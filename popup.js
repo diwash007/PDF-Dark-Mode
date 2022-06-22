@@ -2,7 +2,7 @@
 let slider = document.getElementById("slider");
 slider.addEventListener("change", async () => {
   let strength = slider.value;
-  chrome.storage.sync.set({ strength })
+  chrome.storage.sync.set({ strength });
   let [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   chrome.scripting.executeScript({
     target: { tabId: tab.id },
@@ -10,14 +10,18 @@ slider.addEventListener("change", async () => {
   });
 });
 
-function invertPage(strength) {
-  chrome.storage.sync.get("strength", ({ strength }) => {
-    hexStr = strength.toString(16);
-    console.log(hexStr)
 
-    // create a dark mode div so it can be selected dynamically on future toggles
-    div = document.createElement("div");
-    div.id = "darkDiv";
+function invertPage() {
+
+  chrome.storage.sync.get("strength", ({ strength }) => {
+    let hexStr = parseInt(strength, 10).toString(16)
+
+    // create a dark mode div
+    div = document.getElementById("darkDiv");
+    if (!div) {
+      div = document.createElement("div");
+      div.id = "darkDiv";
+    }
 
     let css = `
               position: fixed;
@@ -26,7 +30,7 @@ function invertPage(strength) {
               left: 0;
               width: 100vw;
               height: 100vh;
-              background-color: #${hexStr}eeeeee;
+              background-color: #${hexStr}ffffff;
               mix-blend-mode: difference;
               z-index: 1; 
               `;
@@ -36,3 +40,4 @@ function invertPage(strength) {
     document.body.appendChild(div);
   });
 }
+
