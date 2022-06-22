@@ -10,11 +10,9 @@ slider.addEventListener("change", async () => {
   });
 });
 
-
 function invertPage() {
-
   chrome.storage.sync.get("strength", ({ strength }) => {
-    let hexStr = parseInt(strength, 10).toString(16)
+    let hexStr = parseInt(strength, 10).toString(16);
 
     // create a dark mode div
     div = document.getElementById("darkDiv");
@@ -40,4 +38,3 @@ function invertPage() {
     document.body.appendChild(div);
   });
 }
-
