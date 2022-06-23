@@ -1,3 +1,14 @@
+// toggling active state
+let toggle = document.getElementById("toggle");
+toggle.addEventListener("click", () => {
+  active = localStorage.getItem("active");
+  if (!active) {
+    localStorage.setItem("active", true);
+  } else {
+    localStorage.setItem("active", false);
+  }
+});
+
 // for slider
 let slider = document.getElementById("slider");
 slider.addEventListener("change", async () => {
@@ -11,17 +22,19 @@ slider.addEventListener("change", async () => {
 });
 
 function invertPage() {
-  chrome.storage.sync.get("strength", ({ strength }) => {
-    let hexStr = parseInt(strength, 10).toString(16);
+  active = localStorage.getItem("active");
+  if (!active) {
+    chrome.storage.sync.get("strength", ({ strength }) => {
+      hexStr = parseInt(strength, 10).toString(16);
 
-    // create a dark mode div
-    div = document.getElementById("darkDiv");
-    if (!div) {
-      div = document.createElement("div");
-      div.id = "darkDiv";
-    }
+      // create a dark mode div
+      div = document.getElementById("darkDiv");
+      if (!div) {
+        div = document.createElement("div");
+        div.id = "darkDiv";
+      }
 
-    let css = `
+      let css = `
               position: fixed;
               pointer-events: none;
               top: 50px;
@@ -33,8 +46,9 @@ function invertPage() {
               z-index: 1; 
               `;
 
-    // apply the dark mode to the div and append to the webpage
-    div.setAttribute("style", css);
-    document.body.appendChild(div);
-  });
+      // apply the dark mode to the div and append to the webpage
+      div.setAttribute("style", css);
+      document.body.appendChild(div);
+    });
+  }
 }

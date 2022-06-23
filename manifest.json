@@ -1,25 +1,43 @@
 {
-    "name": "PDF Dark Mode",
-    "description": "Dark Mode for PDF files to reduce eye strain.",
-    "version": "1.0",
-    "manifest_version": 3,
-    "background": {
-      "service_worker": "worker.js"
-    },
-    "permissions": ["storage", "activeTab", "scripting"],
-    "action": {
-      "default_popup": "popup/popup.html",
-      "default_icon": {
-        "16": "/images/get_started16.png",
-        "32": "/images/get_started32.png",
-        "48": "/images/get_started48.png",
-        "128": "/images/get_started128.png"
-      }
-    },
-    "icons": {
+  "name": "PDF Dark Mode",
+  "description": "Dark Mode for PDF files to reduce eye strain.",
+  "version": "1.0",
+  "manifest_version": 3,
+  "background": {
+    "service_worker": "worker.js"
+  },
+  "permissions": [
+    "storage",
+    "activeTab",
+    "tabs",
+    "scripting"
+  ],
+  "host_permissions": [
+    "file://*/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "file://*/*"
+      ],
+      "js": [
+        "contentScript.js"
+      ]
+    }
+  ],
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_icon": {
       "16": "/images/get_started16.png",
       "32": "/images/get_started32.png",
       "48": "/images/get_started48.png",
       "128": "/images/get_started128.png"
     }
+  },
+  "icons": {
+    "16": "/images/get_started16.png",
+    "32": "/images/get_started32.png",
+    "48": "/images/get_started48.png",
+    "128": "/images/get_started128.png"
   }
+}
