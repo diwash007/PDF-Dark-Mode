@@ -11,5 +11,9 @@ I had to read through PDFs at night during my exam. I searched for good extensio
 - Extract it
 - Follow instructions [here](https://webkul.com/blog/how-to-install-the-unpacked-extension-in-chrome/)
 
+## Contribution
+Want to add new features to the extension?
+Feel free to fork and create an issue.
+
 ## Inspiration
 [DarkPDF](https://github.com/ArshSB/DarkPDF)
