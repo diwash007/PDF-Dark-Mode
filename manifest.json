@@ -15,16 +15,6 @@
   "host_permissions": [
     "file://*/*"
   ],
-  "content_scripts": [
-    {
-      "matches": [
-        "file://*/*"
-      ],
-      "js": [
-        "contentScript.js"
-      ]
-    }
-  ],
   "action": {
     "default_popup": "popup/popup.html",
     "default_icon": {
