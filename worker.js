@@ -3,10 +3,18 @@
  * so it's a listener. It triggers event with sendMessage and executeScript
  */
 
-console.log("Extension loaded!");
+// set status to active initially
+chrome.storage.sync.get("active", ({ active }) => {
+  console.log(active)
+  if (!active) chrome.storage.sync.set({ active: true });
+});
 
 // set strength to max initially
-chrome.storage.sync.set({ strength: 255 });
+chrome.storage.sync.get("strength", ({ strength }) => {
+  console.log(strength)
+  if (!strength) chrome.storage.sync.set({ strength: 255 });
+  console.log(strength)
+});
 
 // tab update listener
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {

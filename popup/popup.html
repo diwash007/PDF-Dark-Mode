@@ -1,10 +1,19 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <link rel="stylesheet" href="popup.css">
+    <link rel="stylesheet" href="popup.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css"
+    />
   </head>
   <body>
-    <input id="slider" type="range" min="0" value="255" max="255">
+    <div id="toggle">
+      <i class="fa fa-power-off" style="font-size: 40px;"></i>
+    </div>
+    <hr />
+    <label for="slider">Strength:</label>
+    <input id="slider" type="range" min="0" value="255" max="255" />
     <script src="popup.js"></script>
   </body>
 </html>

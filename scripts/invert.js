@@ -1,14 +1,16 @@
-chrome.storage.sync.get("strength", ({ strength }) => {
-  hexStr = parseInt(strength, 10).toString(16);
-
-  // create a dark mode div if it doesn't exist
+chrome.storage.sync.get("active", ({ active }) => {
   div = document.getElementById("darkDiv");
-  if (!div) {
-    div = document.createElement("div");
-    div.id = "darkDiv";
-  }
+  if (active) {
+    chrome.storage.sync.get("strength", ({ strength }) => {
+      hexStr = parseInt(strength, 10).toString(16);
 
-  let css = `
+      // create a dark mode div if it doesn't exist
+      if (!div) {
+        div = document.createElement("div");
+        div.id = "darkDiv";
+      }
+
+      let css = `
             position: fixed;
             pointer-events: none;
             top: 50px;
@@ -20,7 +22,11 @@ chrome.storage.sync.get("strength", ({ strength }) => {
             z-index: 1; 
             `;
 
-  // apply the dark mode to the div and append to the webpage
-  div.setAttribute("style", css);
-  document.body.appendChild(div);
+      // apply the dark mode to the div and append to the page
+      div.setAttribute("style", css);
+      document.body.appendChild(div);
+    });
+  } else {
+    div.remove();
+  }
 });
