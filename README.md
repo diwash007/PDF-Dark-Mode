@@ -4,16 +4,19 @@
 Browser Extension for Dark Mode on PDF files to reduce eye strain.
 
 ## Background
-I had to read through PDFs at night during my exam. I searched for good extensions for dark mode but couldn't find any with custom darkness feature. So built this one.
+I had to read bunch of PDFs at night during my exam. Black text on white background caused strain on my eyes. I searched for good extensions for dark mode but couldn't find any with custom darkness feature. So built this one.
 
 ## How to install?
-- Download the ZIP archive
+- [Download](https://github.com/diwash007/PDF-Dark-Mode/archive/refs/tags/v1.0.0.zip) the ZIP archive
 - Extract it
 - Follow instructions [here](https://webkul.com/blog/how-to-install-the-unpacked-extension-in-chrome/)
 
 ## Contribution
-Want to add new features to the extension?
-Feel free to fork and create an issue.
+Feel free create an issue if you encounter some or want to contribute new features to the extension.
+
+## Updates
+- Updates will be made gradually
+- Will publish to Chrome Developer Store soon
 
 ## Inspiration
 [DarkPDF](https://github.com/ArshSB/DarkPDF)
