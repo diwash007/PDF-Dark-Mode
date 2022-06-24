@@ -1,4 +1,4 @@
-![PDF Dark Mode Logo]('images/PDM 128x128.png')
+![PDF Dark Mode Logo](/images/PDM%20128x128.png)
 # PDF Dark Mode
 
 Browser Extension for Dark Mode on PDF files to reduce eye strain.
