@@ -14,7 +14,7 @@ chrome.storage.sync.get("contrast", ({ contrast }) => {
 
 // update state of toggle on popup
 chrome.storage.sync.get("active", ({ active }) => {
-  if (active) toggle.style.color = "green";
+  if (active) toggle.style.color = "lime";
   else toggle.style.color = "red";
 });
 
@@ -38,7 +38,7 @@ toggle.addEventListener("click", () => {
       toggle.style.color = "red";
     } else {
       chrome.storage.sync.set({ active: true });
-      toggle.style.color = "green";
+      toggle.style.color = "lime";
     }
     applyDarkMode();
   });

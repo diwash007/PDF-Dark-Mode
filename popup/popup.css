@@ -1,3 +1,8 @@
+body {
+  background: #404040;
+  color: white;
+}
+
 #toggle {
   display: flex;
   justify-content: center;
