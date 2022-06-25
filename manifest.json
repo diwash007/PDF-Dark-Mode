@@ -1,7 +1,7 @@
 {
   "name": "PDF Dark Mode",
   "description": "Dark Mode for PDF files to reduce eye strain.",
-  "version": "1.0",
+  "version": "1.0.2",
   "manifest_version": 3,
   "background": {
     "service_worker": "worker.js"
