@@ -11,7 +11,7 @@ I had to read bunch of PDFs at night during my exam. Black text on white backgro
 - Set strength for the filter
 
 ## How to install?
-- [Download](https://github.com/diwash007/PDF-Dark-Mode/archive/refs/tags/v1.0.1.zip) the ZIP archive
+- [Download](https://github.com/diwash007/PDF-Dark-Mode/archive/refs/tags/v1.0.2.zip) the ZIP archive
 - Extract it
 - Follow instructions [here](https://webkul.com/blog/how-to-install-the-unpacked-extension-in-chrome/)
 
