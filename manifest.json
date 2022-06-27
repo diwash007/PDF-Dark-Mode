@@ -13,7 +13,9 @@
     "scripting"
   ],
   "host_permissions": [
-    "file://*/*"
+    "file://*/*",
+    "https://*/*",
+    "http://*/*"
   ],
   "action": {
     "default_popup": "popup/popup.html",

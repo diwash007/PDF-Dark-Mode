@@ -47,7 +47,7 @@ toggle.addEventListener("click", () => {
 // apply dark mode if viewing PDF
 async function applyDarkMode() {
   let [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  if (tab.url && tab.url.includes(".pdf")) {
+  if (tab.url && (tab.url.includes(".pdf") || tab.url.includes(".PDF"))) {
     chrome.scripting.executeScript({
       target: { tabId: tab.id },
       files: ["scripts/invert.js"],

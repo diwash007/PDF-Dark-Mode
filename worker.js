@@ -24,7 +24,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
     return;
   }
   // apply dark mode if viewing PDF
-  if (tab.url && tab.url.includes(".pdf")) {
+  if (tab.url && (tab.url.includes(".pdf") || tab.url.includes(".PDF"))) {
     if (tabId)
       chrome.scripting.executeScript({
         target: { tabId: tabId },
