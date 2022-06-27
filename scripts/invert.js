@@ -15,7 +15,7 @@ chrome.storage.sync.get("active", ({ active }) => {
         let css = `
             position: fixed;
             pointer-events: none;
-            top: 40px;
+            top: 50px;
             left: 0;
             width: 100vw;
             height: 100vh;
