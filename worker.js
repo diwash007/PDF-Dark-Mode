@@ -5,7 +5,8 @@
 
 // set status to active initially
 chrome.storage.sync.get("active", ({ active }) => {
-  if (!active) chrome.storage.sync.set({ active: true });
+  if (typeof active === 'undefined')
+    chrome.storage.sync.set({ active: true });
 });
 
 // set strength to max initially
