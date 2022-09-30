@@ -32,7 +32,7 @@ For example:
 git clone https://github.com/user-name/PDF-Dark-Mode.git
 ```
 
-where `user-name` is your GitHub username. Here you're copying the contents of the Clone-IT repository on GitHub to your computer.
+where `user-name` is your GitHub username. Here you're copying the contents of the PDF-Dark-Mode repository on GitHub to your computer.
 
 ## Navigate to the project directory
 * After cloning the project in your computer, navigate to the project file using the command below.
