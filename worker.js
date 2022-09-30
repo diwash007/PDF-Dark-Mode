@@ -5,8 +5,7 @@
 
 // set status to active initially
 chrome.storage.sync.get("active", ({ active }) => {
-  if (typeof active === 'undefined')
-    chrome.storage.sync.set({ active: true });
+  if (typeof active === "undefined") chrome.storage.sync.set({ active: true });
 });
 
 // set strength to max initially
@@ -24,8 +23,9 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   if (!changeInfo.status === "complete") {
     return;
   }
-  // apply dark mode if viewing PDF
-  if (tab.url && (tab.url.includes(".pdf") || tab.url.includes(".PDF"))) {
+
+  const extension = tab.url.slice(-4);
+  if (tab.url && (extension === ".pdf" || extension === ".PDF")) {
     if (tabId)
       chrome.scripting.executeScript({
         target: { tabId: tabId },
