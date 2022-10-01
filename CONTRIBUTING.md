@@ -40,24 +40,6 @@ where `user-name` is your GitHub username. Here you're copying the contents of t
 cd PDF-Dark-Mode
 ```
 
-## Add a reference(remote) to the original repository
-
-```
-git remote add upstream https://github.com/PDF-Dark-Mode.git
-```
-
-* Check the remotes for this repository.
-
-```
-git remote -v
-```
-
-* Always take a pull from the upstream repository to your master branch to keep it at par with the main project(updated repository).
-
-```
-git pull upstream main
-```
-
 ## Create a new branch
 
 ```
