@@ -82,7 +82,7 @@ git push -u origin <your_branch_name>
 
 7. Cick on Create pull request. 
 
-## Setup the project in your Local Mahine:
+## Setup the project in your Local Machine:
 
 ### Download project from Github
 
