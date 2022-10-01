@@ -3,7 +3,26 @@
 
 ### Never made an open source contribution before? Wondering how contributions work in our project? Here's a quick rundown!
 
-<img align="right" width="300" src="./images/Screenshot%202022-09-30%20231327.png" alt="fork this repository" />
+### Take a look at the Existing Issues or create your own Issues!
+- Wait for the Issue to be assigned to you after which you can start working on it.
+- Fork the Repo and create a Branch for any Issue that you are working upon.
+- Read the Code of Conduct
+- Create a Pull Request which will be promptly reviewed and suggestions would be added to improve it.
+
+## How to make a Pull Request
+If you think that you can add a new feature or want to fix a bug. You can start contributing by following the below instructions:
+
+1. Create a folder at your desired location (usually at your desktop).
+
+2. Open Git Bash Here
+
+3. Create a Git repository.
+
+**Run Command**
+
+```
+git init
+```
 
 ## Fork this repository
 
@@ -11,8 +30,6 @@
 This will create a copy of this repository in your account.
 
 ## Clone the repository
-
-<img align="right" width="300" src="./images/Screenshot%202022-09-30%20231215.png" alt="clone this repository" />
 
 * Now clone the forked repository to your machine. Go to your GitHub account, open the forked repository, click on the code button and then click the _copy to clipboard_ icon.
 
@@ -23,8 +40,6 @@ git clone "url you just copied"
 ```
 
 where "url you just copied" (without the quotation marks) is the url to this repository (your fork of this project). 
-
-<img align="right" width="300" src="./images/Screenshot%202022-09-30%20231236.png" alt="clone this repository" />
 
 For example:
 
@@ -52,7 +67,6 @@ git remote add upstream https://github.com/PDF-Dark-Mode.git
 git remote -v
 ```
 
-
 * Always take a pull from the upstream repository to your master branch to keep it at par with the main project(updated repository).
 
 ```
@@ -65,39 +79,77 @@ git pull upstream main
 git checkout -b <your_branch_name>
 ```
 
-
 * Perform your desired changes to the code base.
 
-
-* Track your changes:heavy_check_mark: .
+1. Check you changes.
 
 ```
-git add . 
+git status
 ```
 
+```
+git diff
+```
 
-* Commit your changes .
+2. Stage your changes
+
+```
+git add . <\files_that_you_made_changes>
+```
+
+3. Commit your changes.
 
 ```
 git commit -m "Relevant message"
 ```
 
-
-* Push the committed changes in your feature branch to your remote repo.
+4. Push the committed changes in your feature branch to your remote repo.
 
 ```
 git push -u origin <your_branch_name>
 ```
 
+5. To create a pull request, click on `compare and pull request.
 
-* To create a pull request, click on `compare and pull requests`.
+6. Add an appropriate title and description to your PR explaining your changes.
 
+7. Cick on Create pull request. 
 
-* Add an appropriate title and description to your pull request explaining your changes and efforts done.
+## Setup the project in your Local Mahine:
 
+### Download project from Github
 
-* Click on `Create Pull Request`.
+- If you're a Windows user, first install [git](https://git-scm.com/). This tool helps you run git from the command line.
 
+1. Open a new Terminal (Mac) or Command Prompt (Windows) window and use the following command to create a unique directory to do your work in:
+
+```
+mkdir <new-project-folder>
+```
+
+```
+cd <new-project-folder>
+```
+
+2. Next, use this command to clone the app repository:
+
+```
+git clone https://github.com/user-name/PDF-Dark-Mode.git
+```
+
+3. Check Remote
+
+```
+git remote -v
+```
+
+4. Create a new branch for your assigned issue
+
+```
+git checkout -b <branch-name>
+```
+
+That's it we setup the project into our local machine. Now follow the same procedure for making a Pull Request.
 
 * Congrats :exclamation: You have made a PR to the PDF-Dark-Mode :boom: . Wait for your submission to be accepted and your PR to be merged.
 
