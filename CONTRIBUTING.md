@@ -9,21 +9,6 @@
 - Read the Code of Conduct
 - Create a Pull Request which will be promptly reviewed and suggestions would be added to improve it.
 
-## How to make a Pull Request
-If you think that you can add a new feature or want to fix a bug. You can start contributing by following the below instructions:
-
-1. Create a folder at your desired location (usually at your desktop).
-
-2. Open Git Bash Here
-
-3. Create a Git repository.
-
-**Run Command**
-
-```
-git init
-```
-
 ## Fork this repository
 
 * Fork this repository by clicking on the fork button on the top of this page.
