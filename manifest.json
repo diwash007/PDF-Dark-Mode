@@ -6,17 +6,8 @@
   "background": {
     "service_worker": "worker.js"
   },
-  "permissions": [
-    "storage",
-    "activeTab",
-    "tabs",
-    "scripting"
-  ],
-  "host_permissions": [
-    "file://*/*",
-    "https://*/*",
-    "http://*/*"
-  ],
+  "permissions": ["storage", "activeTab", "tabs", "scripting"],
+  "host_permissions": ["file://*/*", "https://*/*", "http://*/*"],
   "action": {
     "default_popup": "popup/popup.html",
     "default_icon": {
