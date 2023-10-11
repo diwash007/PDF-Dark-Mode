@@ -36,10 +36,8 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   return;
 });
 
-chrome.runtime.onInstalled.addListener(function(details) {
-  if (details.reason === 'install') {
-    chrome.tabs.create({
-      url: './instruction/index.html',
+chrome.runtime.onInstalled.addListener(() => {
+  chrome.tabs.create({
+    url: "./instruction/index.html",
   });
-  }
 });
