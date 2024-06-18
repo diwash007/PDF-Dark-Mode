@@ -41,3 +41,23 @@ chrome.runtime.onInstalled.addListener(() => {
     url: "./instruction/index.html",
   });
 });
+
+chrome.commands.onCommand.addListener(async (command) => {
+  if (command === "run-dark-mode") {
+    chrome.storage.sync.get("active", ({ active }) => {
+      chrome.storage.sync.set({ active: !active });
+    });
+    applyDarkMode();
+  }
+});
+
+// UTILS
+async function applyDarkMode() {
+  let [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  if (tab.url && (tab.url.includes(".pdf") || tab.url.includes(".PDF"))) {
+    chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      files: ["scripts/invert.js"],
+    });
+  }
+}

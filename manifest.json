@@ -1,7 +1,7 @@
 {
   "name": "PDF Dark Mode",
   "description": "Dark Mode for PDF files to reduce eye strain.",
-  "version": "1.0.5",
+  "version": "1.0.7",
   "manifest_version": 3,
   "background": {
     "service_worker": "worker.js"
@@ -22,5 +22,14 @@
     "32": "/images/PDM 128x128.png",
     "48": "/images/PDM 128x128.png",
     "128": "/images/PDM 128x128.png"
+  },
+  "commands": {
+    "run-dark-mode": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+X",
+        "mac": "Command+Shift+X"
+      },
+      "description": "Run \"PDF Dark Mode\" on the current page."
+    }
   }
 }
