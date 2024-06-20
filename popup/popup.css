@@ -1,14 +1,17 @@
 body {
   background: #404040;
   color: white;
+  width: 200px;
 }
 
 #toggle {
   display: flex;
   justify-content: center;
   align-items: center;
-  height: 60px;
   width: 100%;
+  flex-direction: column;
+  padding-top: 8px;
+  cursor: pointer;
 }
 
 hr {
@@ -16,4 +19,33 @@ hr {
   height: 0;
   border-top: 1px solid rgba(0, 0, 0, 0.1);
   border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.label {
+  color: rgb(212, 212, 212);
+}
+
+.inputs {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 5px;
+}
+
+.input-row {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+}
+
+.footer {
+  padding: 5px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 10px;
+  justify-content: center;
+  align-items: center;
+  color: rgb(180, 180, 180);
 }

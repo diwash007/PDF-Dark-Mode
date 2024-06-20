@@ -44,6 +44,13 @@ toggle.addEventListener("click", () => {
   });
 });
 
+window.addEventListener("DOMContentLoaded", function () {
+  const link = document.getElementById("portfolio");
+  link.addEventListener("click", function () {
+    chrome.tabs.create({ url: "https://diwashdahal.com.np/" });
+  });
+});
+
 // apply dark mode if viewing PDF
 async function applyDarkMode() {
   let [tab] = await chrome.tabs.query({ active: true, currentWindow: true });

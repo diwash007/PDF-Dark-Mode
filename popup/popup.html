@@ -10,15 +10,39 @@
   <body>
     <div id="toggle">
       <i class="fa fa-power-off" style="font-size: 40px"></i>
+      <p style="color: rgb(183, 176, 176); size: 20px">Command + Shift + X</p>
     </div>
 
     <hr />
 
-    <label for="slider">Strength:</label>
-    <input id="slider" type="range" min="200" value="255" max="255" />
+    <div class="inputs">
+      <div class="input-row">
+        <label for="slider" class="label">Strength:</label>
+        <input id="slider" type="range" min="200" value="255" max="255" />
+      </div>
+      <div class="input-row">
+        <label for="contrastSlider" class="label">Contrast:</label>
+        <input
+          id="contrastSlider"
+          type="range"
+          min="50"
+          value="100"
+          max="100"
+        />
+      </div>
+    </div>
 
-    <label for="contrastSlider">Contrast:</label>
-    <input id="contrastSlider" type="range" min="50" value="100" max="100" />
+    <hr />
+
+    <div class="footer">
+      <div>v1.0.7</div>
+      <div>
+        Developed by
+        <a style="color: cornflowerblue; cursor: pointer" id="portfolio"
+          >Diwash Dahal</a
+        >
+      </div>
+    </div>
 
     <script src="popup.js"></script>
   </body>
