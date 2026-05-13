@@ -14,6 +14,8 @@ I had to read bunch of PDFs at night during my exam. Black text on white backgro
 - Toggle dark mode
 - Set strength for the filter
 - Control contrast
+- Reading modes: Dark, Sepia, AMOLED
+- Privacy-friendly local analytics summary in popup (no external tracking)
 
 ## How to install?
 

@@ -39,6 +39,22 @@ hr {
   gap: 10px;
 }
 
+#modeSelect {
+  width: 110px;
+  background: #2f2f2f;
+  color: #e0e0e0;
+  border: 1px solid #525252;
+  border-radius: 4px;
+  padding: 2px 6px;
+}
+
+.analytics-summary {
+  margin-top: 6px;
+  text-align: center;
+  color: #bcbcbc;
+  font-size: 11px;
+}
+
 .footer {
   padding: 5px;
   display: flex;
