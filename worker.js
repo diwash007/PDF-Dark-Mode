@@ -17,14 +17,23 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
     return;
   }
 
-  const extension = tab.url.slice(-4);
-  if (tab.url && (extension === ".pdf" || extension === ".PDF")) {
-    if (tabId)
-      chrome.scripting.executeScript({
-        target: { tabId: tabId },
-        files: ["scripts/invert.js"],
+  if (tabId && isPdfTabUrl(tab.url)) {
+    chrome.storage.sync.get("active", ({ active }) => {
+      if (!active) {
+        return;
+      }
+
+      recordPdfApply();
+      chrome.scripting
+        .executeScript({
+          target: { tabId: tabId },
+          files: ["scripts/invert.js"],
+        })
+        .catch((error) => {
+          console.error("PDF Dark Mode: failed to inject on tab update", error);
+        });
       });
-  }
+    }
 
   return;
 });
@@ -39,19 +48,15 @@ chrome.commands.onCommand.addListener(async (command) => {
   if (command === "run-dark-mode") {
     recordAnalyticsEvent("shortcutToggles");
     chrome.storage.sync.get("active", ({ active }) => {
-      chrome.storage.sync.set({ active: !active });
+      chrome.storage.sync.set({ active: !active }, () => {
+        applyDarkMode();
+      });
     });
-    applyDarkMode();
   }
 });
 
 chrome.runtime.onMessage.addListener((message) => {
   if (message?.type !== "analytics-event" || !message?.event) {
-    return;
-  }
-
-  if (message.event === "pdf_apply") {
-    recordPdfApply();
     return;
   }
 
@@ -61,12 +66,30 @@ chrome.runtime.onMessage.addListener((message) => {
 // UTILS
 async function applyDarkMode() {
   let [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  if (tab.url && (tab.url.includes(".pdf") || tab.url.includes(".PDF"))) {
-    chrome.scripting.executeScript({
+  if (isPdfTabUrl(tab?.url)) {
+    await chrome.scripting
+      .executeScript({
       target: { tabId: tab.id },
       files: ["scripts/invert.js"],
-    });
+      })
+      .catch((error) => {
+        console.error("PDF Dark Mode: failed to apply mode", error);
+      });
   }
+}
+
+function isPdfTabUrl(url) {
+  if (!url) {
+    return false;
+  }
+
+  return (
+    /\.pdf($|[?#&])/i.test(url) ||
+    (/^chrome-extension:\/\/[^/]+\/index\.html/i.test(url) &&
+      (new URL(url).searchParams.get("src") || "").match(
+        /\.pdf($|[?#&])|%2Epdf/i
+      ))
+  );
 }
 
 function ensureSyncDefault(key, value) {
