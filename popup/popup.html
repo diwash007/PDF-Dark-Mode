@@ -41,12 +41,26 @@
       <div id="analyticsSummary" class="analytics-summary">
         Local analytics: 0 PDF sessions in last 7 days
       </div>
+      <div class="site-rule-box">
+        <div id="currentHostLabel" class="site-host">Current site: n/a</div>
+        <div id="currentRuleLabel" class="site-rule">Rule: default</div>
+        <div class="site-rule-actions">
+          <button id="allowCurrentSiteBtn" type="button">Allow</button>
+          <button id="blockCurrentSiteBtn" type="button">Block</button>
+          <button id="clearCurrentSiteBtn" type="button">Clear</button>
+        </div>
+        <div class="manual-site-row">
+          <input id="manualSiteInput" type="text" placeholder="example.com" />
+          <button id="allowManualSiteBtn" type="button">+Allow</button>
+          <button id="blockManualSiteBtn" type="button">+Block</button>
+        </div>
+      </div>
     </div>
 
     <hr />
 
     <div class="footer">
-      <div>v1.1.0</div>
+      <div>v1.1.1</div>
       <div>
         Developed by
         <a style="color: cornflowerblue; cursor: pointer" id="portfolio"

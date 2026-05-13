@@ -55,6 +55,50 @@ hr {
   font-size: 11px;
 }
 
+.site-rule-box {
+  margin-top: 6px;
+  padding: 6px;
+  border: 1px solid #5a5a5a;
+  border-radius: 6px;
+}
+
+.site-host,
+.site-rule {
+  font-size: 11px;
+  text-align: center;
+  color: #cdcdcd;
+  margin-bottom: 4px;
+}
+
+.site-rule-actions,
+.manual-site-row {
+  display: flex;
+  gap: 4px;
+  justify-content: center;
+  align-items: center;
+}
+
+.site-rule-actions button,
+.manual-site-row button {
+  background: #2c2c2c;
+  color: #e0e0e0;
+  border: 1px solid #606060;
+  border-radius: 4px;
+  font-size: 10px;
+  padding: 2px 6px;
+  cursor: pointer;
+}
+
+#manualSiteInput {
+  width: 80px;
+  font-size: 10px;
+  border-radius: 4px;
+  border: 1px solid #606060;
+  background: #2a2a2a;
+  color: #e0e0e0;
+  padding: 2px 4px;
+}
+
 .footer {
   padding: 5px;
   display: flex;

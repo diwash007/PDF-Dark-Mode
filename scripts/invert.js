@@ -1,36 +1,135 @@
 (() => {
   const DARK_LAYER_ID = "darkDiv";
   const TINT_LAYER_ID = "tintDiv";
+  const href = window.location.href;
 
-  if (!isPdfPage()) {
-    return;
+  chrome.storage.sync.get(
+    ["active", "strength", "contrast", "mode", "siteRules"],
+    (state) => {
+      const policy = buildPagePolicy(href, state.siteRules || {});
+      applyTheme(state, policy);
+
+      if (policy.requiresEmbeddedPreview) {
+        installPreviewObserver(state, policy);
+      }
+    }
+  );
+
+  function buildPagePolicy(url, siteRules) {
+    const hostname = getHostnameFromUrl(url);
+    const siteRule = hostname ? siteRules[hostname] : "";
+
+    if (siteRule === "block") {
+      return { shouldApply: false, requiresEmbeddedPreview: false };
+    }
+
+    const isStandardPdf =
+      /\.pdf($|[?#&])/i.test(url) ||
+      (/^chrome-extension:\/\/[^/]+\/index\.html/i.test(url) &&
+        (new URL(url).searchParams.get("src") || "").match(
+          /\.pdf($|[?#&])|%2Epdf/i
+        )) ||
+      /^https:\/\/drive\.google\.com\/file\/d\/[^/]+\/(?:view|preview)/i.test(
+        url
+      ) ||
+      /^https:\/\/docs\.google\.com\/(?:viewer|gview)/i.test(url);
+
+    if (isStandardPdf) {
+      return { shouldApply: true, requiresEmbeddedPreview: false };
+    }
+
+    if (siteRule === "allow") {
+      return { shouldApply: true, requiresEmbeddedPreview: false };
+    }
+
+    return { shouldApply: false, requiresEmbeddedPreview: false };
   }
 
-  chrome.storage.sync.get("active", ({ active }) => {
-    if (!active) {
-      removeLayer(DARK_LAYER_ID);
-      removeLayer(TINT_LAYER_ID);
+  function installPreviewObserver(state, policy) {
+    if (window.__pdfDarkModePreviewObserverInstalled) {
+      return;
+    }
+    window.__pdfDarkModePreviewObserverInstalled = true;
+
+    let queued = false;
+    const observer = new MutationObserver((mutations) => {
+      if (queued || areOnlyExtensionLayerMutations(mutations)) {
+        return;
+      }
+
+      queued = true;
+      setTimeout(() => {
+        queued = false;
+        applyTheme(state, policy);
+      }, 120);
+    });
+
+    observer.observe(document.documentElement || document.body, {
+      childList: true,
+      subtree: true,
+    });
+  }
+
+  function areOnlyExtensionLayerMutations(mutations) {
+    const isExtensionLayerNode = (node) =>
+      node?.nodeType === Node.ELEMENT_NODE &&
+      (node.id === DARK_LAYER_ID || node.id === TINT_LAYER_ID);
+
+    return mutations.every((mutation) => {
+      const added = Array.from(mutation.addedNodes || []);
+      const removed = Array.from(mutation.removedNodes || []);
+      const touched = [...added, ...removed];
+
+      if (touched.length > 0 && touched.some((node) => !isExtensionLayerNode(node))) {
+        return false;
+      }
+
+      return !mutation.target || isExtensionLayerNode(mutation.target);
+    });
+  }
+
+  function applyTheme(state, policy) {
+    removeLayer(DARK_LAYER_ID);
+    removeLayer(TINT_LAYER_ID);
+
+    if (!state.active || !policy.shouldApply) {
       return;
     }
 
-    chrome.storage.sync.get(["strength", "contrast", "mode"], (settings) => {
-      removeLayer(DARK_LAYER_ID);
-      removeLayer(TINT_LAYER_ID);
+    if (policy.requiresEmbeddedPreview && !hasEmbeddedPdfPreview()) {
+      return;
+    }
 
-      const strength = clamp(Number(settings.strength) || 255, 200, 255);
-      const contrast = clamp(Number(settings.contrast) || 100, 50, 130);
-      const mode = settings.mode || "dark";
-      const strengthHex = strength.toString(16).padStart(2, "0");
+    const strength = clamp(Number(state.strength) || 255, 200, 255);
+    const contrast = clamp(Number(state.contrast) || 100, 50, 130);
+    const mode = state.mode || "dark";
+    const blendStrengthHex = mode === "amoled" ? "ff" : strength.toString(16).padStart(2, "0");
+    const contrastValue = mode === "amoled" ? Math.max(contrast, 110) : contrast;
+    const brightnessValue = mode === "amoled" ? 78 : 100;
 
-      const darkLayer = document.createElement("div");
-      darkLayer.id = DARK_LAYER_ID;
+    const darkLayer = document.createElement("div");
+    darkLayer.id = DARK_LAYER_ID;
+    darkLayer.setAttribute(
+      "style",
+      `
+        position: fixed;
+        pointer-events: none;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background-color: #${blendStrengthHex}ffffff;
+        mix-blend-mode: difference;
+        z-index: 2147483646;
+        filter: contrast(${contrastValue}%) brightness(${brightnessValue}%);
+      `
+    );
+    document.body.appendChild(darkLayer);
 
-      const blendStrengthHex = mode === "amoled" ? "ff" : strengthHex;
-      const contrastValue =
-        mode === "amoled" ? Math.max(contrast, 110) : contrast;
-      const brightnessValue = mode === "amoled" ? 78 : 100;
-
-      darkLayer.setAttribute(
+    if (mode === "sepia") {
+      const tintLayer = document.createElement("div");
+      tintLayer.id = TINT_LAYER_ID;
+      tintLayer.setAttribute(
         "style",
         `
           position: fixed;
@@ -39,50 +138,27 @@
           left: 0;
           width: 100vw;
           height: 100vh;
-          background-color: #${blendStrengthHex}ffffff;
-          mix-blend-mode: difference;
-          z-index: 2147483646;
-          filter: contrast(${contrastValue}%) brightness(${brightnessValue}%);
+          background-color: rgba(112, 66, 20, 0.2);
+          mix-blend-mode: multiply;
+          z-index: 2147483647;
         `
       );
-
-      document.body.appendChild(darkLayer);
-
-      if (mode === "sepia") {
-        const tintLayer = document.createElement("div");
-        tintLayer.id = TINT_LAYER_ID;
-        tintLayer.setAttribute(
-          "style",
-          `
-            position: fixed;
-            pointer-events: none;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            background-color: rgba(112, 66, 20, 0.2);
-            mix-blend-mode: multiply;
-            z-index: 2147483647;
-          `
-        );
-        document.body.appendChild(tintLayer);
-      }
-
-    });
-  });
-
-  function isPdfPage() {
-    const href = window.location.href;
-    if (/\.pdf($|[?#&])/i.test(href)) {
-      return true;
+      document.body.appendChild(tintLayer);
     }
+  }
 
-    if (/^chrome-extension:\/\/[^/]+\/index\.html/i.test(href)) {
-      const srcParam = new URL(href).searchParams.get("src") || "";
-      return /\.pdf($|[?#&])/i.test(srcParam) || /%2Epdf/i.test(srcParam);
+  function hasEmbeddedPdfPreview() {
+    return !!document.querySelector(
+      'embed[type="application/pdf"], object[type="application/pdf"], iframe[src*=".pdf"], iframe[src*="/file/d/"][src*="/preview"], iframe[src*="docs.google.com/gview"], iframe[src*="/viewerng/viewer"], iframe[src*="/viewer"]'
+    );
+  }
+
+  function getHostnameFromUrl(url) {
+    try {
+      return new URL(url).hostname;
+    } catch {
+      return "";
     }
-
-    return false;
   }
 
   function removeLayer(id) {
