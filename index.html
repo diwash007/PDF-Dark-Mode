@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PDF Dark Mode</title>
+  <meta
+    name="description"
+    content="PDF Dark Mode is a browser extension that adds customizable dark mode support for online and offline PDF files."
+  />
+
+  <style>
+    :root {
+      --bg: #0b0f14;
+      --card: #111827;
+      --muted: #94a3b8;
+      --text: #f8fafc;
+      --accent: #508b5e;
+      --border: rgba(255,255,255,0.08);
+      --shadow: 0 10px 30px rgba(0,0,0,0.35);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: linear-gradient(to bottom, #0b0f14, #111827);
+      color: var(--text);
+      line-height: 1.6;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    .container {
+      width: min(1120px, calc(100% - 32px));
+      margin: 0 auto;
+    }
+
+    header {
+      padding: 24px 0;
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      backdrop-filter: blur(12px);
+      background: rgba(11,15,20,0.7);
+      z-index: 100;
+    }
+
+    .nav {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-weight: 700;
+      font-size: 18px;
+    }
+
+    .logo {
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      background: var(--accent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      color: white;
+      box-shadow: var(--shadow);
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 12px 18px;
+      border-radius: 14px;
+      font-weight: 600;
+      transition: 0.2s ease;
+      border: 1px solid var(--border);
+    }
+
+    .button:hover {
+      transform: translateY(-1px);
+    }
+
+    .button-primary {
+      background: var(--accent);
+      color: white;
+      border: none;
+      box-shadow: var(--shadow);
+    }
+
+    .hero {
+      padding: 100px 0 80px;
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap: 48px;
+      align-items: center;
+    }
+
+    .hero h1 {
+      font-size: clamp(42px, 6vw, 72px);
+      line-height: 1;
+      margin-bottom: 24px;
+    }
+
+    .hero p {
+      font-size: 18px;
+      color: var(--muted);
+      max-width: 640px;
+    }
+
+    .hero-actions {
+      display: flex;
+      gap: 16px;
+      margin-top: 32px;
+      flex-wrap: wrap;
+    }
+
+    .stats {
+      display: flex;
+      gap: 18px;
+      margin-top: 36px;
+      flex-wrap: wrap;
+    }
+
+    .stat {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border);
+      padding: 16px 20px;
+      border-radius: 18px;
+      min-width: 160px;
+    }
+
+    .stat strong {
+      display: block;
+      font-size: 22px;
+      margin-bottom: 4px;
+    }
+
+    .preview {
+      background: linear-gradient(135deg, rgba(80,139,94,0.25), rgba(255,255,255,0.04));
+      border: 1px solid var(--border);
+      border-radius: 28px;
+      padding: 24px;
+      box-shadow: var(--shadow);
+    }
+
+    .mock-window {
+      background: #0f172a;
+      border-radius: 20px;
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .mock-top {
+      padding: 12px 16px;
+      display: flex;
+      gap: 8px;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.25);
+    }
+
+    .mock-content {
+      padding: 24px;
+    }
+
+    .pdf-card {
+      background: #111827;
+      border-radius: 18px;
+      padding: 24px;
+      border: 1px solid rgba(255,255,255,0.06);
+    }
+
+    .pdf-line {
+      height: 10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.12);
+      margin-bottom: 14px;
+    }
+
+    .pdf-line:nth-child(2) {
+      width: 85%;
+    }
+
+    .pdf-line:nth-child(3) {
+      width: 70%;
+    }
+
+    section {
+      padding: 80px 0;
+    }
+
+    .section-title {
+      font-size: 40px;
+      margin-bottom: 14px;
+    }
+
+    .section-subtitle {
+      color: var(--muted);
+      max-width: 720px;
+      margin-bottom: 48px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 24px;
+    }
+
+    .card {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 28px;
+    }
+
+    .card h3 {
+      margin-bottom: 12px;
+      font-size: 22px;
+    }
+
+    .card p {
+      color: var(--muted);
+    }
+
+    .pricing {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 24px;
+    }
+
+    .price-card {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border);
+      border-radius: 28px;
+      padding: 32px;
+      position: relative;
+    }
+
+    .price-card.featured {
+      border-color: rgba(80,139,94,0.7);
+      transform: scale(1.03);
+    }
+
+    .badge {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      background: var(--accent);
+      color: white;
+      font-size: 12px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-weight: 700;
+    }
+
+    .price {
+      font-size: 48px;
+      font-weight: 800;
+      margin: 18px 0;
+    }
+
+    ul {
+      list-style: none;
+      margin: 24px 0;
+    }
+
+    li {
+      margin-bottom: 12px;
+      color: var(--muted);
+    }
+
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 48px 0;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    @media (max-width: 900px) {
+      .hero,
+      .grid,
+      .pricing {
+        grid-template-columns: 1fr;
+      }
+
+      .hero {
+        padding-top: 60px;
+      }
+
+      .hero h1 {
+        font-size: 52px;
+      }
+
+      .price-card.featured {
+        transform: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="container nav">
+      <div class="brand">
+        <div class="logo">P</div>
+        <span>PDF Dark Mode</span>
+      </div>
+
+      <div class="nav-links">
+        <a href="#features">Features</a>
+        <a href="#pricing">Pricing</a>
+        <a href="https://github.com/diwash007/PDF-Dark-Mode" target="_blank" class="button">
+          GitHub
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero container">
+      <div>
+        <h1>Read PDFs comfortably at night.</h1>
+
+        <p>
+          PDF Dark Mode adds customizable dark reading modes to online and offline PDFs.
+          Reduce eye strain with adjustable darkness, contrast, and premium reading modes.
+        </p>
+
+        <div class="hero-actions">
+          <a
+            href="https://microsoftedge.microsoft.com/addons"
+            target="_blank"
+            class="button button-primary"
+          >
+            Install Extension
+          </a>
+
+          <a
+            href="https://github.com/diwash007/PDF-Dark-Mode"
+            target="_blank"
+            class="button"
+          >
+            View Source
+          </a>
+        </div>
+
+        <div class="stats">
+          <div class="stat">
+            <strong>30k+</strong>
+            Weekly Active Users
+          </div>
+
+          <div class="stat">
+            <strong>GPL-3.0</strong>
+            Open Source
+          </div>
+
+          <div class="stat">
+            <strong>Online + Offline</strong>
+            PDF Support
+          </div>
+        </div>
+      </div>
+
+      <div class="preview">
+        <div class="mock-window">
+          <div class="mock-top">
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+          </div>
+
+          <div class="mock-content">
+            <div class="pdf-card">
+              <div class="pdf-line"></div>
+              <div class="pdf-line"></div>
+              <div class="pdf-line"></div>
+              <div class="pdf-line"></div>
+              <div class="pdf-line"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="features">
+      <div class="container">
+        <h2 class="section-title">Features</h2>
+        <p class="section-subtitle">
+          Built for students, developers, researchers, and anyone who spends hours reading PDFs.
+        </p>
+
+        <div class="grid">
+          <div class="card">
+            <h3>Dark Reading</h3>
+            <p>
+              Toggle customizable dark mode for PDFs with adjustable darkness strength and contrast.
+            </p>
+          </div>
+
+          <div class="card">
+            <h3>Advanced Modes</h3>
+            <p>
+              Use Sepia and AMOLED reading modes for better comfort and readability during long sessions.
+            </p>
+          </div>
+
+          <div class="card">
+            <h3>Per-Site Rules</h3>
+            <p>
+              Configure allow/block rules for specific websites and PDF sources.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="pricing">
+      <div class="container">
+        <h2 class="section-title">Simple Pricing</h2>
+        <p class="section-subtitle">
+          Start free and upgrade when you need advanced reading controls.
+        </p>
+
+        <div class="pricing">
+          <div class="price-card">
+            <h3>Free</h3>
+            <div class="price">$0</div>
+
+            <ul>
+              <li>✔ Dark mode</li>
+              <li>✔ Contrast controls</li>
+              <li>✔ Adjustable darkness</li>
+              <li>✔ Online + offline PDFs</li>
+            </ul>
+
+            <a href="#" class="button">Current Plan</a>
+          </div>
+
+          <div class="price-card featured">
+            <div class="badge">Popular</div>
+            <h3>Lifetime</h3>
+            <div class="price">$9.99</div>
+
+            <ul>
+              <li>✔ Everything in Free</li>
+              <li>✔ Sepia mode</li>
+              <li>✔ AMOLED mode</li>
+              <li>✔ Per-site rules</li>
+              <li>✔ Future premium features</li>
+            </ul>
+
+            <a href="#" class="button button-primary">
+              Upgrade to Pro
+            </a>
+          </div>
+
+          <div class="price-card">
+            <h3>Monthly</h3>
+            <div class="price">$2.99</div>
+
+            <ul>
+              <li>✔ Everything in Pro</li>
+              <li>✔ Ongoing updates</li>
+              <li>✔ Early access features</li>
+              <li>✔ Future cloud features</li>
+            </ul>
+
+            <a href="#" class="button">Subscribe</a>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="container">
+      <p>
+        PDF Dark Mode is an open-source GPL-3.0 browser extension built to improve PDF reading comfort.
+      </p>
+    </div>
+  </footer>
+</body>
+</html>
