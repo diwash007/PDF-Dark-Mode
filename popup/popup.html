@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html>
   <head>
+    <meta charset="UTF-8" />
     <link rel="stylesheet" href="popup.css" />
     <link
       rel="stylesheet"
@@ -8,42 +9,65 @@
     />
   </head>
   <body>
-    <div id="toggle">
-      <i class="fa fa-power-off" style="font-size: 40px"></i>
-      <p style="color: rgb(183, 176, 176); size: 20px">Command + Shift + 1</p>
-    </div>
+    <div class="app-shell">
+      <header class="topbar">
+        <div class="brand">
+          <div class="brand-title">PDF Dark Mode</div>
+          <div class="brand-subtitle">Comfort reading for PDFs</div>
+        </div>
+      </header>
 
-    <hr />
+      <div id="toggle" class="toggle-card">
+        <i class="fa fa-power-off" style="font-size: 32px"></i>
+        <p class="shortcut-hint">Command + Shift + 1</p>
+      </div>
 
-    <div class="inputs">
-      <div class="input-row">
-        <label for="slider" class="label">Strength:</label>
-        <input id="slider" type="range" min="200" value="255" max="255" />
-      </div>
-      <div class="input-row">
-        <label for="contrastSlider" class="label">Contrast:</label>
-        <input
-          id="contrastSlider"
-          type="range"
-          min="50"
-          value="100"
-          max="100"
-        />
-      </div>
-      <div class="input-row">
-        <label for="modeSelect" class="label">Mode:</label>
-        <select id="modeSelect">
-          <option value="dark">Dark</option>
-          <option value="sepia">Sepia</option>
-          <option value="amoled">AMOLED</option>
-        </select>
-      </div>
-      <div id="analyticsSummary" class="analytics-summary">
-        Local analytics: 0 PDF sessions in last 7 days
-      </div>
-      <div class="site-rule-box">
+      <section class="card inputs">
+        <div class="section-title">Appearance</div>
+        <div class="input-row">
+          <label for="modeSelect" class="label">Mode</label>
+          <select id="modeSelect">
+            <option value="dark">Dark</option>
+            <option value="sepia">Sepia (Pro)</option>
+            <option value="amoled">AMOLED (Pro)</option>
+          </select>
+        </div>
+        <div class="input-row">
+          <label for="slider" class="label">Strength</label>
+          <input id="slider" type="range" min="200" value="255" max="255" />
+        </div>
+        <div class="input-row">
+          <label for="contrastSlider" class="label">Contrast</label>
+          <input
+            id="contrastSlider"
+            type="range"
+            min="50"
+            value="100"
+            max="100"
+          />
+        </div>
+      </section>
+
+      <section class="card">
+        <div id="analyticsSummary" class="analytics-summary">
+          Local analytics: 0 PDF sessions in last 7 days
+        </div>
+      </section>
+
+      <section class="card plan-box">
+        <div class="section-title">Plan</div>
+        <div id="planLabel" class="plan-label">Plan: Free</div>
+        <label class="plan-flag">
+          <input id="proFlagToggle" type="checkbox" />
+          Enable Pro (local flag)
+        </label>
+        <div class="plan-note">Temporary flag until payment integration is added.</div>
+      </section>
+
+      <section class="card site-rule-box">
+        <div class="section-title">Site Rules (Pro)</div>
         <div id="currentHostLabel" class="site-host">Current site: n/a</div>
-        <div id="currentRuleLabel" class="site-rule">Rule: default</div>
+        <div id="currentRuleLabel" class="site-rule">Rule: default (Pro)</div>
         <div class="site-rule-actions">
           <button id="allowCurrentSiteBtn" type="button">Allow</button>
           <button id="blockCurrentSiteBtn" type="button">Block</button>
@@ -54,21 +78,16 @@
           <button id="allowManualSiteBtn" type="button">+Allow</button>
           <button id="blockManualSiteBtn" type="button">+Block</button>
         </div>
-      </div>
+      </section>
+
+      <footer class="footer">
+        <div>v1.2.1</div>
+        <div>
+          Need help?
+          <a id="supportLink">Support / Contact</a>
+        </div>
+      </footer>
     </div>
-
-    <hr />
-
-    <div class="footer">
-      <div>v1.1.1</div>
-      <div>
-        Developed by
-        <a style="color: cornflowerblue; cursor: pointer" id="portfolio"
-          >Diwash Dahal</a
-        >
-      </div>
-    </div>
-
     <script src="popup.js"></script>
   </body>
 </html>

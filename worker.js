@@ -9,6 +9,7 @@ ensureSyncDefault("strength", 255);
 ensureSyncDefault("contrast", 100);
 ensureSyncDefault("mode", "dark");
 ensureSyncDefault("siteRules", {});
+ensureSyncDefault("billing", defaultBilling());
 ensureLocalDefault("analytics", { events: {}, pdfAppliesByDay: {} });
 
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
@@ -16,10 +17,11 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
     return;
   }
 
-  chrome.storage.sync.get(["active", "siteRules"], ({ active, siteRules }) => {
+  chrome.storage.sync.get(["active", "siteRules", "billing"], ({ active, siteRules, billing }) => {
     if (!active) return;
 
-    const policy = buildUrlPolicy(tab.url, siteRules || {});
+    const entitlement = getEntitlement(billing);
+    const policy = buildUrlPolicy(tab.url, siteRules || {}, entitlement);
     if (!policy.shouldInject) return;
 
     recordPdfApply();
@@ -67,8 +69,9 @@ async function applyDarkMode() {
     return;
   }
 
-  chrome.storage.sync.get("siteRules", ({ siteRules }) => {
-    const policy = buildUrlPolicy(tab.url, siteRules || {});
+  chrome.storage.sync.get(["siteRules", "billing"], ({ siteRules, billing }) => {
+    const entitlement = getEntitlement(billing);
+    const policy = buildUrlPolicy(tab.url, siteRules || {}, entitlement);
     if (!policy.shouldInject) return;
 
     chrome.scripting
@@ -82,15 +85,15 @@ async function applyDarkMode() {
   });
 }
 
-function buildUrlPolicy(url, siteRules) {
+function buildUrlPolicy(url, siteRules, entitlement) {
   if (!url) {
-    return { shouldInject: false, requiresEmbeddedPreview: false };
+    return { shouldInject: false };
   }
 
   const hostname = getHostnameFromUrl(url);
-  const siteRule = hostname ? siteRules[hostname] : "";
+  const siteRule = entitlement.isPro && hostname ? siteRules[hostname] : "";
   if (siteRule === "block") {
-    return { shouldInject: false, requiresEmbeddedPreview: false };
+    return { shouldInject: false };
   }
 
   const isStandardPdf =
@@ -105,14 +108,14 @@ function buildUrlPolicy(url, siteRules) {
     /^https:\/\/docs\.google\.com\/(?:viewer|gview)/i.test(url);
 
   if (isStandardPdf) {
-    return { shouldInject: true, requiresEmbeddedPreview: false };
+    return { shouldInject: true };
   }
 
   if (siteRule === "allow") {
-    return { shouldInject: true, requiresEmbeddedPreview: false };
+    return { shouldInject: true };
   }
 
-  return { shouldInject: false, requiresEmbeddedPreview: false };
+  return { shouldInject: false };
 }
 
 function getHostnameFromUrl(url) {
@@ -170,4 +173,23 @@ function pruneOldDays(pdfAppliesByDay) {
   });
 
   return retained;
+}
+
+function getEntitlement(billingState) {
+  const billing = {
+    ...defaultBilling(),
+    ...(billingState || {}),
+  };
+  const hasPaidPlan =
+    billing.status === "active" && (billing.plan === "pro" || billing.plan === "lifetime");
+  return { isPro: !!billing.proOverride || hasPaidPlan };
+}
+
+function defaultBilling() {
+  return {
+    plan: "free",
+    status: "inactive",
+    source: "local-flag",
+    proOverride: false,
+  };
 }

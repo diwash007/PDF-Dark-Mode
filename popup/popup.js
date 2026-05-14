@@ -11,10 +11,14 @@ const clearCurrentSiteBtn = document.getElementById("clearCurrentSiteBtn");
 const manualSiteInput = document.getElementById("manualSiteInput");
 const allowManualSiteBtn = document.getElementById("allowManualSiteBtn");
 const blockManualSiteBtn = document.getElementById("blockManualSiteBtn");
+const planLabel = document.getElementById("planLabel");
+const proFlagToggle = document.getElementById("proFlagToggle");
+const siteRuleBox = document.querySelector(".site-rule-box");
 
 let activeState = true;
 let currentTab = null;
 let currentHost = "";
+let entitlement = { isPro: false, planName: "Free", billing: defaultBilling() };
 
 initializePopup();
 
@@ -43,32 +47,35 @@ toggle.addEventListener("click", () => {
 });
 
 modeSelect.addEventListener("change", () => {
-  persistSyncValue("mode", modeSelect.value);
+  const nextMode = enforceAllowedMode(modeSelect.value);
+  modeSelect.value = nextMode;
+  persistSyncValue("mode", nextMode);
   applyPreviewFromControls();
 });
 
 allowCurrentSiteBtn.addEventListener("click", async () => {
-  if (!currentHost) return;
+  if (!entitlement.isPro || !currentHost) return;
   await setSiteRule(currentHost, "allow");
   await refreshSiteRuleLabels();
   applyPreviewFromControls();
 });
 
 blockCurrentSiteBtn.addEventListener("click", async () => {
-  if (!currentHost) return;
+  if (!entitlement.isPro || !currentHost) return;
   await setSiteRule(currentHost, "block");
   await refreshSiteRuleLabels();
   applyPreviewFromControls();
 });
 
 clearCurrentSiteBtn.addEventListener("click", async () => {
-  if (!currentHost) return;
+  if (!entitlement.isPro || !currentHost) return;
   await clearSiteRule(currentHost);
   await refreshSiteRuleLabels();
   applyPreviewFromControls();
 });
 
 allowManualSiteBtn.addEventListener("click", async () => {
+  if (!entitlement.isPro) return;
   const host = normalizeHostname(manualSiteInput.value);
   if (!host) return;
   await setSiteRule(host, "allow");
@@ -77,6 +84,7 @@ allowManualSiteBtn.addEventListener("click", async () => {
 });
 
 blockManualSiteBtn.addEventListener("click", async () => {
+  if (!entitlement.isPro) return;
   const host = normalizeHostname(manualSiteInput.value);
   if (!host) return;
   await setSiteRule(host, "block");
@@ -84,18 +92,51 @@ blockManualSiteBtn.addEventListener("click", async () => {
   await refreshSiteRuleLabels();
 });
 
-window.addEventListener("DOMContentLoaded", function () {
-  const link = document.getElementById("portfolio");
-  link.addEventListener("click", function () {
-    chrome.tabs.create({ url: "https://diwashdahal.com.np/" });
+proFlagToggle.addEventListener("change", async () => {
+  const billing = {
+    ...entitlement.billing,
+    proOverride: !!proFlagToggle.checked,
+    source: "local-flag",
+  };
+  await persistSyncValue("billing", billing);
+  entitlement = getEntitlement(billing);
+  renderEntitlementUI();
+  modeSelect.value = enforceAllowedMode(modeSelect.value);
+  await persistSyncValue("mode", modeSelect.value);
+  await refreshSiteRuleLabels();
+  applyPreviewFromControls();
+});
+
+window.addEventListener("DOMContentLoaded", () => {
+  const link = document.getElementById("supportLink");
+  link.addEventListener("click", () => {
+    if (entitlement.isPro) {
+      chrome.tabs.create({
+        url: "mailto:diwashdahal75+PDF-Dark-Mode@gmail.com?subject=PDF%20Dark%20Mode%20Pro%20Support",
+      });
+      return;
+    }
+
+    chrome.tabs.create({
+      url: "https://github.com/diwash007/PDF-Dark-Mode/issues/new/choose",
+    });
   });
 });
 
 async function initializePopup() {
-  const syncState = await getSyncState(["strength", "contrast", "mode", "active"]);
+  const syncState = await getSyncState([
+    "strength",
+    "contrast",
+    "mode",
+    "active",
+    "billing",
+  ]);
+
+  entitlement = getEntitlement(syncState.billing);
+
   slider.value = syncState.strength || 255;
   contrastSlider.value = syncState.contrast || 100;
-  modeSelect.value = syncState.mode || "dark";
+  modeSelect.value = enforceAllowedMode(syncState.mode || "dark");
   activeState = typeof syncState.active === "boolean" ? syncState.active : true;
   toggle.style.color = activeState ? "lime" : "red";
 
@@ -103,8 +144,13 @@ async function initializePopup() {
   currentTab = tab || null;
   currentHost = getHostnameFromUrl(currentTab?.url);
 
+  renderEntitlementUI();
   await refreshSiteRuleLabels();
   renderAnalyticsSummary();
+
+  if (syncState.mode !== modeSelect.value) {
+    await persistSyncValue("mode", modeSelect.value);
+  }
 }
 
 async function applyPreviewFromControls() {
@@ -113,9 +159,9 @@ async function applyPreviewFromControls() {
   const tabUrl = currentTab?.url || "";
 
   const siteRules = (await getSyncState(["siteRules"])).siteRules || {};
-  const policy = buildUrlPolicy(tabUrl, siteRules);
+  const policy = buildUrlPolicy(tabUrl, siteRules, entitlement);
 
-  if (!policy.shouldInject) {
+  if (!policy.shouldInject || !currentTab?.id) {
     return;
   }
 
@@ -123,13 +169,13 @@ async function applyPreviewFromControls() {
     active: activeState,
     strength: Number(slider.value),
     contrast: Number(contrastSlider.value),
-    mode: modeSelect.value || "dark",
+    mode: enforceAllowedMode(modeSelect.value),
   };
 
   await chrome.scripting
     .executeScript({
       target: { tabId: currentTab.id },
-      func: (previewSettings, applyPolicy) => {
+      func: (previewSettings) => {
         const DARK_LAYER_ID = "darkDiv";
         const TINT_LAYER_ID = "tintDiv";
 
@@ -138,16 +184,10 @@ async function applyPreviewFromControls() {
           if (layer) layer.remove();
         };
 
-        const hasEmbeddedPdfPreview = () =>
-          !!document.querySelector(
-            'embed[type="application/pdf"], object[type="application/pdf"], iframe[src*=".pdf"], iframe[src*="/file/d/"][src*="/preview"], iframe[src*="docs.google.com/gview"], iframe[src*="/viewerng/viewer"], iframe[src*="/viewer"]'
-          );
-
         removeLayer(DARK_LAYER_ID);
         removeLayer(TINT_LAYER_ID);
 
         if (!previewSettings.active) return;
-        if (applyPolicy.requiresEmbeddedPreview && !hasEmbeddedPdfPreview()) return;
 
         const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
         const strength = clamp(Number(previewSettings.strength) || 255, 200, 255);
@@ -197,16 +237,43 @@ async function applyPreviewFromControls() {
           document.body.appendChild(tintLayer);
         }
       },
-      args: [settings, policy],
+      args: [settings],
     })
     .catch((error) => {
       console.error("PDF Dark Mode: failed to apply mode", error);
     });
 }
 
+function renderEntitlementUI() {
+  planLabel.textContent = `Plan: ${entitlement.planName}`;
+  proFlagToggle.checked = !!entitlement.billing.proOverride;
+
+  modeSelect.options[1].disabled = !entitlement.isPro;
+  modeSelect.options[2].disabled = !entitlement.isPro;
+
+  const controls = [
+    allowCurrentSiteBtn,
+    blockCurrentSiteBtn,
+    clearCurrentSiteBtn,
+    manualSiteInput,
+    allowManualSiteBtn,
+    blockManualSiteBtn,
+  ];
+  controls.forEach((element) => {
+    element.disabled = !entitlement.isPro;
+  });
+
+  siteRuleBox.classList.toggle("locked", !entitlement.isPro);
+}
+
 async function refreshSiteRuleLabels() {
   currentHost = getHostnameFromUrl(currentTab?.url);
   currentHostLabel.textContent = `Current site: ${currentHost || "n/a"}`;
+
+  if (!entitlement.isPro) {
+    currentRuleLabel.textContent = "Rule: Pro feature";
+    return;
+  }
 
   if (!currentHost) {
     currentRuleLabel.textContent = "Rule: default";
@@ -248,10 +315,13 @@ function clearSiteRule(host) {
 }
 
 function persistSyncValue(key, value) {
-  chrome.storage.sync.set({ [key]: value }, () => {
-    if (chrome.runtime.lastError) {
-      console.error("PDF Dark Mode: failed to save setting", chrome.runtime.lastError);
-    }
+  return new Promise((resolve) => {
+    chrome.storage.sync.set({ [key]: value }, () => {
+      if (chrome.runtime.lastError) {
+        console.error("PDF Dark Mode: failed to save setting", chrome.runtime.lastError);
+      }
+      resolve();
+    });
   });
 }
 
@@ -307,12 +377,13 @@ function normalizeHostname(value) {
   }
 }
 
-function buildUrlPolicy(url, siteRules) {
+function buildUrlPolicy(url, siteRules, currentEntitlement) {
   const host = getHostnameFromUrl(url);
-  const siteRule = host ? siteRules[host] : "";
+  const canUseSiteRules = currentEntitlement.isPro;
+  const siteRule = canUseSiteRules && host ? siteRules[host] : "";
 
   if (siteRule === "block") {
-    return { shouldInject: false, requiresEmbeddedPreview: false };
+    return { shouldInject: false };
   }
 
   const isStandardPdf =
@@ -327,12 +398,46 @@ function buildUrlPolicy(url, siteRules) {
     /^https:\/\/docs\.google\.com\/(?:viewer|gview)/i.test(url || "");
 
   if (isStandardPdf) {
-    return { shouldInject: true, requiresEmbeddedPreview: false };
+    return { shouldInject: true };
   }
 
   if (siteRule === "allow") {
-    return { shouldInject: true, requiresEmbeddedPreview: false };
+    return { shouldInject: true };
   }
 
-  return { shouldInject: false, requiresEmbeddedPreview: false };
+  return { shouldInject: false };
+}
+
+function enforceAllowedMode(mode) {
+  if (!entitlement.isPro && mode !== "dark") {
+    return "dark";
+  }
+  return mode || "dark";
+}
+
+function getEntitlement(billingState) {
+  const billing = {
+    ...defaultBilling(),
+    ...(billingState || {}),
+  };
+
+  const hasPaidPlan =
+    billing.status === "active" && (billing.plan === "pro" || billing.plan === "lifetime");
+  const isPro = !!billing.proOverride || hasPaidPlan;
+  const planName = isPro ? "Pro" : "Free";
+
+  return {
+    isPro,
+    planName,
+    billing,
+  };
+}
+
+function defaultBilling() {
+  return {
+    plan: "free",
+    status: "inactive",
+    source: "local-flag",
+    proOverride: false,
+  };
 }
