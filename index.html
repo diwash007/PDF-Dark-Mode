@@ -296,6 +296,35 @@
       color: var(--muted);
     }
 
+    .contact-card {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 28px;
+      display: grid;
+      gap: 14px;
+      max-width: 720px;
+    }
+
+    .contact-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--text);
+      font-weight: 600;
+      width: fit-content;
+    }
+
+    .contact-link svg {
+      width: 20px;
+      height: 20px;
+      fill: currentColor;
+    }
+
+    .contact-link:hover {
+      color: #9fd4aa;
+    }
+
     footer {
       border-top: 1px solid var(--border);
       padding: 48px 0;
@@ -328,13 +357,15 @@
   <header>
     <div class="container nav">
       <div class="brand">
-        <div class="logo">P</div>
+        <img src="./assets/logo.png" class="logo"/>
         <span>PDF Dark Mode</span>
       </div>
 
       <div class="nav-links">
         <a href="#features">Features</a>
         <a href="#pricing">Pricing</a>
+        <a href="#contact">Contact</a>
+        <a href="privacy.html">Privacy</a>
         <a href="https://github.com/diwash007/PDF-Dark-Mode" target="_blank" class="button">
           GitHub
         </a>
@@ -473,7 +504,8 @@
               <li>✔ Sepia mode</li>
               <li>✔ AMOLED mode</li>
               <li>✔ Per-site rules</li>
-              <li>✔ Future premium features</li>
+              <li>✔ One-Time Payment</li>
+              <li>✔ All Future Pro Features</li>
             </ul>
 
             <a href="#" class="button button-primary">
@@ -486,14 +518,39 @@
             <div class="price">$2.99</div>
 
             <ul>
-              <li>✔ Everything in Pro</li>
-              <li>✔ Ongoing updates</li>
-              <li>✔ Early access features</li>
-              <li>✔ Future cloud features</li>
+             <li>✔ Everything in Free</li>
+              <li>✔ Sepia mode</li>
+              <li>✔ AMOLED mode</li>
+              <li>✔ Per-site rules</li>
+              <li>✔ Recurring Payment</li>
+              <li>✔ All Future Pro Features while subscribed</li>
             </ul>
 
             <a href="#" class="button">Subscribe</a>
           </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="contact">
+      <div class="container">
+        <h2 class="section-title">Contact</h2>
+        <p class="section-subtitle">
+          Reach out for support, feedback, or collaboration.
+        </p>
+        <div class="contact-card">
+          <a class="contact-link" href="mailto:diwashdahal75+PDF-Dark-Mode@gmail.com">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M2 6a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v.35l-10 6.25L2 6.35V6Zm0 2.7V18a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8.7l-9.47 5.92a1 1 0 0 1-1.06 0L2 8.7Z" />
+            </svg>
+            Email Us
+          </a>
+          <a class="contact-link" href="https://discord.gg/WDd4wbJ6qU" target="_blank" rel="noopener noreferrer">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M20.32 4.37a16.7 16.7 0 0 0-4.11-1.3l-.2.37c1.5.37 2.19.9 2.19.9a14.1 14.1 0 0 0-4.18-1.02 13.8 13.8 0 0 0-4.05 0A14.1 14.1 0 0 0 5.8 4.34s.7-.53 2.19-.9l-.2-.37a16.7 16.7 0 0 0-4.11 1.3C1.08 8.05.37 11.65.72 15.2a16.9 16.9 0 0 0 4.95 2.5l1.07-1.7c-.62-.24-1.22-.53-1.79-.87.15.11 1.2.92 3.41 1.25.92.14 1.84.2 2.76.2.92 0 1.84-.06 2.76-.2 2.22-.33 3.27-1.14 3.42-1.25-.57.34-1.17.63-1.8.87l1.08 1.7a16.9 16.9 0 0 0 4.95-2.5c.41-4.12-.7-7.7-2.2-10.83ZM8.9 13.18c-.81 0-1.47-.74-1.47-1.66 0-.92.65-1.66 1.47-1.66.82 0 1.49.74 1.47 1.66 0 .92-.65 1.66-1.47 1.66Zm6.2 0c-.82 0-1.47-.74-1.47-1.66 0-.92.65-1.66 1.47-1.66.82 0 1.49.74 1.47 1.66 0 .92-.65 1.66-1.47 1.66Z" />
+            </svg>
+            Join our Discord server
+          </a>
         </div>
       </div>
     </section>
