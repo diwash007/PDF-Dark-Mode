@@ -26,12 +26,27 @@
       background: var(--bg);
       color: var(--text);
       line-height: 1.7;
-      padding: 40px 20px;
+      padding: 24px 20px 40px;
     }
 
     .container {
       width: min(900px, 100%);
       margin: 0 auto;
+    }
+
+    .topbar {
+      width: min(900px, 100%);
+      margin: 0 auto 16px;
+    }
+
+    .brand-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 700;
+      font-size: 18px;
+      color: var(--text);
+      text-decoration: none;
     }
 
     .card {
@@ -90,6 +105,9 @@
   </style>
 </head>
 <body>
+  <div class="topbar">
+    <a class="brand-link" href="index.html">PDF Dark Mode</a>
+  </div>
   <div class="container">
     <div class="card">
       <h1>Privacy Policy</h1>
