@@ -48,20 +48,39 @@
         </div>
       </section>
 
-      <section class="card">
+      <!-- <section class="card">
         <div id="analyticsSummary" class="analytics-summary">
           Local analytics: 0 PDF sessions in last 7 days
         </div>
-      </section>
+      </section> -->
 
       <section class="card plan-box">
         <div class="section-title">Plan</div>
         <div id="planLabel" class="plan-label">Plan: Free</div>
-        <label class="plan-flag">
-          <input id="proFlagToggle" type="checkbox" />
-          Enable Pro (local flag)
-        </label>
-        <div class="plan-note">Temporary flag until payment integration is added.</div>
+        <div class="billing-actions">
+          <button id="subscribeBtn" type="button">Subscribe</button>
+        </div>
+        <button id="haveLicenseToggleBtn" type="button" class="text-link-button">
+          Have a license? Activate here
+        </button>
+        <div id="licenseActivationPanel" class="license-activation-panel hidden">
+          <div class="license-input-row">
+            <label for="licenseKeyInput" class="label">License Key</label>
+            <input
+              id="licenseKeyInput"
+              type="text"
+              autocomplete="off"
+              placeholder="XXXX-XXXX-XXXX-XXXX"
+            />
+          </div>
+          <button id="activateLicenseBtn" type="button">Activate Pro</button>
+        </div>
+        <div id="licenseStatus" class="plan-note">
+          License validation runs automatically in the background.
+        </div>
+        <div id="debugBillingSection" class="debug-tools hidden">
+          <button id="debugRevokeBtn" type="button">Debug: Revoke Local Pro</button>
+        </div>
       </section>
 
       <section class="card site-rule-box">

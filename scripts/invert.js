@@ -182,15 +182,21 @@
       billing.status === "active" &&
       (billing.plan === "pro" || billing.plan === "lifetime");
 
-    return { isPro: !!billing.proOverride || hasPaidPlan };
+    return { isPro: hasPaidPlan };
   }
 
   function defaultBilling() {
     return {
       plan: "free",
       status: "inactive",
-      source: "local-flag",
-      proOverride: false,
+      source: "free",
+      licenseKey: "",
+      instanceId: "",
+      instanceName: "",
+      lastValidatedAt: "",
+      lastValidationAttemptAt: "",
+      licenseStatus: "not_configured",
+      errorMessage: "",
     };
   }
 })();

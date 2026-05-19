@@ -1,3 +1,6 @@
+const PRICING_URL = "https://diwashdahal.com.np/PDF-Dark-Mode/#pricing";
+const ENABLE_DEBUG_BILLING_TOOLS = false;
+
 const slider = document.getElementById("slider");
 const toggle = document.getElementById("toggle");
 const contrastSlider = document.getElementById("contrastSlider");
@@ -12,13 +15,21 @@ const manualSiteInput = document.getElementById("manualSiteInput");
 const allowManualSiteBtn = document.getElementById("allowManualSiteBtn");
 const blockManualSiteBtn = document.getElementById("blockManualSiteBtn");
 const planLabel = document.getElementById("planLabel");
-const proFlagToggle = document.getElementById("proFlagToggle");
+const subscribeBtn = document.getElementById("subscribeBtn");
+const haveLicenseToggleBtn = document.getElementById("haveLicenseToggleBtn");
+const licenseActivationPanel = document.getElementById("licenseActivationPanel");
+const activateLicenseBtn = document.getElementById("activateLicenseBtn");
+const licenseKeyInput = document.getElementById("licenseKeyInput");
+const licenseStatus = document.getElementById("licenseStatus");
+const debugBillingSection = document.getElementById("debugBillingSection");
+const debugRevokeBtn = document.getElementById("debugRevokeBtn");
 const siteRuleBox = document.querySelector(".site-rule-box");
 
 let activeState = true;
 let currentTab = null;
 let currentHost = "";
 let entitlement = { isPro: false, planName: "Free", billing: defaultBilling() };
+let licensePanelOpen = false;
 
 initializePopup();
 
@@ -92,33 +103,75 @@ blockManualSiteBtn.addEventListener("click", async () => {
   await refreshSiteRuleLabels();
 });
 
-proFlagToggle.addEventListener("change", async () => {
-  const billing = {
-    ...entitlement.billing,
-    proOverride: !!proFlagToggle.checked,
-    source: "local-flag",
-  };
-  await persistSyncValue("billing", billing);
-  entitlement = getEntitlement(billing);
+subscribeBtn.addEventListener("click", () => {
+  chrome.tabs.create({ url: PRICING_URL });
+});
+
+haveLicenseToggleBtn.addEventListener("click", () => {
+  licensePanelOpen = !licensePanelOpen;
+  renderLicenseActivationPanel();
+});
+
+activateLicenseBtn.addEventListener("click", async () => {
+  const licenseKey = normalizeLicenseKey(licenseKeyInput.value);
+  if (!licenseKey) {
+    renderLicenseStatus("Please enter a valid license key.", "error");
+    return;
+  }
+
+  setBillingBusyState(true);
+  renderLicenseStatus("Activating license...", "");
+  const response = await sendRuntimeMessage({
+    type: "license-activate",
+    licenseKey,
+  });
+  setBillingBusyState(false);
+
+  if (!response?.ok) {
+    renderLicenseStatus(response?.error || "Activation failed.", "error");
+    return;
+  }
+
+  entitlement = getEntitlement(response.billing);
   renderEntitlementUI();
+  await refreshSiteRuleLabels();
   modeSelect.value = enforceAllowedMode(modeSelect.value);
   await persistSyncValue("mode", modeSelect.value);
-  await refreshSiteRuleLabels();
   applyPreviewFromControls();
+  renderLicenseStatus("License activated. Pro features are now enabled.", "success");
+  licensePanelOpen = false;
+  renderLicenseActivationPanel();
+});
+
+debugRevokeBtn.addEventListener("click", async () => {
+  if (!ENABLE_DEBUG_BILLING_TOOLS) {
+    return;
+  }
+
+  const revokedBilling = {
+    ...entitlement.billing,
+    plan: "free",
+    status: "inactive",
+    licenseStatus: "invalid",
+    errorMessage: "Debug revoke applied locally.",
+  };
+
+  await persistSyncValue("billing", revokedBilling);
+  entitlement = getEntitlement(revokedBilling);
+  renderEntitlementUI();
+  await refreshSiteRuleLabels();
+  modeSelect.value = enforceAllowedMode(modeSelect.value);
+  await persistSyncValue("mode", modeSelect.value);
+  applyPreviewFromControls();
+  renderLicenseActivationPanel();
+  renderLicenseStatus("Debug revoke applied. Pro is now disabled locally.", "error");
 });
 
 window.addEventListener("DOMContentLoaded", () => {
   const link = document.getElementById("supportLink");
   link.addEventListener("click", () => {
-    if (entitlement.isPro) {
-      chrome.tabs.create({
-        url: "mailto:diwashdahal75+PDF-Dark-Mode@gmail.com?subject=PDF%20Dark%20Mode%20Pro%20Support",
-      });
-      return;
-    }
-
     chrome.tabs.create({
-      url: "https://github.com/diwash007/PDF-Dark-Mode/issues/new/choose",
+      url: "https://diwashdahal.com.np/PDF-Dark-Mode/#contact",
     });
   });
 });
@@ -147,9 +200,15 @@ async function initializePopup() {
   renderEntitlementUI();
   await refreshSiteRuleLabels();
   renderAnalyticsSummary();
+  renderLicenseActivationPanel();
+  renderDebugBillingTools();
 
   if (syncState.mode !== modeSelect.value) {
     await persistSyncValue("mode", modeSelect.value);
+  }
+
+  if (syncState.billing?.status === "active") {
+    renderLicenseStatus("License found. Background validation runs automatically.", "success");
   }
 }
 
@@ -246,7 +305,7 @@ async function applyPreviewFromControls() {
 
 function renderEntitlementUI() {
   planLabel.textContent = `Plan: ${entitlement.planName}`;
-  proFlagToggle.checked = !!entitlement.billing.proOverride;
+  licenseKeyInput.value = entitlement.billing.licenseKey || "";
 
   modeSelect.options[1].disabled = !entitlement.isPro;
   modeSelect.options[2].disabled = !entitlement.isPro;
@@ -283,6 +342,61 @@ async function refreshSiteRuleLabels() {
   const siteRules = (await getSyncState(["siteRules"])).siteRules || {};
   const rule = siteRules[currentHost] || "default";
   currentRuleLabel.textContent = `Rule: ${rule}`;
+}
+
+function renderLicenseStatus(message, type) {
+  licenseStatus.textContent = message;
+  licenseStatus.classList.remove("error", "success");
+  if (type === "error" || type === "success") {
+    licenseStatus.classList.add(type);
+  }
+}
+
+function renderLicenseActivationPanel() {
+  if (entitlement.isPro) {
+    licenseActivationPanel.classList.add("hidden");
+    haveLicenseToggleBtn.textContent = "License is active";
+    haveLicenseToggleBtn.disabled = true;
+    return;
+  }
+
+  haveLicenseToggleBtn.disabled = false;
+  haveLicenseToggleBtn.textContent = licensePanelOpen
+    ? "Hide activation form"
+    : "Have a license? Activate here";
+  licenseActivationPanel.classList.toggle("hidden", !licensePanelOpen);
+}
+
+function renderDebugBillingTools() {
+  debugBillingSection.classList.toggle("hidden", !ENABLE_DEBUG_BILLING_TOOLS);
+}
+
+function setBillingBusyState(isBusy) {
+  activateLicenseBtn.disabled = isBusy;
+  subscribeBtn.disabled = isBusy;
+  haveLicenseToggleBtn.disabled = isBusy || entitlement.isPro;
+  debugRevokeBtn.disabled = isBusy || !ENABLE_DEBUG_BILLING_TOOLS;
+}
+
+function sendRuntimeMessage(message) {
+  return new Promise((resolve) => {
+    const send = (retry) => {
+      chrome.runtime.sendMessage(message, (response) => {
+        const runtimeError = chrome.runtime.lastError?.message;
+        if (runtimeError) {
+          if (retry && /message port closed before a response/i.test(runtimeError)) {
+            setTimeout(() => send(false), 120);
+            return;
+          }
+          resolve({ ok: false, error: runtimeError });
+          return;
+        }
+        resolve(response || { ok: false, error: "No response from service worker." });
+      });
+    };
+
+    send(true);
+  });
 }
 
 function setSiteRule(host, rule) {
@@ -377,6 +491,10 @@ function normalizeHostname(value) {
   }
 }
 
+function normalizeLicenseKey(value) {
+  return (value || "").trim().toUpperCase();
+}
+
 function buildUrlPolicy(url, siteRules, currentEntitlement) {
   const host = getHostnameFromUrl(url);
   const canUseSiteRules = currentEntitlement.isPro;
@@ -422,9 +540,10 @@ function getEntitlement(billingState) {
   };
 
   const hasPaidPlan =
-    billing.status === "active" && (billing.plan === "pro" || billing.plan === "lifetime");
-  const isPro = !!billing.proOverride || hasPaidPlan;
-  const planName = isPro ? "Pro" : "Free";
+    billing.status === "active" &&
+    (billing.plan === "pro" || billing.plan === "lifetime");
+  const isPro = hasPaidPlan;
+  const planName = isPro ? (billing.plan === "lifetime" ? "Lifetime" : "Pro") : "Free";
 
   return {
     isPro,
@@ -437,7 +556,13 @@ function defaultBilling() {
   return {
     plan: "free",
     status: "inactive",
-    source: "local-flag",
-    proOverride: false,
+    source: "free",
+    licenseKey: "",
+    instanceId: "",
+    instanceName: "",
+    lastValidatedAt: "",
+    lastValidationAttemptAt: "",
+    licenseStatus: "not_configured",
+    errorMessage: "",
   };
 }

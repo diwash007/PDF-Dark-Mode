@@ -1,47 +1,86 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>PDF Dark Mode</title>
-    <link
-      rel="shortcut icon"
-      href="../images/PDM 128x128.png"
-      type="image/x-icon"
-    />
-    <link rel="stylesheet" href="style.css" />
-  </head>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Welcome - PDF Dark Mode</title>
+  <link
+    rel="shortcut icon"
+    href="../images/PDM 128x128.png"
+    type="image/x-icon"
+  />
+  <link rel="stylesheet" href="style.css" />
+</head>
 
-  <body>
-    <div class="container">
-      <h1 class="heading">
-        Thank you for Choosing "PDF Dark Mode"
+<body>
+  <div class="container">
+    <header class="hero">
+      <div class="hero-left">
+        <h1 class="heading">Welcome to PDF Dark Mode</h1>
+        <div id="planBadge" class="plan-badge">Plan: Free</div>
+        <p class="subtitle">
+          Your extension is ready. Enable local PDF access below, then unlock Pro for
+          extra reading modes and per-site rules.
+        </p>
+        <div class="hero-actions">
+          <a id="subscribeCta" class="button button-primary" href="https://diwashdahal.com.np/PDF-Dark-Mode/#pricing" target="_blank" rel="noopener noreferrer">
+            Upgrade to Pro
+          </a>
+          <a id="secondaryCta" class="button" href="https://diwashdahal.com.np/PDF-Dark-Mode" target="_blank" rel="noopener noreferrer">
+            View Project
+          </a>
+        </div>
+        <p id="activateNote" class="activate-note">
+          Already purchased? Open the extension popup and click <strong>Have a license? Activate here</strong>.
+        </p>
+      </div>
+      <div class="hero-right">
         <img
           id="logo"
           src="../images/PDM 128x128.png"
           alt="PDF dark mode logo"
         />
-      </h1>
-      <div class="instruction">
-        <h2>Please follow these steps to enable the extension for local PDFs</h2>
-        <ul>
-          <li>
-            <div>
-              Step 1: Open Extensions tab<br /><br />
-              Step 2: Click manage extensions
-            </div>
-            <img src="screenshots/1.png" alt="Step 1" />
-          </li>
-          <li>
-            <div>Step 3: Click details under PDF Dark Mode</div>
-            <img src="screenshots/2.png" alt="Step 2" />
-          </li>
-          <li>
-            <div>Step 4: Allow access to file URL</div>
-            <img src="screenshots/3.png" alt="Step 3" />
-          </li>
-        </ul>
       </div>
-    </div>
-  </body>
+    </header>
+
+    <section class="card pro-features">
+      <h2>What you get with Pro</h2>
+      <ul class="feature-list">
+        <li>Sepia mode for warm long-session reading</li>
+        <li>AMOLED mode for deeper blacks</li>
+        <li>Per-site allow/block rules for custom behavior</li>
+        <li>Automatic license validation in the background</li>
+      </ul>
+    </section>
+
+    <section class="card instruction">
+      <h2>Enable extension access for local PDFs</h2>
+      <p class="instruction-note">
+        Complete these steps once so PDF Dark Mode can work on <code>file://</code> PDFs.
+      </p>
+      <ul>
+        <li>
+          <div class="step-text">
+            <strong>Step 1:</strong> Open Extensions tab<br /><br />
+            <strong>Step 2:</strong> Click Manage extensions
+          </div>
+          <img src="screenshots/1.png" alt="Open and manage extensions" />
+        </li>
+        <li>
+          <div class="step-text">
+            <strong>Step 3:</strong> Click Details under PDF Dark Mode
+          </div>
+          <img src="screenshots/2.png" alt="Open extension details" />
+        </li>
+        <li>
+          <div class="step-text">
+            <strong>Step 4:</strong> Turn on Allow access to file URLs
+          </div>
+          <img src="screenshots/3.png" alt="Enable file URL access" />
+        </li>
+      </ul>
+    </section>
+  </div>
+  <script src="index.js"></script>
+</body>
 </html>

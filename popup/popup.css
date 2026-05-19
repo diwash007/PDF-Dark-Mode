@@ -123,13 +123,11 @@ input[type="range"] {
   margin-bottom: 6px;
 }
 
-.plan-flag {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.billing-actions {
+  display: grid;
+  grid-template-columns: 1fr;
   gap: 6px;
-  font-size: 12px;
-  color: #e1eaff;
+  margin-bottom: 6px;
 }
 
 .plan-note {
@@ -137,6 +135,83 @@ input[type="range"] {
   text-align: center;
   color: #9fb0dc;
   font-size: 10px;
+}
+
+.plan-note.error {
+  color: #ffb3bf;
+}
+
+.plan-note.success {
+  color: #9ff0ba;
+}
+
+.license-input-row {
+  display: grid;
+  grid-template-columns: 76px 1fr;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.license-activation-panel.hidden {
+  display: none;
+}
+
+.text-link-button {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  color: #8fbcff;
+  font-size: 11px;
+  text-align: left;
+  cursor: pointer;
+  margin-bottom: 6px;
+}
+
+#licenseKeyInput {
+  width: 100%;
+  font-size: 11px;
+  border-radius: 8px;
+  border: 1px solid #5369a6;
+  background: rgba(10, 16, 30, 0.92);
+  color: #e9efff;
+  padding: 7px 8px;
+}
+
+.billing-actions button,
+#activateLicenseBtn {
+  background: linear-gradient(180deg, #2b3b6b 0%, #1f2c54 100%);
+  color: #edf2ff;
+  border: 1px solid #5970ad;
+  border-radius: 8px;
+  font-size: 11px;
+  padding: 7px 6px;
+  cursor: pointer;
+}
+
+.billing-actions button:disabled,
+#activateLicenseBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.debug-tools {
+  margin-top: 8px;
+}
+
+.debug-tools.hidden {
+  display: none;
+}
+
+#debugRevokeBtn {
+  width: 100%;
+  background: linear-gradient(180deg, #653040 0%, #4b2430 100%);
+  color: #ffe7ee;
+  border: 1px solid #9b5468;
+  border-radius: 8px;
+  font-size: 11px;
+  padding: 7px 6px;
+  cursor: pointer;
 }
 
 .site-host,

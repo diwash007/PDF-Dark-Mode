@@ -40,7 +40,16 @@ I had to read a bunch of PDFs at night during exams. Black text on a white backg
   - Sepia
   - AMOLED
 - Per-site allow/block rules
+- Lemon Squeezy license key activation and validation
 - Future premium productivity and customization features
+
+## Pro License Validation Policy
+
+- Pro access is activated using a Lemon Squeezy license key.
+- License status is validated automatically in the background (no manual validate step in popup).
+- Validation is throttled to periodic checks (about every 24 hours), not on every popup open.
+- Stale-while-revalidate behavior is used: if a previously active license is stored locally, Pro remains available while background validation runs.
+- If Lemon Squeezy reports the license as invalid/inactive (for example after cancellation/refund), Pro access is removed on the next successful validation.
 
 ## Privacy
 
