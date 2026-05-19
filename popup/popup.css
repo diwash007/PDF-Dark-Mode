@@ -10,6 +10,10 @@ body {
   background: radial-gradient(120% 120% at 10% 0%, #2f3e68 0%, #0f1424 60%, #0b101d 100%);
 }
 
+.hidden {
+  display: none;
+}
+
 .app-shell {
   padding: 12px;
   display: flex;
