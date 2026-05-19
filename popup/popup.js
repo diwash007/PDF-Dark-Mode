@@ -305,6 +305,12 @@ async function applyPreviewFromControls() {
 
 function renderEntitlementUI() {
   planLabel.textContent = `Plan: ${entitlement.planName}`;
+  planLabel.classList.remove("pro", "lifetime", "free");
+  if (entitlement.isPro) {
+    planLabel.classList.add(entitlement.billing.plan === "lifetime" ? "lifetime" : "pro");
+  } else {
+    planLabel.classList.add("free");
+  }
   licenseKeyInput.value = entitlement.billing.licenseKey || "";
 
   modeSelect.options[1].disabled = !entitlement.isPro;
