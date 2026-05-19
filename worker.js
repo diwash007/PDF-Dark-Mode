@@ -250,6 +250,23 @@ async function revalidateStoredLicenseIfNeeded() {
     await validateStoredLicenseFlow();
   } catch (error) {
     console.error("PDF Dark Mode: automatic license validation failed", error);
+    
+    // Only revoke on permanent API errors (explicit rejection), not network errors
+    const errorMsg = error?.message || "";
+    const isPermanentError = /instance.*not found|invalid|deactivated|revoked/i.test(errorMsg);
+    
+    if (isPermanentError) {
+      const failsafeBilling = {
+        ...billing,
+        plan: "free",
+        status: "inactive",
+        licenseStatus: "invalid",
+        errorMessage: errorMsg,
+        lastValidationAttemptAt: new Date().toISOString(),
+      };
+      await setSyncValue("billing", failsafeBilling);
+    }
+    // If it's a temporary error (network, timeout, etc.), keep current status and don't revoke
   }
 }
 
