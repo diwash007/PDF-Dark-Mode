@@ -158,6 +158,16 @@
         Pricing, billing models, and feature availability may change over time.
       </p>
 
+      <h2>Pro License Validation Policy</h2>
+
+      <ul>
+        <li>Pro access is activated using a Lemon Squeezy license key.</li>
+        <li>License status is validated automatically in the background (no manual validate step in popup).</li>
+        <li>Validation is throttled to periodic checks (about every 24 hours), not on every popup open.</li>
+        <li>Stale-while-revalidate behavior is used: if a previously active license is stored locally, Pro remains available while background validation runs.</li>
+        <li>If Lemon Squeezy reports the license as invalid/inactive (for example after cancellation/refund), Pro access is removed on the next successful validation.</li>
+      </ul>
+
       <h2>Refund Policy</h2>
 
       <p>
