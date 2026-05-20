@@ -62,15 +62,9 @@ Current analytics functionality is:
 
 ## Installation
 
-### Manual Installation
+- Chrome Web Store: https://chromewebstore.google.com/detail/pdf-dark-mode/clabimobhdkbfpkdeloigeneocldkmdc
+- Microsoft Edge Add-ons: https://microsoftedge.microsoft.com/addons/detail/pdf-dark-mode/nghkmkbjhpgdibgopgekgjnbocfmnjdo
 
-1. Download the ZIP archive:
-   https://github.com/diwash007/PDF-Dark-Mode/archive/refs/tags/v1.0.3.zip
-
-2. Extract the archive
-
-3. Load the unpacked extension in your browser:
-   https://webkul.com/blog/how-to-install-the-unpacked-extension-in-chrome/
 
 ## Contributing
 
