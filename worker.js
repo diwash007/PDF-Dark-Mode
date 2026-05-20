@@ -35,12 +35,13 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
         files: ["scripts/invert.js"],
       })
       .catch((error) => {
-        console.error("PDF Dark Mode: failed to inject on tab update", error);
+        // console.error("PDF Dark Mode: failed to inject on tab update", error);
       });
   });
 });
 
 chrome.runtime.onInstalled.addListener(() => {
+  chrome.alarms.create("licenseValidation", { periodInMinutes: 360 });
   chrome.tabs.create({
     url: "./instruction/index.html",
   });
@@ -48,6 +49,12 @@ chrome.runtime.onInstalled.addListener(() => {
 
 chrome.runtime.onStartup.addListener(() => {
   revalidateStoredLicenseIfNeeded();
+});
+
+chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name === "licenseValidation") {
+    revalidateStoredLicenseIfNeeded();
+  }
 });
 
 chrome.commands.onCommand.addListener((command) => {
@@ -443,11 +450,7 @@ function buildUrlPolicy(url, siteRules, entitlement) {
     (/^chrome-extension:\/\/[^/]+\/index\.html/i.test(url) &&
       (new URL(url).searchParams.get("src") || "").match(
         /\.pdf($|[?#&])|%2Epdf/i
-      )) ||
-    /^https:\/\/drive\.google\.com\/file\/d\/[^/]+\/(?:view|preview)/i.test(
-      url
-    ) ||
-    /^https:\/\/docs\.google\.com\/(?:viewer|gview)/i.test(url);
+      ));
 
   if (isStandardPdf) {
     return { shouldInject: true };

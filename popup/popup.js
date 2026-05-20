@@ -328,6 +328,8 @@ function renderEntitlementUI() {
     element.disabled = !entitlement.isPro;
   });
 
+  subscribeBtn.style.display = entitlement.isPro ? "none" : "block";
+
   siteRuleBox.classList.toggle("locked", !entitlement.isPro);
 }
 
@@ -515,11 +517,7 @@ function buildUrlPolicy(url, siteRules, currentEntitlement) {
     (/^chrome-extension:\/\/[^/]+\/index\.html/i.test(url || "") &&
       (new URL(url).searchParams.get("src") || "").match(
         /\.pdf($|[?#&])|%2Epdf/i
-      )) ||
-    /^https:\/\/drive\.google\.com\/file\/d\/[^/]+\/(?:view|preview)/i.test(
-      url || ""
-    ) ||
-    /^https:\/\/docs\.google\.com\/(?:viewer|gview)/i.test(url || "");
+      ));
 
   if (isStandardPdf) {
     return { shouldInject: true };
