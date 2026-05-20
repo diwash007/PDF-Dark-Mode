@@ -1,4 +1,5 @@
-const PRICING_URL = "https://diwashdahal.com.np/PDF-Dark-Mode/#pricing";
+const PRICING_URL = "https://pdf.gilobyte.com/#pricing";
+const SUPPORT_URL = "https://pdf.gilobyte.com/#contact";
 const ENABLE_DEBUG_BILLING_TOOLS = false;
 
 const slider = document.getElementById("slider");
@@ -171,7 +172,7 @@ window.addEventListener("DOMContentLoaded", () => {
   const link = document.getElementById("supportLink");
   link.addEventListener("click", () => {
     chrome.tabs.create({
-      url: "https://diwashdahal.com.np/PDF-Dark-Mode/#contact",
+      url: SUPPORT_URL,
     });
   });
 });
