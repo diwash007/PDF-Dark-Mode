@@ -26,11 +26,28 @@ const debugBillingSection = document.getElementById("debugBillingSection");
 const debugRevokeBtn = document.getElementById("debugRevokeBtn");
 const siteRuleBox = document.querySelector(".site-rule-box");
 
+// Overlay area elements
+const topMarginSlider = document.getElementById("topMarginSlider");
+const rightMarginSlider = document.getElementById("rightMarginSlider");
+const bottomMarginSlider = document.getElementById("bottomMarginSlider");
+const leftMarginSlider = document.getElementById("leftMarginSlider");
+const topMarginValue = document.getElementById("topMarginValue");
+const rightMarginValue = document.getElementById("rightMarginValue");
+const bottomMarginValue = document.getElementById("bottomMarginValue");
+const leftMarginValue = document.getElementById("leftMarginValue");
+const resetAreaBtn = document.getElementById("resetAreaBtn");
+const saveAreaBtn = document.getElementById("saveAreaBtn");
+const areaStatus = document.getElementById("areaStatus");
+const previewArea = document.getElementById("previewArea");
+const overlayAreaBox = document.querySelector(".overlay-area-box");
+
 let activeState = true;
 let currentTab = null;
 let currentHost = "";
 let entitlement = { isPro: false, planName: "Free", billing: defaultBilling() };
 let licensePanelOpen = false;
+let overlayAreaCustomizations = { top: 0, right: 0, bottom: 0, left: 0 };
+let siteSpecificAreaActive = false;
 
 initializePopup();
 
@@ -48,6 +65,86 @@ contrastSlider.addEventListener("input", () => {
 
 contrastSlider.addEventListener("change", () => {
   persistSyncValue("contrast", Number(contrastSlider.value));
+});
+
+topMarginSlider.addEventListener("input", () => {
+  overlayAreaCustomizations.top = Number(topMarginSlider.value);
+  topMarginValue.textContent = `${topMarginSlider.value}px`;
+  updatePreviewArea();
+  applyPreviewFromControls();
+});
+
+topMarginSlider.addEventListener("change", () => {
+  if (entitlement.isPro && siteSpecificAreaActive) {
+    saveAreaForCurrentSite();
+  }
+});
+
+rightMarginSlider.addEventListener("input", () => {
+  overlayAreaCustomizations.right = Number(rightMarginSlider.value);
+  rightMarginValue.textContent = `${rightMarginSlider.value}px`;
+  updatePreviewArea();
+  applyPreviewFromControls();
+});
+
+rightMarginSlider.addEventListener("change", () => {
+  if (entitlement.isPro && siteSpecificAreaActive) {
+    saveAreaForCurrentSite();
+  }
+});
+
+bottomMarginSlider.addEventListener("input", () => {
+  overlayAreaCustomizations.bottom = Number(bottomMarginSlider.value);
+  bottomMarginValue.textContent = `${bottomMarginSlider.value}px`;
+  updatePreviewArea();
+  applyPreviewFromControls();
+});
+
+bottomMarginSlider.addEventListener("change", () => {
+  if (entitlement.isPro && siteSpecificAreaActive) {
+    saveAreaForCurrentSite();
+  }
+});
+
+leftMarginSlider.addEventListener("input", () => {
+  overlayAreaCustomizations.left = Number(leftMarginSlider.value);
+  leftMarginValue.textContent = `${leftMarginSlider.value}px`;
+  updatePreviewArea();
+  applyPreviewFromControls();
+});
+
+leftMarginSlider.addEventListener("change", () => {
+  if (entitlement.isPro && siteSpecificAreaActive) {
+    saveAreaForCurrentSite();
+  }
+});
+
+resetAreaBtn.addEventListener("click", async () => {
+  overlayAreaCustomizations = { top: 0, right: 0, bottom: 0, left: 0 };
+  topMarginSlider.value = 0;
+  rightMarginSlider.value = 0;
+  bottomMarginSlider.value = 0;
+  leftMarginSlider.value = 0;
+  topMarginValue.textContent = "0px";
+  rightMarginValue.textContent = "0px";
+  bottomMarginValue.textContent = "0px";
+  leftMarginValue.textContent = "0px";
+  
+  if (entitlement.isPro && siteSpecificAreaActive) {
+    await clearAreaForCurrentSite();
+  }
+  
+  updatePreviewArea();
+  applyPreviewFromControls();
+});
+
+saveAreaBtn.addEventListener("click", async () => {
+  if (!entitlement.isPro || !currentHost) return;
+  siteSpecificAreaActive = true;
+  await saveAreaForCurrentSite();
+  await loadAreaSettings();
+  updateAreaUI();
+  applyPreviewFromControls();
 });
 
 toggle.addEventListener("click", () => {
@@ -184,6 +281,8 @@ async function initializePopup() {
     "mode",
     "active",
     "billing",
+    "overlayAreaSettings",
+    "siteOverlayAreas",
   ]);
 
   entitlement = getEntitlement(syncState.billing);
@@ -198,7 +297,11 @@ async function initializePopup() {
   currentTab = tab || null;
   currentHost = getHostnameFromUrl(currentTab?.url);
 
+  detectAndUpdateSliderMax(tab);
+  await loadAreaSettings();
+
   renderEntitlementUI();
+  updateAreaUI();
   await refreshSiteRuleLabels();
   renderAnalyticsSummary();
   renderLicenseActivationPanel();
@@ -210,6 +313,36 @@ async function initializePopup() {
 
   if (syncState.billing?.status === "active") {
     renderLicenseStatus("License found. Background validation runs automatically.", "success");
+  }
+}
+
+async function detectAndUpdateSliderMax(tab) {
+  if (!tab?.id) return;
+
+  try {
+    const results = await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      func: () => {
+        return {
+          width: window.innerWidth,
+          height: window.innerHeight,
+        };
+      },
+    });
+
+    if (results && results[0] && results[0].result) {
+      const { width, height } = results[0].result;
+      const maxMarginHeight = height;
+      const maxMarginWidth = width;
+
+      topMarginSlider.max = maxMarginHeight;
+      rightMarginSlider.max = maxMarginWidth;
+      bottomMarginSlider.max = maxMarginHeight;
+      leftMarginSlider.max = maxMarginWidth;
+    }
+  } catch (error) {
+    // If detection fails, keep the default max of 1000
+    console.log("Could not detect viewport dimensions, using default max");
   }
 }
 
@@ -230,6 +363,7 @@ async function applyPreviewFromControls() {
     strength: Number(slider.value),
     contrast: Number(contrastSlider.value),
     mode: enforceAllowedMode(modeSelect.value),
+    overlayArea: overlayAreaCustomizations,
   };
 
   await chrome.scripting
@@ -258,6 +392,8 @@ async function applyPreviewFromControls() {
         const contrastValue = mode === "amoled" ? Math.max(contrast, 110) : contrast;
         const brightnessValue = mode === "amoled" ? 78 : 100;
 
+        const area = previewSettings.overlayArea || { top: 0, right: 0, bottom: 0, left: 0 };
+
         const darkLayer = document.createElement("div");
         darkLayer.id = DARK_LAYER_ID;
         darkLayer.setAttribute(
@@ -265,10 +401,12 @@ async function applyPreviewFromControls() {
           `
             position: fixed;
             pointer-events: none;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
+            top: ${area.top}px;
+            left: ${area.left}px;
+            right: ${area.right}px;
+            bottom: ${area.bottom}px;
+            width: calc(100vw - ${area.left}px - ${area.right}px);
+            height: calc(100vh - ${area.top}px - ${area.bottom}px);
             background-color: #${blendStrengthHex}ffffff;
             mix-blend-mode: difference;
             z-index: 2147483646;
@@ -285,10 +423,12 @@ async function applyPreviewFromControls() {
             `
               position: fixed;
               pointer-events: none;
-              top: 0;
-              left: 0;
-              width: 100vw;
-              height: 100vh;
+              top: ${area.top}px;
+              left: ${area.left}px;
+              right: ${area.right}px;
+              bottom: ${area.bottom}px;
+              width: calc(100vw - ${area.left}px - ${area.right}px);
+              height: calc(100vh - ${area.top}px - ${area.bottom}px);
               background-color: rgba(112, 66, 20, 0.2);
               mix-blend-mode: multiply;
               z-index: 2147483647;
@@ -570,4 +710,102 @@ function defaultBilling() {
     licenseStatus: "not_configured",
     errorMessage: "",
   };
+}
+
+async function loadAreaSettings() {
+  const syncState = await getSyncState(["overlayAreaSettings", "siteOverlayAreas"]);
+  const globalSettings = syncState.overlayAreaSettings || { top: 0, right: 0, bottom: 0, left: 0 };
+  const siteAreas = syncState.siteOverlayAreas || {};
+
+  if (entitlement.isPro && currentHost && siteAreas[currentHost]) {
+    overlayAreaCustomizations = siteAreas[currentHost];
+    siteSpecificAreaActive = true;
+  } else {
+    overlayAreaCustomizations = globalSettings;
+    siteSpecificAreaActive = false;
+  }
+
+  topMarginSlider.value = overlayAreaCustomizations.top || 0;
+  rightMarginSlider.value = overlayAreaCustomizations.right || 0;
+  bottomMarginSlider.value = overlayAreaCustomizations.bottom || 0;
+  leftMarginSlider.value = overlayAreaCustomizations.left || 0;
+
+  updateMarginValues();
+}
+
+function updateMarginValues() {
+  topMarginValue.textContent = `${topMarginSlider.value}px`;
+  rightMarginValue.textContent = `${rightMarginSlider.value}px`;
+  bottomMarginValue.textContent = `${bottomMarginSlider.value}px`;
+  leftMarginValue.textContent = `${leftMarginSlider.value}px`;
+}
+
+function updatePreviewArea() {
+  const previewBox = document.querySelector(".preview-box");
+  const boxRect = previewBox.getBoundingClientRect();
+  const boxWidth = boxRect.width;
+  const boxHeight = boxRect.height;
+  
+  const maxMargin = Number(topMarginSlider.max) || 1000;
+  const topPercent = (overlayAreaCustomizations.top / maxMargin) * 100;
+  const rightPercent = (overlayAreaCustomizations.right / maxMargin) * 100;
+  const bottomPercent = (overlayAreaCustomizations.bottom / maxMargin) * 100;
+  const leftPercent = (overlayAreaCustomizations.left / maxMargin) * 100;
+
+  previewArea.style.top = `${topPercent}%`;
+  previewArea.style.right = `${rightPercent}%`;
+  previewArea.style.bottom = `${bottomPercent}%`;
+  previewArea.style.left = `${leftPercent}%`;
+}
+
+function updateAreaUI() {
+  updateMarginValues();
+  updatePreviewArea();
+
+  saveAreaBtn.disabled = !entitlement.isPro;
+
+  if (!entitlement.isPro) {
+    areaStatus.textContent = "Using temporary customization (not saved)";
+  } else if (siteSpecificAreaActive && currentHost) {
+    areaStatus.textContent = `Site-specific area active for ${currentHost}`;
+  } else {
+    areaStatus.textContent = "Using global area settings";
+  }
+}
+
+async function saveAreaForCurrentSite() {
+  if (!entitlement.isPro || !currentHost) return;
+
+  return new Promise((resolve) => {
+    chrome.storage.sync.get("siteOverlayAreas", ({ siteOverlayAreas }) => {
+      const nextAreas = {
+        ...(siteOverlayAreas || {}),
+        [currentHost]: overlayAreaCustomizations,
+      };
+      chrome.storage.sync.set({ siteOverlayAreas: nextAreas }, () => {
+        if (chrome.runtime.lastError) {
+          console.error("PDF Dark Mode: failed to save area for site", chrome.runtime.lastError);
+        }
+        resolve();
+      });
+    });
+  });
+}
+
+async function clearAreaForCurrentSite() {
+  if (!entitlement.isPro || !currentHost) return;
+
+  return new Promise((resolve) => {
+    chrome.storage.sync.get("siteOverlayAreas", ({ siteOverlayAreas }) => {
+      const nextAreas = { ...(siteOverlayAreas || {}) };
+      delete nextAreas[currentHost];
+      chrome.storage.sync.set({ siteOverlayAreas: nextAreas }, () => {
+        if (chrome.runtime.lastError) {
+          console.error("PDF Dark Mode: failed to clear area for site", chrome.runtime.lastError);
+        }
+        siteSpecificAreaActive = false;
+        resolve();
+      });
+    });
+  });
 }

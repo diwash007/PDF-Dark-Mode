@@ -451,3 +451,107 @@ input[type="range"] {
   cursor: pointer;
   text-decoration: none;
 }
+
+.overlay-area-box {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.overlay-preview {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 8px;
+}
+
+.preview-box {
+  width: 140px;
+  height: 100px;
+  border: 2px solid rgba(158, 184, 255, 0.3);
+  border-radius: 8px;
+  background: rgba(20, 30, 55, 0.5);
+  position: relative;
+  overflow: hidden;
+}
+
+.preview-area {
+  position: absolute;
+  background: rgba(126, 167, 255, 0.4);
+  border: 1px solid rgba(126, 167, 255, 0.6);
+  transition: all 0.1s ease;
+}
+
+.margin-input-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+}
+
+.margin-input-group input {
+  flex: 1;
+}
+
+.margin-value {
+  font-size: 11px;
+  color: #a7b9e5;
+  min-width: 35px;
+  text-align: right;
+}
+
+.overlay-area-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+#resetAreaBtn,
+#saveAreaBtn {
+  background: linear-gradient(180deg, #2b3b6b 0%, #1f2c54 100%);
+  color: #edf2ff;
+  border: 1px solid #5970ad;
+  border-radius: 8px;
+  font-size: 11px;
+  padding: 6px 6px;
+  cursor: pointer;
+  transition: transform 0.12s ease, box-shadow 0.2s ease;
+}
+
+#resetAreaBtn {
+  background: linear-gradient(180deg, #3a3a3a 0%, #2a2a2a 100%);
+  color: #c0c0c0;
+  border: 1px solid #666;
+}
+
+#resetAreaBtn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(192, 192, 192, 0.15);
+}
+
+#saveAreaBtn {
+  background: linear-gradient(180deg, #1b5e20 0%, #0d3817 100%);
+  color: #a5f5ab;
+  border: 1px solid #4caf50;
+}
+
+#saveAreaBtn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(76, 175, 80, 0.25);
+}
+
+#saveAreaBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.area-status {
+  font-size: 10px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  text-align: center;
+  color: #c8d8f0;
+  background: rgba(100, 120, 150, 0.2);
+  border: 1px solid rgba(143, 188, 255, 0.15);
+  margin-top: 4px;
+}

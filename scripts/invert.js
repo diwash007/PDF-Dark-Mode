@@ -4,7 +4,7 @@
   const href = window.location.href;
 
   chrome.storage.sync.get(
-    ["active", "strength", "contrast", "mode", "siteRules", "billing"],
+    ["active", "strength", "contrast", "mode", "siteRules", "billing", "overlayAreaSettings", "siteOverlayAreas"],
     (state) => {
       const entitlement = getEntitlement(state.billing);
       const policy = buildPagePolicy(href, state.siteRules || {}, entitlement);
@@ -108,6 +108,15 @@
     const contrastValue = mode === "amoled" ? Math.max(contrast, 110) : contrast;
     const brightnessValue = mode === "amoled" ? 78 : 100;
 
+    const hostname = getHostnameFromUrl(href);
+    const siteAreas = state.siteOverlayAreas || {};
+    const globalArea = state.overlayAreaSettings || { top: 0, right: 0, bottom: 0, left: 0 };
+    
+    // Apply custom area settings for pro users (site-specific) or all users (global defaults)
+    const area = entitlement.isPro && hostname && siteAreas[hostname] 
+      ? siteAreas[hostname] 
+      : globalArea;
+
     const darkLayer = document.createElement("div");
     darkLayer.id = DARK_LAYER_ID;
     darkLayer.setAttribute(
@@ -115,10 +124,12 @@
       `
         position: fixed;
         pointer-events: none;
-        top: 0;
-        left: 0;
-        width: 100vw;
-        height: 100vh;
+        top: ${area.top}px;
+        left: ${area.left}px;
+        right: ${area.right}px;
+        bottom: ${area.bottom}px;
+        width: calc(100vw - ${area.left}px - ${area.right}px);
+        height: calc(100vh - ${area.top}px - ${area.bottom}px);
         background-color: #${blendStrengthHex}ffffff;
         mix-blend-mode: difference;
         z-index: 2147483646;
@@ -135,10 +146,12 @@
         `
           position: fixed;
           pointer-events: none;
-          top: 0;
-          left: 0;
-          width: 100vw;
-          height: 100vh;
+          top: ${area.top}px;
+          left: ${area.left}px;
+          right: ${area.right}px;
+          bottom: ${area.bottom}px;
+          width: calc(100vw - ${area.left}px - ${area.right}px);
+          height: calc(100vh - ${area.top}px - ${area.bottom}px);
           background-color: rgba(112, 66, 20, 0.2);
           mix-blend-mode: multiply;
           z-index: 2147483647;

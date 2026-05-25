@@ -22,38 +22,6 @@
         <p class="shortcut-hint">Command + Shift + 1</p>
       </div>
 
-      <section class="card inputs">
-        <div class="section-title">Appearance</div>
-        <div class="input-row">
-          <label for="modeSelect" class="label">Mode</label>
-          <select id="modeSelect">
-            <option value="dark">Dark</option>
-            <option value="sepia">Sepia (Pro)</option>
-            <option value="amoled">AMOLED (Pro)</option>
-          </select>
-        </div>
-        <div class="input-row">
-          <label for="slider" class="label">Strength</label>
-          <input id="slider" type="range" min="200" value="255" max="255" />
-        </div>
-        <div class="input-row">
-          <label for="contrastSlider" class="label">Contrast</label>
-          <input
-            id="contrastSlider"
-            type="range"
-            min="50"
-            value="100"
-            max="100"
-          />
-        </div>
-      </section>
-
-      <section class="card hidden">
-        <div id="analyticsSummary" class="analytics-summary">
-          Local analytics: 0 PDF sessions in last 7 days
-        </div>
-      </section>
-
       <section class="card plan-box">
         <div class="section-title">Plan</div>
         <div id="planLabel" class="plan-label">Plan: Free</div>
@@ -80,6 +48,80 @@
         </div>
         <div id="debugBillingSection" class="debug-tools hidden">
           <button id="debugRevokeBtn" type="button">Debug: Revoke Local Pro</button>
+        </div>
+      </section>
+
+      <section class="card inputs">
+        <div class="section-title">Appearance</div>
+        <div class="input-row">
+          <label for="modeSelect" class="label">Mode</label>
+          <select id="modeSelect">
+            <option value="dark">Dark</option>
+            <option value="sepia">Sepia (Pro)</option>
+            <option value="amoled">AMOLED (Pro)</option>
+          </select>
+        </div>
+        <div class="input-row">
+          <label for="slider" class="label">Strength</label>
+          <input id="slider" type="range" min="200" value="255" max="255" />
+        </div>
+        <div class="input-row">
+          <label for="contrastSlider" class="label">Contrast</label>
+          <input
+            id="contrastSlider"
+            type="range"
+            min="50"
+            value="100"
+            max="100"
+          />
+        </div>
+      </section>
+
+      <section class="card overlay-area-box">
+        <div class="section-title">Overlay Area</div>
+        <div class="overlay-preview">
+          <div class="preview-box">
+            <div id="previewArea" class="preview-area"></div>
+          </div>
+        </div>
+        <div class="input-row">
+          <label for="topMarginSlider" class="label">Top</label>
+          <div class="margin-input-group">
+            <input id="topMarginSlider" type="range" min="0" value="0" max="1000" />
+            <span id="topMarginValue" class="margin-value">0px</span>
+          </div>
+        </div>
+        <div class="input-row">
+          <label for="rightMarginSlider" class="label">Right</label>
+          <div class="margin-input-group">
+            <input id="rightMarginSlider" type="range" min="0" value="0" max="1000" />
+            <span id="rightMarginValue" class="margin-value">0px</span>
+          </div>
+        </div>
+        <div class="input-row">
+          <label for="bottomMarginSlider" class="label">Bottom</label>
+          <div class="margin-input-group">
+            <input id="bottomMarginSlider" type="range" min="0" value="0" max="1000" />
+            <span id="bottomMarginValue" class="margin-value">0px</span>
+          </div>
+        </div>
+        <div class="input-row">
+          <label for="leftMarginSlider" class="label">Left</label>
+          <div class="margin-input-group">
+            <input id="leftMarginSlider" type="range" min="0" value="0" max="1000" />
+            <span id="leftMarginValue" class="margin-value">0px</span>
+          </div>
+        </div>
+        <div class="overlay-area-actions">
+          <button id="resetAreaBtn" type="button" class="clear-btn">Reset Area</button>
+          <button id="saveAreaBtn" type="button" class="save-btn pro-only">Save for Site</button>
+        </div>
+        <div id="areaStatus" class="area-status">Using global area settings</div>
+      </section>
+
+      <section class="card hidden">
+        <div id="analyticsSummary" class="analytics-summary">
+          Local analytics: 0 PDF sessions in last 7 days
         </div>
       </section>
 
