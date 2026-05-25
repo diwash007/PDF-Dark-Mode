@@ -274,7 +274,17 @@ window.addEventListener("DOMContentLoaded", () => {
   });
 });
 
+function loadVersionFromManifest() {
+  const manifest = chrome.runtime.getManifest();
+  const versionDisplay = document.getElementById("versionDisplay");
+  if (versionDisplay && manifest.version) {
+    versionDisplay.textContent = `v${manifest.version}`;
+  }
+}
+
 async function initializePopup() {
+  loadVersionFromManifest();
+  
   const syncState = await getSyncState([
     "strength",
     "contrast",
