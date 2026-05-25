@@ -40,11 +40,24 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   });
 });
 
-chrome.runtime.onInstalled.addListener(() => {
-  chrome.alarms.create("licenseValidation", { periodInMinutes: 360 });
-  chrome.tabs.create({
-    url: "./instruction/index.html",
+chrome.runtime.onInstalled.addListener((details) => {
+  chrome.alarms.get("licenseValidation", (alarm) => {
+    if (!alarm) {
+      chrome.alarms.create("licenseValidation", { periodInMinutes: 360 });
+    }
   });
+
+  if (details.reason === chrome.runtime.OnInstalledReason.INSTALL) {
+    chrome.tabs.create({
+      url: "./instruction/index.html",
+    });
+  }
+
+  if (details.reason === chrome.runtime.OnInstalledReason.UPDATE) {
+    chrome.tabs.create({
+      url: "./instruction/update.html",
+    });
+  }
 });
 
 chrome.runtime.onStartup.addListener(() => {
