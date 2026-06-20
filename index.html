@@ -395,9 +395,11 @@
 
         <div class="hero-actions">
           <a
-            href="https://microsoftedge.microsoft.com/addons"
+            href="https://chromewebstore.google.com/detail/pdf-dark-mode/clabimobhdkbfpkdeloigeneocldkmdc"
             target="_blank"
+            rel="noopener noreferrer"
             class="button button-primary"
+            id="install-cta"
           >
             Install Extension
           </a>
@@ -572,5 +574,27 @@
       </p>
     </div>
   </footer>
+  <script>
+    (() => {
+      const cta = document.getElementById('install-cta');
+
+      if (!cta) {
+        return;
+      }
+
+      const edgeStore = 'https://microsoftedge.microsoft.com/addons/detail/pdf-dark-mode/nghkmkbjhpgdibgopgekgjnbocfmnjdo';
+      const chromeStore = 'https://chromewebstore.google.com/detail/pdf-dark-mode/clabimobhdkbfpkdeloigeneocldkmdc';
+
+      const brandList = navigator.userAgentData?.brands || [];
+      const brandNames = brandList.map((brand) => brand.brand);
+      const userAgent = navigator.userAgent;
+
+      const isEdge = brandNames.some((brand) => /Microsoft Edge|Edg/i.test(brand)) || /Edg\//i.test(userAgent);
+
+      cta.href = isEdge ? edgeStore : chromeStore;
+      cta.textContent = isEdge ? 'Install for Edge' : 'Install for Chrome';
+      cta.setAttribute('aria-label', cta.textContent);
+    })();
+  </script>
 </body>
 </html>
