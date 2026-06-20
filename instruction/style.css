@@ -8,7 +8,10 @@
 
 body {
   font-family: "Roboto", sans-serif;
-  background: linear-gradient(to bottom, #0b0f14, #111827);
+  background:
+    radial-gradient(circle at top left, rgba(90, 119, 210, 0.18), transparent 34%),
+    radial-gradient(circle at top right, rgba(133, 197, 148, 0.08), transparent 28%),
+    linear-gradient(to bottom, #0a0f16, #111827);
   color: #ffffff;
   line-height: 1.6;
 }
@@ -24,7 +27,7 @@ body {
 
 #logo {
   width: 120px;
-  filter: drop-shadow(0 0 28px rgba(255, 255, 255, 0.35));
+  filter: drop-shadow(0 0 28px rgba(133, 197, 148, 0.2));
 }
 
 .hero {
@@ -32,10 +35,11 @@ body {
   justify-content: space-between;
   align-items: center;
   gap: 20px;
-  padding: 20px;
+  padding: 24px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 22px;
-  background: rgba(17, 24, 39, 0.85);
+  background: rgba(17, 24, 39, 0.88);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.22);
 }
 
 .hero-left {
@@ -46,6 +50,22 @@ body {
   font-size: clamp(30px, 5vw, 44px);
   line-height: 1.1;
   margin-bottom: 12px;
+}
+
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 12px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: rgba(90, 119, 210, 0.16);
+  border: 1px solid rgba(164, 188, 255, 0.22);
+  color: #d4e0ff;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
 }
 
 .plan-badge {
@@ -90,7 +110,7 @@ body {
   color: #eaf0ff;
   text-decoration: none;
   font-weight: 700;
-  transition: transform 0.15s ease;
+  transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease;
 }
 
 .button:hover {
@@ -98,12 +118,12 @@ body {
 }
 
 .button-primary {
-  background: #508b5e;
-  border-color: transparent;
+  background: #2a903b;
+  border-color: #0b4815;
 }
 
 .button-success {
-  background: rgba(80, 139, 94, 0.4);
+  background: rgba(42, 144, 59, 0.18);
   border-color: rgba(133, 197, 148, 0.45);
   cursor: default;
 }
@@ -119,6 +139,7 @@ body {
   border-radius: 18px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: rgba(17, 24, 39, 0.82);
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.16);
 }
 
 .card h2 {
@@ -130,6 +151,10 @@ body {
   list-style: none;
   display: grid;
   gap: 8px;
+}
+
+.feature-list-tight {
+  gap: 10px;
 }
 
 .feature-list li {
@@ -150,17 +175,30 @@ body {
   margin-bottom: 14px;
 }
 
-ul {
+.release-list,
+.step-list {
   list-style: none;
   display: grid;
   gap: 14px;
 }
 
-li {
+.release-item,
+.step-list li {
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 12px;
   padding: 12px;
   background: rgba(11, 16, 30, 0.55);
+}
+
+.release-item strong {
+  display: block;
+  color: #f3f4f6;
+  margin-bottom: 4px;
+}
+
+.release-detail {
+  color: #cbd5e1;
+  margin: 0;
 }
 
 .step-text {
