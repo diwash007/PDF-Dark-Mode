@@ -592,8 +592,8 @@
       const isEdge = brandNames.some((brand) => /Microsoft Edge|Edg/i.test(brand)) || /Edg\//i.test(userAgent);
 
       cta.href = isEdge ? edgeStore : chromeStore;
-      cta.textContent = isEdge ? 'Install for Edge' : 'Install for Chrome';
-      cta.setAttribute('aria-label', cta.textContent);
+      cta.textContent = 'Install Extension';
+      cta.setAttribute('aria-label', 'Install Extension');
     })();
   </script>
 </body>
