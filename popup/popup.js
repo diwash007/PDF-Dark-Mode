@@ -25,6 +25,10 @@ const licenseStatus = document.getElementById("licenseStatus");
 const debugBillingSection = document.getElementById("debugBillingSection");
 const debugRevokeBtn = document.getElementById("debugRevokeBtn");
 const siteRuleBox = document.querySelector(".site-rule-box");
+const essentialTabBtn = document.getElementById("essentialTabBtn");
+const advancedTabBtn = document.getElementById("advancedTabBtn");
+const essentialTabPanel = document.getElementById("essentialTabPanel");
+const advancedTabPanel = document.getElementById("advancedTabPanel");
 
 // Overlay area elements
 const topMarginSlider = document.getElementById("topMarginSlider");
@@ -48,8 +52,11 @@ let entitlement = { isPro: false, planName: "Free", billing: defaultBilling() };
 let licensePanelOpen = false;
 let overlayAreaCustomizations = { top: 0, right: 0, bottom: 0, left: 0 };
 let siteSpecificAreaActive = false;
+let activeTabId = "essential";
+let overlayViewport = { width: 1000, height: 1000 };
 
 initializePopup();
+setActiveTab("essential");
 
 slider.addEventListener("input", () => {
   applyPreviewFromControls();
@@ -68,8 +75,7 @@ contrastSlider.addEventListener("change", () => {
 });
 
 topMarginSlider.addEventListener("input", () => {
-  overlayAreaCustomizations.top = Number(topMarginSlider.value);
-  topMarginValue.textContent = `${topMarginSlider.value}px`;
+  applyOverlaySide("top", Number(topMarginSlider.value));
   updatePreviewArea();
   applyPreviewFromControls();
 });
@@ -81,8 +87,7 @@ topMarginSlider.addEventListener("change", () => {
 });
 
 rightMarginSlider.addEventListener("input", () => {
-  overlayAreaCustomizations.right = Number(rightMarginSlider.value);
-  rightMarginValue.textContent = `${rightMarginSlider.value}px`;
+  applyOverlaySide("right", Number(rightMarginSlider.value));
   updatePreviewArea();
   applyPreviewFromControls();
 });
@@ -94,8 +99,7 @@ rightMarginSlider.addEventListener("change", () => {
 });
 
 bottomMarginSlider.addEventListener("input", () => {
-  overlayAreaCustomizations.bottom = Number(bottomMarginSlider.value);
-  bottomMarginValue.textContent = `${bottomMarginSlider.value}px`;
+  applyOverlaySide("bottom", Number(bottomMarginSlider.value));
   updatePreviewArea();
   applyPreviewFromControls();
 });
@@ -107,8 +111,7 @@ bottomMarginSlider.addEventListener("change", () => {
 });
 
 leftMarginSlider.addEventListener("input", () => {
-  overlayAreaCustomizations.left = Number(leftMarginSlider.value);
-  leftMarginValue.textContent = `${leftMarginSlider.value}px`;
+  applyOverlaySide("left", Number(leftMarginSlider.value));
   updatePreviewArea();
   applyPreviewFromControls();
 });
@@ -265,6 +268,14 @@ debugRevokeBtn.addEventListener("click", async () => {
   renderLicenseStatus("Debug revoke applied. Pro is now disabled locally.", "error");
 });
 
+essentialTabBtn.addEventListener("click", () => {
+  setActiveTab("essential");
+});
+
+advancedTabBtn.addEventListener("click", () => {
+  setActiveTab("advanced");
+});
+
 window.addEventListener("DOMContentLoaded", () => {
   const link = document.getElementById("supportLink");
   link.addEventListener("click", () => {
@@ -280,6 +291,18 @@ function loadVersionFromManifest() {
   if (versionDisplay && manifest.version) {
     versionDisplay.textContent = `v${manifest.version}`;
   }
+}
+
+function setActiveTab(tabId) {
+  activeTabId = tabId === "advanced" ? "advanced" : "essential";
+  const isEssential = activeTabId === "essential";
+
+  essentialTabBtn.classList.toggle("active", isEssential);
+  advancedTabBtn.classList.toggle("active", !isEssential);
+  essentialTabBtn.setAttribute("aria-selected", String(isEssential));
+  advancedTabBtn.setAttribute("aria-selected", String(!isEssential));
+  essentialTabPanel.classList.toggle("active", isEssential);
+  advancedTabPanel.classList.toggle("active", !isEssential);
 }
 
 async function initializePopup() {
@@ -307,7 +330,7 @@ async function initializePopup() {
   currentTab = tab || null;
   currentHost = getHostnameFromUrl(currentTab?.url);
 
-  detectAndUpdateSliderMax(tab);
+  await detectAndUpdateSliderMax(tab);
   await loadAreaSettings();
 
   renderEntitlementUI();
@@ -342,13 +365,11 @@ async function detectAndUpdateSliderMax(tab) {
 
     if (results && results[0] && results[0].result) {
       const { width, height } = results[0].result;
-      const maxMarginHeight = height;
-      const maxMarginWidth = width;
-
-      topMarginSlider.max = maxMarginHeight;
-      rightMarginSlider.max = maxMarginWidth;
-      bottomMarginSlider.max = maxMarginHeight;
-      leftMarginSlider.max = maxMarginWidth;
+      overlayViewport = {
+        width: Math.max(0, Math.floor(width || 0)),
+        height: Math.max(0, Math.floor(height || 0)),
+      };
+      syncOverlaySliderBounds();
     }
   } catch (error) {
     // If detection fails, keep the default max of 1000
@@ -740,6 +761,7 @@ async function loadAreaSettings() {
   bottomMarginSlider.value = overlayAreaCustomizations.bottom || 0;
   leftMarginSlider.value = overlayAreaCustomizations.left || 0;
 
+  syncOverlaySliderBounds();
   updateMarginValues();
 }
 
@@ -751,16 +773,12 @@ function updateMarginValues() {
 }
 
 function updatePreviewArea() {
-  const previewBox = document.querySelector(".preview-box");
-  const boxRect = previewBox.getBoundingClientRect();
-  const boxWidth = boxRect.width;
-  const boxHeight = boxRect.height;
-  
-  const maxMargin = Number(topMarginSlider.max) || 1000;
-  const topPercent = (overlayAreaCustomizations.top / maxMargin) * 100;
-  const rightPercent = (overlayAreaCustomizations.right / maxMargin) * 100;
-  const bottomPercent = (overlayAreaCustomizations.bottom / maxMargin) * 100;
-  const leftPercent = (overlayAreaCustomizations.left / maxMargin) * 100;
+  const widthMax = Number(overlayViewport.width) || 1000;
+  const heightMax = Number(overlayViewport.height) || 1000;
+  const topPercent = (overlayAreaCustomizations.top / heightMax) * 100;
+  const rightPercent = (overlayAreaCustomizations.right / widthMax) * 100;
+  const bottomPercent = (overlayAreaCustomizations.bottom / heightMax) * 100;
+  const leftPercent = (overlayAreaCustomizations.left / widthMax) * 100;
 
   previewArea.style.top = `${topPercent}%`;
   previewArea.style.right = `${rightPercent}%`;
@@ -769,6 +787,7 @@ function updatePreviewArea() {
 }
 
 function updateAreaUI() {
+  syncOverlaySliderBounds();
   updateMarginValues();
   updatePreviewArea();
 
@@ -800,6 +819,57 @@ async function saveAreaForCurrentSite() {
       });
     });
   });
+}
+
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
+
+function applyOverlaySide(side, rawValue) {
+  const nextValue = Math.max(0, Number(rawValue) || 0);
+
+  if (side === "left" || side === "right") {
+    const limit = Math.max(0, overlayViewport.width);
+    if (side === "left") {
+      overlayAreaCustomizations.left = clamp(nextValue, 0, limit - overlayAreaCustomizations.right);
+      leftMarginSlider.value = overlayAreaCustomizations.left;
+    } else {
+      overlayAreaCustomizations.right = clamp(nextValue, 0, limit - overlayAreaCustomizations.left);
+      rightMarginSlider.value = overlayAreaCustomizations.right;
+    }
+  } else {
+    const limit = Math.max(0, overlayViewport.height);
+    if (side === "top") {
+      overlayAreaCustomizations.top = clamp(nextValue, 0, limit - overlayAreaCustomizations.bottom);
+      topMarginSlider.value = overlayAreaCustomizations.top;
+    } else {
+      overlayAreaCustomizations.bottom = clamp(nextValue, 0, limit - overlayAreaCustomizations.top);
+      bottomMarginSlider.value = overlayAreaCustomizations.bottom;
+    }
+  }
+
+  syncOverlaySliderBounds();
+  updateMarginValues();
+}
+
+function syncOverlaySliderBounds() {
+  const width = Math.max(0, Number(overlayViewport.width) || 1000);
+  const height = Math.max(0, Number(overlayViewport.height) || 1000);
+
+  leftMarginSlider.max = Math.max(0, width - Number(rightMarginSlider.value || 0));
+  rightMarginSlider.max = Math.max(0, width - Number(leftMarginSlider.value || 0));
+  topMarginSlider.max = Math.max(0, height - Number(bottomMarginSlider.value || 0));
+  bottomMarginSlider.max = Math.max(0, height - Number(topMarginSlider.value || 0));
+
+  leftMarginSlider.value = clamp(Number(leftMarginSlider.value || 0), 0, Number(leftMarginSlider.max));
+  rightMarginSlider.value = clamp(Number(rightMarginSlider.value || 0), 0, Number(rightMarginSlider.max));
+  topMarginSlider.value = clamp(Number(topMarginSlider.value || 0), 0, Number(topMarginSlider.max));
+  bottomMarginSlider.value = clamp(Number(bottomMarginSlider.value || 0), 0, Number(bottomMarginSlider.max));
+
+  overlayAreaCustomizations.left = Number(leftMarginSlider.value);
+  overlayAreaCustomizations.right = Number(rightMarginSlider.value);
+  overlayAreaCustomizations.top = Number(topMarginSlider.value);
+  overlayAreaCustomizations.bottom = Number(bottomMarginSlider.value);
 }
 
 async function clearAreaForCurrentSite() {

@@ -1,13 +1,21 @@
 (() => {
   const DARK_LAYER_ID = "darkDiv";
   const TINT_LAYER_ID = "tintDiv";
+  const ACTION_DOCK_ID = "pdfDarkModeDock";
+  const TOGGLE_BUTTON_ID = "pdfDarkModeToggle";
+  const INFO_BUTTON_ID = "pdfDarkModeInfo";
   const href = window.location.href;
+  const pageEnabled =
+    typeof window.__pdfDarkModePageEnabled === "boolean"
+      ? window.__pdfDarkModePageEnabled
+      : true;
 
   chrome.storage.sync.get(
     ["active", "strength", "contrast", "mode", "siteRules", "billing", "overlayAreaSettings", "siteOverlayAreas"],
     (state) => {
       const entitlement = getEntitlement(state.billing);
       const policy = buildPagePolicy(href, state.siteRules || {}, entitlement);
+      installFloatingActions(policy.shouldApply);
       applyTheme(state, policy, entitlement);
 
       if (policy.requiresEmbeddedPreview) {
@@ -93,7 +101,7 @@
     removeLayer(DARK_LAYER_ID);
     removeLayer(TINT_LAYER_ID);
 
-    if (!state.active || !policy.shouldApply) {
+    if (!policy.shouldApply || !getPageToggleState()) {
       return;
     }
 
@@ -159,6 +167,115 @@
       );
       document.body.appendChild(tintLayer);
     }
+  }
+
+  function installFloatingActions(shouldShow) {
+    if (!shouldShow || document.getElementById(ACTION_DOCK_ID)) {
+      return;
+    }
+
+    const dock = document.createElement("div");
+    dock.id = ACTION_DOCK_ID;
+    dock.setAttribute(
+      "style",
+      `
+        position: fixed;
+        right: 16px;
+        bottom: 16px;
+        z-index: 2147483647;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 8px;
+      `
+    );
+
+    const infoButton = document.createElement("button");
+    infoButton.id = INFO_BUTTON_ID;
+    infoButton.type = "button";
+    infoButton.title = "Open PDF Dark Mode";
+    infoButton.setAttribute("aria-label", "Open PDF Dark Mode popup");
+    infoButton.textContent = "i";
+    infoButton.setAttribute(
+      "style",
+      `
+        width: 28px;
+        height: 28px;
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        border-radius: 999px;
+        padding: 0;
+        background: rgba(17, 24, 39, 0.92);
+        color: #f9fafb;
+        font: 700 14px/1 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        cursor: pointer;
+        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
+      `
+    );
+
+    infoButton.addEventListener("click", () => {
+      openPopupFromPage();
+    });
+
+    const toggleButton = document.createElement("button");
+    toggleButton.id = TOGGLE_BUTTON_ID;
+    toggleButton.type = "button";
+    toggleButton.setAttribute("aria-pressed", String(getPageToggleState()));
+    toggleButton.title = "Toggle dark mode";
+    toggleButton.textContent = getPageToggleState() ? "Dark mode: On" : "Dark mode: Off";
+    toggleButton.setAttribute(
+      "style",
+      `
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        border-radius: 999px;
+        padding: 8px 12px;
+        background: rgba(17, 24, 39, 0.92);
+        color: #f9fafb;
+        font: 600 12px/1.2 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        cursor: pointer;
+        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
+      `
+    );
+
+    toggleButton.addEventListener("click", () => {
+      const nextEnabled = !getPageToggleState();
+      setPageToggleState(nextEnabled);
+      toggleButton.setAttribute("aria-pressed", String(nextEnabled));
+      toggleButton.textContent = nextEnabled ? "Dark mode: On" : "Dark mode: Off";
+      chrome.runtime.sendMessage({ type: "analytics-event", event: "pageToggle" });
+      chrome.storage.sync.get(["active", "siteRules", "billing"], (state) => {
+        const entitlement = getEntitlement(state.billing);
+        const policy = buildPagePolicy(href, state.siteRules || {}, entitlement);
+        applyTheme(state, policy, entitlement);
+      });
+    });
+
+    dock.appendChild(infoButton);
+    dock.appendChild(toggleButton);
+    document.body.appendChild(dock);
+  }
+
+  function openPopupFromPage() {
+    if (globalThis.chrome?.runtime?.sendMessage) {
+      chrome.runtime.sendMessage({ type: "open-popup" }, () => {
+        const runtimeError = chrome.runtime.lastError?.message;
+        if (runtimeError && globalThis.chrome?.runtime?.getURL) {
+          window.open(chrome.runtime.getURL("popup/popup.html"), "_blank", "noopener,noreferrer");
+        }
+      });
+      return;
+    }
+
+    if (globalThis.chrome?.runtime?.getURL) {
+      window.open(chrome.runtime.getURL("popup/popup.html"), "_blank", "noopener,noreferrer");
+    }
+  }
+
+  function getPageToggleState() {
+    return window.__pdfDarkModePageEnabled !== false && pageEnabled;
+  }
+
+  function setPageToggleState(enabled) {
+    window.__pdfDarkModePageEnabled = !!enabled;
   }
 
   function hasEmbeddedPdfPreview() {

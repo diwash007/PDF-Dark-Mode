@@ -90,6 +90,15 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     return false;
   }
 
+  if (message?.type === "open-popup") {
+    chrome.action.openPopup()
+      .then(() => sendResponse({ ok: true }))
+      .catch((error) => {
+        sendResponse({ ok: false, error: error?.message || "Failed to open popup." });
+      });
+    return true;
+  }
+
   if (message?.type === "license-activate") {
     activateLicenseFlow(message.licenseKey)
       .then((result) => sendResponse(result))
