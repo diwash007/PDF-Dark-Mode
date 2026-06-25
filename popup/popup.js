@@ -1,9 +1,12 @@
 const PRICING_URL = "https://pdf.gilobyte.com/#pricing";
 const SUPPORT_URL = "https://pdf.gilobyte.com/#contact";
 const ENABLE_DEBUG_BILLING_TOOLS = false;
+const EXTENSION_DETAILS_URL = `chrome://extensions/?id=${chrome.runtime.id}`;
 
 const slider = document.getElementById("slider");
 const toggle = document.getElementById("toggle");
+const fileAccessBanner = document.getElementById("fileAccessBanner");
+const openFileAccessSettingsBtn = document.getElementById("openFileAccessSettingsBtn");
 const contrastSlider = document.getElementById("contrastSlider");
 const modeSelect = document.getElementById("modeSelect");
 const analyticsSummary = document.getElementById("analyticsSummary");
@@ -208,6 +211,10 @@ subscribeBtn.addEventListener("click", () => {
   chrome.tabs.create({ url: PRICING_URL });
 });
 
+openFileAccessSettingsBtn.addEventListener("click", () => {
+  chrome.tabs.create({ url: EXTENSION_DETAILS_URL });
+});
+
 haveLicenseToggleBtn.addEventListener("click", () => {
   licensePanelOpen = !licensePanelOpen;
   renderLicenseActivationPanel();
@@ -329,6 +336,7 @@ async function initializePopup() {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   currentTab = tab || null;
   currentHost = getHostnameFromUrl(currentTab?.url);
+  await updateFileAccessBanner(currentTab?.url);
 
   await detectAndUpdateSliderMax(tab);
   await loadAreaSettings();
@@ -886,6 +894,34 @@ async function clearAreaForCurrentSite() {
         siteSpecificAreaActive = false;
         resolve();
       });
+    });
+  });
+}
+
+async function updateFileAccessBanner(tabUrl) {
+  if (!fileAccessBanner || !openFileAccessSettingsBtn) return;
+
+  const isFileUrl = /^file:\/\//i.test(tabUrl || "");
+  if (!isFileUrl) {
+    fileAccessBanner.classList.add("hidden");
+    openFileAccessSettingsBtn.disabled = false;
+    return;
+  }
+
+  const canAccess = await canAccessFileUrls();
+  fileAccessBanner.classList.toggle("hidden", canAccess);
+  openFileAccessSettingsBtn.disabled = false;
+}
+
+function canAccessFileUrls() {
+  return new Promise((resolve) => {
+    if (!chrome.extension?.isAllowedFileSchemeAccess) {
+      resolve(false);
+      return;
+    }
+
+    chrome.extension.isAllowedFileSchemeAccess((allowed) => {
+      resolve(Boolean(allowed));
     });
   });
 }

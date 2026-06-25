@@ -56,30 +56,52 @@
 
     <section class="card instruction">
       <h2>Enable extension access for local PDFs</h2>
-      <p class="instruction-note">
-        Complete these steps once so PDF Dark Mode can work on <code>file://</code> PDFs.
-      </p>
-      <ul class="step-list">
-        <li>
-          <div class="step-text">
-            <strong>Step 1:</strong> Open Extensions tab<br /><br />
-            <strong>Step 2:</strong> Click Manage extensions
-          </div>
-          <img src="screenshots/1.png" alt="Open and manage extensions" />
-        </li>
-        <li>
-          <div class="step-text">
-            <strong>Step 3:</strong> Click Details under PDF Dark Mode
-          </div>
-          <img src="screenshots/2.png" alt="Open extension details" />
-        </li>
-        <li>
-          <div class="step-text">
-            <strong>Step 4:</strong> Turn on Allow access to file URLs
-          </div>
-          <img src="screenshots/3.png" alt="Enable file URL access" />
-        </li>
-      </ul>
+      
+      <!-- Success State -->
+      <div id="fileAccessSuccessBanner" class="file-access-success-banner hidden">
+        <div class="success-icon">✓</div>
+        <div class="success-content">
+          <h3 class="success-title">Local file access is active</h3>
+          <p class="success-copy">PDF Dark Mode is fully authorized to load and display dark mode themes on your local <code>file://</code> PDFs.</p>
+        </div>
+      </div>
+
+      <!-- Action & Instructions State -->
+      <div id="fileAccessInstructions">
+        <p class="instruction-note">
+          You can enable this setting instantly by clicking below, or follow the step-by-step manual guide.
+        </p>
+        <div class="instruction-actions">
+          <button id="openSettingsBtn" class="button button-primary" type="button">
+            Open Extension Settings
+          </button>
+        </div>
+        
+        <div class="manual-steps-header">
+          <h3>Manual Setup Guide</h3>
+        </div>
+        <ul class="step-list">
+          <li>
+            <div class="step-text">
+              <strong>Step 1:</strong> Open Extensions tab<br /><br />
+              <strong>Step 2:</strong> Click Manage extensions
+            </div>
+            <img src="screenshots/1.png" alt="Open and manage extensions" />
+          </li>
+          <li>
+            <div class="step-text">
+              <strong>Step 3:</strong> Click Details under PDF Dark Mode
+            </div>
+            <img src="screenshots/2.png" alt="Open extension details" />
+          </li>
+          <li>
+            <div class="step-text">
+              <strong>Step 4:</strong> Turn on Allow access to file URLs
+            </div>
+            <img src="screenshots/3.png" alt="Enable file URL access" />
+          </li>
+        </ul>
+      </div>
     </section>
   </div>
   <script src="index.js"></script>

@@ -59,3 +59,33 @@ chrome.storage.sync.get("billing", ({ billing }) => {
   activateNote.innerHTML =
     "Pro features are already unlocked. If needed, you can re-activate from popup via <strong>Have a license? Activate here</strong>.";
 });
+
+// File access banner detection & settings page shortcut
+const fileAccessSuccessBanner = document.getElementById("fileAccessSuccessBanner");
+const fileAccessInstructions = document.getElementById("fileAccessInstructions");
+const openSettingsBtn = document.getElementById("openSettingsBtn");
+
+if (openSettingsBtn) {
+  openSettingsBtn.addEventListener("click", () => {
+    chrome.tabs.create({ url: `chrome://extensions/?id=${chrome.runtime.id}` });
+  });
+}
+
+function checkFileAccess() {
+  if (chrome.extension && chrome.extension.isAllowedFileSchemeAccess) {
+    chrome.extension.isAllowedFileSchemeAccess((allowed) => {
+      if (allowed) {
+        if (fileAccessSuccessBanner) fileAccessSuccessBanner.classList.remove("hidden");
+        if (fileAccessInstructions) fileAccessInstructions.classList.add("hidden");
+      } else {
+        if (fileAccessSuccessBanner) fileAccessSuccessBanner.classList.add("hidden");
+        if (fileAccessInstructions) fileAccessInstructions.classList.remove("hidden");
+      }
+    });
+  }
+}
+
+if (fileAccessSuccessBanner || fileAccessInstructions || openSettingsBtn) {
+  checkFileAccess();
+  window.addEventListener("focus", checkFileAccess);
+}

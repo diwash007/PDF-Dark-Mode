@@ -91,6 +91,58 @@ body {
   background: #2f3a4b;
 }
 
+.file-access-banner {
+  background: #3a1d1d;
+  border: 1px solid #7f1d1d;
+  border-radius: 12px;
+  padding: 10px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.file-access-banner.hidden {
+  display: none;
+}
+
+.file-access-banner-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #fecaca;
+}
+
+.file-access-banner-copy {
+  font-size: 11px;
+  color: #fee2e2;
+  line-height: 1.35;
+}
+
+.file-access-banner code {
+  background: rgba(255, 255, 255, 0.08);
+  padding: 1px 5px;
+  border-radius: 5px;
+}
+
+#openFileAccessSettingsBtn {
+  width: 100%;
+  background: #b91c1c;
+  color: #fff;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  font-size: 11px;
+  padding: 7px 6px;
+  cursor: pointer;
+}
+
+#openFileAccessSettingsBtn:hover:not(:disabled) {
+  filter: brightness(1.06);
+}
+
+#openFileAccessSettingsBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .shortcut-hint {
   margin: 0;
   font-size: 11px;
