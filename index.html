@@ -399,14 +399,25 @@
             target="_blank"
             rel="noopener noreferrer"
             class="button button-primary"
-            id="install-cta"
+            id="install-chrome"
+            aria-label="Install for Chrome"
           >
-            Install Extension
+            Install for Chrome
+          </a>
+
+          <a
+            href="https://microsoftedge.microsoft.com/addons/detail/pdf-dark-mode/nghkmkbjhpgdibgopgekgjnbocfmnjdo"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="button"
+            id="install-edge"
+            aria-label="Install for Edge"
+          >
+            Install for Edge
           </a>
 
           <a
             href="#pricing"
-            target="_blank"
             class="button"
           >
             Upgrade
@@ -576,24 +587,23 @@
   </footer>
   <script>
     (() => {
-      const cta = document.getElementById('install-cta');
-
-      if (!cta) {
-        return;
-      }
-
-      const edgeStore = 'https://microsoftedge.microsoft.com/addons/detail/pdf-dark-mode/nghkmkbjhpgdibgopgekgjnbocfmnjdo';
-      const chromeStore = 'https://chromewebstore.google.com/detail/pdf-dark-mode/clabimobhdkbfpkdeloigeneocldkmdc';
+      const chromeBtn = document.getElementById('install-chrome');
+      const edgeBtn = document.getElementById('install-edge');
+      if (!chromeBtn || !edgeBtn) return;
 
       const brandList = navigator.userAgentData?.brands || [];
       const brandNames = brandList.map((brand) => brand.brand);
       const userAgent = navigator.userAgent;
-
       const isEdge = brandNames.some((brand) => /Microsoft Edge|Edg/i.test(brand)) || /Edg\//i.test(userAgent);
 
-      cta.href = isEdge ? edgeStore : chromeStore;
-      cta.textContent = 'Install Extension';
-      cta.setAttribute('aria-label', 'Install Extension');
+      // Highlight current browser's button as primary; keep both visible always
+      if (isEdge) {
+        edgeBtn.classList.add('button-primary');
+        chromeBtn.classList.remove('button-primary');
+      } else {
+        chromeBtn.classList.add('button-primary');
+        edgeBtn.classList.remove('button-primary');
+      }
     })();
   </script>
 </body>
