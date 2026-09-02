@@ -17,7 +17,7 @@ chrome.storage.sync.get("billing", ({ billing }) => {
     // Optional: Dynamic logic for Free users on the Update page
     if (window.location.pathname.includes("update.html")) {
       secondaryCta.textContent = "View Project Changelog";
-      secondaryCta.href = "https://pdf.gilobyte.com/#changelog";
+      secondaryCta.href = "https://diwashdahal.com.np/PDF-Dark-Mode#changelog";
     }
     return;
   }
@@ -47,10 +47,10 @@ chrome.storage.sync.get("billing", ({ billing }) => {
   // Update Secondary CTA based on which page they are looking at
   if (window.location.pathname.includes("update.html")) {
     secondaryCta.textContent = "View Website";
-    secondaryCta.href = "https://pdf.gilobyte.com"; // Or a specific changelog anchor
+    secondaryCta.href = "https://diwashdahal.com.np/PDF-Dark-Mode"; // Or a specific changelog anchor
   } else {
     secondaryCta.textContent = "Manage Subscription";
-    secondaryCta.href = "https://pdf.gilobyte.com/#pricing";
+    secondaryCta.href = "https://diwashdahal.com.np/PDF-Dark-Mode#pricing";
   }
   
   secondaryCta.target = "_blank";

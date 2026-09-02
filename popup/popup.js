@@ -1,5 +1,5 @@
-const PRICING_URL = "https://pdf.gilobyte.com/#pricing";
-const SUPPORT_URL = "https://pdf.gilobyte.com/#contact";
+const PRICING_URL = "https://diwashdahal.com.np/PDF-Dark-Mode#pricing";
+const SUPPORT_URL = "https://diwashdahal.com.np/PDF-Dark-Mode#contact";
 const ENABLE_DEBUG_BILLING_TOOLS = false;
 const EXTENSION_DETAILS_URL = `chrome://extensions/?id=${chrome.runtime.id}`;
 
