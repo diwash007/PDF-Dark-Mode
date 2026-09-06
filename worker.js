@@ -1,61 +1,79 @@
 /*
- * This script runs in background and listens for tab/activity events.
+ * Background service worker: tab events, keyboard command, licence lifecycle.
+ *
+ * Policy and entitlement logic lives in scripts/core.js so the worker, the popup
+ * and the content script cannot drift apart.
  */
+
+importScripts("scripts/core.js");
+
+const core = globalThis.PDFDarkModeCore;
 
 const ANALYTICS_RETENTION_DAYS = 35;
 const LEMON_LICENSE_API_BASE = "https://api.lemonsqueezy.com/v1/licenses";
 const VALIDATION_INTERVAL_HOURS = 24;
+const LICENSE_REQUEST_TIMEOUT_MS = 15000;
+const LICENSE_ALARM = "licenseValidation";
 
-ensureSyncDefault("active", true);
-ensureSyncDefault("strength", 255);
-ensureSyncDefault("contrast", 100);
-ensureSyncDefault("mode", "dark");
-ensureSyncDefault("siteRules", {});
-ensureSyncDefault("billing", defaultBilling());
-ensureLocalDefault("analytics", { events: {}, pdfAppliesByDay: {} });
+const CONTENT_SCRIPT_FILES = ["scripts/core.js", "scripts/invert.js"];
 
+/* Settings that should re-render any open PDF when they change. */
+const RENDER_KEYS = [
+  "active",
+  "strength",
+  "contrast",
+  "mode",
+  "siteRules",
+  "billing",
+  "overlayAreaSettings",
+  "siteOverlayAreas",
+  "showDock",
+];
+
+const SYNC_DEFAULTS = {
+  active: true,
+  strength: 255,
+  contrast: 100,
+  mode: "dark",
+  siteRules: {},
+  showDock: true,
+  billing: core.defaultBilling(),
+};
+
+ensureDefaults();
 revalidateStoredLicenseIfNeeded();
 
+/* ------------------------------------------------------------------ events */
+
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-  if (changeInfo.status !== "complete" || !tab?.url || !tabId) {
-    return;
-  }
+  if (changeInfo.status !== "complete" || !tab?.url || !tabId) return;
 
   chrome.storage.sync.get(["active", "siteRules", "billing"], ({ active, siteRules, billing }) => {
-    if (!active) return;
+    if (active === false) return;
 
-    const entitlement = getEntitlement(billing);
-    const policy = buildUrlPolicy(tab.url, siteRules || {}, entitlement);
+    const policy = core.buildPolicy(tab.url, siteRules || {}, core.getEntitlement(billing));
     if (!policy.shouldInject) return;
 
-    recordPdfApply();
-    chrome.scripting
-      .executeScript({
-        target: { tabId },
-        files: ["scripts/invert.js"],
-      })
-      .catch((error) => {
-        // console.error("PDF Dark Mode: failed to inject on tab update", error);
-      });
+    // Only count confirmed PDFs. Ambiguous URLs still get the script injected so
+    // it can look for a real viewer, but they are not a reading session yet.
+    if (!policy.requiresPdfEmbed) recordPdfApply();
+
+    injectContentScript(tabId);
   });
 });
 
 chrome.runtime.onInstalled.addListener((details) => {
-  chrome.alarms.get("licenseValidation", (alarm) => {
-    if (!alarm) {
-      chrome.alarms.create("licenseValidation", { periodInMinutes: 360 });
-    }
-  });
+  ensureDefaults();
+  ensureLicenseAlarm();
 
   if (details.reason === chrome.runtime.OnInstalledReason.INSTALL) {
     chrome.tabs.create({ url: "./instruction/index.html" });
+    return;
   }
 
   if (details.reason === chrome.runtime.OnInstalledReason.UPDATE) {
     const previousVersion = details.previousVersion;
     const currentVersion = chrome.runtime.getManifest().version;
-
-    // Only open tab if version actually changed
     if (previousVersion !== currentVersion) {
       chrome.tabs.create({ url: "./instruction/update.html" });
     }
@@ -63,26 +81,34 @@ chrome.runtime.onInstalled.addListener((details) => {
 });
 
 chrome.runtime.onStartup.addListener(() => {
+  ensureLicenseAlarm();
   revalidateStoredLicenseIfNeeded();
 });
 
 chrome.alarms.onAlarm.addListener((alarm) => {
-  if (alarm.name === "licenseValidation") {
-    revalidateStoredLicenseIfNeeded();
-  }
+  if (alarm.name === LICENSE_ALARM) revalidateStoredLicenseIfNeeded();
 });
 
 chrome.commands.onCommand.addListener((command) => {
-  if (command !== "run-dark-mode") {
-    return;
-  }
+  if (command !== "run-dark-mode") return;
 
   recordAnalyticsEvent("shortcutToggles");
   chrome.storage.sync.get("active", ({ active }) => {
-    chrome.storage.sync.set({ active: !active }, () => {
-      applyDarkMode();
-    });
+    // active defaults to true, so an undefined value toggles to false.
+    chrome.storage.sync.set({ active: active === false });
+    // No explicit re-render here: the storage change below fans out to every tab,
+    // and the content script honours `active`, so this now actually turns off.
   });
+});
+
+/*
+ * Push setting changes to every open PDF, not just the active tab. Before this,
+ * changing a setting with two PDFs open only updated the one the popup was over.
+ */
+chrome.storage.onChanged.addListener((changes, areaName) => {
+  if (areaName !== "sync") return;
+  if (!Object.keys(changes).some((key) => RENDER_KEYS.includes(key))) return;
+  refreshOpenTabs();
 });
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
@@ -93,29 +119,30 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   }
 
   if (message?.type === "open-popup") {
-    chrome.action.openPopup()
+    chrome.action
+      .openPopup()
       .then(() => sendResponse({ ok: true }))
-      .catch((error) => {
-        sendResponse({ ok: false, error: error?.message || "Failed to open popup." });
-      });
+      .catch((error) =>
+        sendResponse({ ok: false, error: error?.message || "Failed to open popup." })
+      );
     return true;
   }
 
   if (message?.type === "license-activate") {
     activateLicenseFlow(message.licenseKey)
-      .then((result) => sendResponse(result))
-      .catch((error) => {
-        sendResponse({ ok: false, error: error?.message || "Failed to activate license." });
-      });
+      .then(sendResponse)
+      .catch((error) =>
+        sendResponse({ ok: false, error: error?.message || "Failed to activate license." })
+      );
     return true;
   }
 
   if (message?.type === "license-validate") {
     validateStoredLicenseFlow()
-      .then((result) => sendResponse(result))
-      .catch((error) => {
-        sendResponse({ ok: false, error: error?.message || "Failed to validate license." });
-      });
+      .then(sendResponse)
+      .catch((error) =>
+        sendResponse({ ok: false, error: error?.message || "Failed to validate license." })
+      );
     return true;
   }
 
@@ -123,22 +150,52 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   return false;
 });
 
+/* ---------------------------------------------------------------- injection */
+
+function injectContentScript(tabId) {
+  return chrome.scripting
+    .executeScript({ target: { tabId }, files: CONTENT_SCRIPT_FILES })
+    .catch(() => {
+      /* Tab closed, navigated away, or a page we are not allowed to touch. */
+    });
+}
+
+async function refreshOpenTabs() {
+  const { siteRules, billing } = await chrome.storage.sync.get(["siteRules", "billing"]);
+  const entitlement = core.getEntitlement(billing);
+
+  let tabs = [];
+  try {
+    tabs = await chrome.tabs.query({});
+  } catch {
+    return;
+  }
+
+  tabs.forEach((tab) => {
+    if (!tab.id || !tab.url) return;
+    if (!core.buildPolicy(tab.url, siteRules || {}, entitlement).shouldInject) return;
+    injectContentScript(tab.id);
+  });
+}
+
+/* ------------------------------------------------------------------ licence */
+
 async function activateLicenseFlow(inputKey) {
   const licenseKey = normalizeLicenseKey(inputKey);
   if (!licenseKey) {
     return { ok: false, error: "Please enter a valid license key." };
   }
 
-  const currentBilling = await getSyncValue("billing");
-  const billing = { ...defaultBilling(), ...(currentBilling || {}) };
+  const billing = { ...core.defaultBilling(), ...((await getSyncValue("billing")) || {}) };
   const instanceName = billing.instanceName || generateInstanceName();
 
-  const activationPayload = await postLemonLicenseRequest("activate", {
-    license_key: licenseKey,
-    instance_name: instanceName,
-  });
+  const activation = extractActivationData(
+    await postLemonLicenseRequest("activate", {
+      license_key: licenseKey,
+      instance_name: instanceName,
+    })
+  );
 
-  const activation = extractActivationData(activationPayload);
   if (!activation.ok) {
     const failedBilling = {
       ...billing,
@@ -163,12 +220,13 @@ async function activateLicenseFlow(inputKey) {
     };
   }
 
-  const validationPayload = await postLemonLicenseRequest("validate", {
-    license_key: licenseKey,
-    instance_id: instanceId,
-  });
+  const validation = extractValidationData(
+    await postLemonLicenseRequest("validate", {
+      license_key: licenseKey,
+      instance_id: instanceId,
+    })
+  );
 
-  const validation = extractValidationData(validationPayload);
   if (!validation.valid) {
     const invalidBilling = {
       ...billing,
@@ -186,6 +244,7 @@ async function activateLicenseFlow(inputKey) {
     return { ok: false, error: validation.error, billing: invalidBilling };
   }
 
+  const now = new Date().toISOString();
   const nextBilling = {
     ...billing,
     source: "lemon-license",
@@ -196,8 +255,8 @@ async function activateLicenseFlow(inputKey) {
     instanceName,
     licenseStatus: "valid",
     errorMessage: "",
-    lastValidatedAt: new Date().toISOString(),
-    lastValidationAttemptAt: new Date().toISOString(),
+    lastValidatedAt: now,
+    lastValidationAttemptAt: now,
   };
 
   await setSyncValue("billing", nextBilling);
@@ -205,30 +264,26 @@ async function activateLicenseFlow(inputKey) {
 }
 
 async function validateStoredLicenseFlow() {
-  const currentBilling = await getSyncValue("billing");
-  const billing = { ...defaultBilling(), ...(currentBilling || {}) };
+  const billing = { ...core.defaultBilling(), ...((await getSyncValue("billing")) || {}) };
   const attemptAt = new Date().toISOString();
 
   const licenseKey = normalizeLicenseKey(billing.licenseKey);
   if (!licenseKey) {
     return { ok: false, error: "No license key found. Enter and activate your key first." };
   }
-
   if (!billing.instanceId) {
     return { ok: false, error: "No Lemon Squeezy instance ID found. Activate the license again." };
   }
 
-  await setSyncValue("billing", {
-    ...billing,
-    lastValidationAttemptAt: attemptAt,
-  });
+  await setSyncValue("billing", { ...billing, lastValidationAttemptAt: attemptAt });
 
   try {
-    const validationPayload = await postLemonLicenseRequest("validate", {
-      license_key: licenseKey,
-      instance_id: billing.instanceId,
-    });
-    const validation = extractValidationData(validationPayload);
+    const validation = extractValidationData(
+      await postLemonLicenseRequest("validate", {
+        license_key: licenseKey,
+        instance_id: billing.instanceId,
+      })
+    );
 
     const isValid = validation.valid;
     const nextBilling = {
@@ -244,80 +299,80 @@ async function validateStoredLicenseFlow() {
 
     await setSyncValue("billing", nextBilling);
 
-    if (!isValid) {
-      return { ok: false, error: validation.error, billing: nextBilling };
-    }
-
-    return { ok: true, message: "License is valid and active.", billing: nextBilling };
+    return isValid
+      ? { ok: true, message: "License is valid and active.", billing: nextBilling }
+      : { ok: false, error: validation.error, billing: nextBilling };
   } catch (error) {
-    const failedBilling = {
+    await setSyncValue("billing", {
       ...billing,
       errorMessage: error?.message || "License validation failed.",
       lastValidationAttemptAt: attemptAt,
-    };
-    await setSyncValue("billing", failedBilling);
+    });
     throw error;
   }
 }
 
 async function revalidateStoredLicenseIfNeeded() {
-  const currentBilling = await getSyncValue("billing");
-  const billing = { ...defaultBilling(), ...(currentBilling || {}) };
+  const billing = { ...core.defaultBilling(), ...((await getSyncValue("billing")) || {}) };
 
-  const hasLicense = !!billing.licenseKey && !!billing.instanceId;
-  if (!hasLicense) {
-    return;
-  }
+  if (!billing.licenseKey || !billing.instanceId) return;
 
-  const shouldValidateNow = !billing.lastValidationAttemptAt || isOlderThanHours(
-    billing.lastValidationAttemptAt,
-    VALIDATION_INTERVAL_HOURS
-  );
-  if (!shouldValidateNow) {
-    return;
-  }
+  const due =
+    !billing.lastValidationAttemptAt ||
+    isOlderThanHours(billing.lastValidationAttemptAt, VALIDATION_INTERVAL_HOURS);
+  if (!due) return;
 
   try {
     await validateStoredLicenseFlow();
   } catch (error) {
     console.error("PDF Dark Mode: automatic license validation failed", error);
-    
-    // Only revoke on permanent API errors (explicit rejection), not network errors
-    const errorMsg = error?.message || "";
-    const isPermanentError = /instance.*not found|invalid|deactivated|revoked/i.test(errorMsg);
-    
-    if (isPermanentError) {
-      const failsafeBilling = {
-        ...billing,
-        plan: "free",
-        status: "inactive",
-        licenseStatus: "invalid",
-        errorMessage: errorMsg,
-        lastValidationAttemptAt: new Date().toISOString(),
-      };
-      await setSyncValue("billing", failsafeBilling);
-    }
-    // If it's a temporary error (network, timeout, etc.), keep current status and don't revoke
+
+    // Only revoke when Lemon Squeezy explicitly rejected the licence. Network
+    // failures and timeouts must never cost a paying user their Pro features.
+    const message = error?.message || "";
+    const isPermanent = /instance.*not found|invalid|deactivated|revoked/i.test(message);
+    if (!isPermanent) return;
+
+    await setSyncValue("billing", {
+      ...billing,
+      plan: "free",
+      status: "inactive",
+      licenseStatus: "invalid",
+      errorMessage: message,
+      lastValidationAttemptAt: new Date().toISOString(),
+    });
   }
+}
+
+function ensureLicenseAlarm() {
+  chrome.alarms.get(LICENSE_ALARM, (alarm) => {
+    if (!alarm) chrome.alarms.create(LICENSE_ALARM, { periodInMinutes: 360 });
+  });
 }
 
 function isOlderThanHours(timestamp, hours) {
   const millis = Date.parse(timestamp);
-  if (Number.isNaN(millis)) {
-    return true;
-  }
+  if (Number.isNaN(millis)) return true;
   return Date.now() - millis > hours * 60 * 60 * 1000;
 }
 
 async function postLemonLicenseRequest(endpoint, payload) {
-  const response = await fetch(`${LEMON_LICENSE_API_BASE}/${endpoint}`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Accept: "application/json",
-    },
-    body: JSON.stringify(payload),
-  });
+  let response;
+  try {
+    response = await fetch(`${LEMON_LICENSE_API_BASE}/${endpoint}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify(payload),
+      // Without this a hung request left the popup's Activate button disabled
+      // forever, with no way back except closing and reopening it.
+      signal: AbortSignal.timeout(LICENSE_REQUEST_TIMEOUT_MS),
+    });
+  } catch (error) {
+    if (error?.name === "TimeoutError" || error?.name === "AbortError") {
+      throw new Error("License server timed out. Check your connection and try again.");
+    }
+    throw new Error("Could not reach the license server. Check your connection and try again.");
+  }
 
   const rawBody = await response.text();
   let data = {};
@@ -347,18 +402,13 @@ function extractActivationData(payload) {
     payload?.meta?.instance?.id ||
     "";
 
-  const hasError = !!extractErrorMessage(payload, "");
-  if (hasError && !instanceId) {
-    return {
-      ok: false,
-      error: extractErrorMessage(payload, "Could not activate this license key."),
-    };
-  }
-
   if (!instanceId) {
+    const message = extractErrorMessage(payload, "");
     return {
       ok: false,
-      error: "Could not determine license instance ID from activation response.",
+      error:
+        message ||
+        "Could not determine license instance ID from activation response.",
     };
   }
 
@@ -367,10 +417,7 @@ function extractActivationData(payload) {
 
 function extractValidationData(payload) {
   const validFromPayload =
-    payload?.valid ??
-    payload?.is_valid ??
-    payload?.data?.valid ??
-    payload?.meta?.valid;
+    payload?.valid ?? payload?.is_valid ?? payload?.data?.valid ?? payload?.meta?.valid;
 
   const licenseStatus =
     payload?.license_key?.status ||
@@ -379,23 +426,13 @@ function extractValidationData(payload) {
     payload?.status ||
     "";
 
-  const valid = typeof validFromPayload === "boolean"
-    ? validFromPayload
-    : /active|valid/i.test(licenseStatus);
-
-  if (!valid) {
-    return {
-      valid: false,
-      error: extractErrorMessage(payload, "License key is invalid or inactive."),
-      status: licenseStatus,
-      variantName: extractVariantName(payload),
-    };
-  }
+  const valid =
+    typeof validFromPayload === "boolean" ? validFromPayload : /active|valid/i.test(licenseStatus);
 
   return {
-    valid: true,
-    error: "",
-    status: licenseStatus || "active",
+    valid,
+    error: valid ? "" : extractErrorMessage(payload, "License key is invalid or inactive."),
+    status: licenseStatus || (valid ? "active" : ""),
     variantName: extractVariantName(payload),
   };
 }
@@ -432,81 +469,27 @@ function normalizeLicenseKey(value) {
 }
 
 function generateInstanceName() {
-  const suffix = crypto.randomUUID().split("-")[0];
-  return `pdf-dark-mode-${suffix}`;
+  return `pdf-dark-mode-${crypto.randomUUID().split("-")[0]}`;
 }
 
-async function applyDarkMode() {
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  if (!tab?.id || !tab.url) {
-    return;
-  }
+/* ---------------------------------------------------------------- storage */
 
-  chrome.storage.sync.get(["siteRules", "billing"], ({ siteRules, billing }) => {
-    const entitlement = getEntitlement(billing);
-    const policy = buildUrlPolicy(tab.url, siteRules || {}, entitlement);
-    if (!policy.shouldInject) return;
+function ensureDefaults() {
+  const keys = Object.keys(SYNC_DEFAULTS);
+  chrome.storage.sync.get(keys, (result) => {
+    if (chrome.runtime.lastError) return;
 
-    chrome.scripting
-      .executeScript({
-        target: { tabId: tab.id },
-        files: ["scripts/invert.js"],
-      })
-      .catch((error) => {
-        console.error("PDF Dark Mode: failed to apply mode", error);
-      });
+    const missing = {};
+    keys.forEach((key) => {
+      if (typeof result[key] === "undefined") missing[key] = SYNC_DEFAULTS[key];
+    });
+
+    if (Object.keys(missing).length) chrome.storage.sync.set(missing);
   });
-}
 
-function buildUrlPolicy(url, siteRules, entitlement) {
-  if (!url) {
-    return { shouldInject: false };
-  }
-
-  const hostname = getHostnameFromUrl(url);
-  const siteRule = entitlement.isPro && hostname ? siteRules[hostname] : "";
-  if (siteRule === "block") {
-    return { shouldInject: false };
-  }
-
-  const isStandardPdf =
-    /\.pdf($|[?#&])/i.test(url) ||
-    (/^chrome-extension:\/\/[^/]+\/index\.html/i.test(url) &&
-      (new URL(url).searchParams.get("src") || "").match(
-        /\.pdf($|[?#&])|%2Epdf/i
-      ));
-
-  if (isStandardPdf) {
-    return { shouldInject: true };
-  }
-
-  if (siteRule === "allow") {
-    return { shouldInject: true };
-  }
-
-  return { shouldInject: false };
-}
-
-function getHostnameFromUrl(url) {
-  try {
-    return new URL(url).hostname;
-  } catch {
-    return "";
-  }
-}
-
-function ensureSyncDefault(key, value) {
-  chrome.storage.sync.get(key, (result) => {
-    if (typeof result[key] === "undefined") {
-      chrome.storage.sync.set({ [key]: value });
-    }
-  });
-}
-
-function ensureLocalDefault(key, value) {
-  chrome.storage.local.get(key, (result) => {
-    if (typeof result[key] === "undefined") {
-      chrome.storage.local.set({ [key]: value });
+  chrome.storage.local.get("analytics", ({ analytics }) => {
+    if (typeof analytics === "undefined") {
+      chrome.storage.local.set({ analytics: { events: {}, pdfAppliesByDay: {} } });
     }
   });
 }
@@ -531,43 +514,15 @@ function recordPdfApply() {
 }
 
 function pruneOldDays(pdfAppliesByDay) {
+  const cutoff = Date.now() - ANALYTICS_RETENTION_DAYS * 24 * 60 * 60 * 1000;
   const retained = {};
-  const cutoffDate = new Date();
-  cutoffDate.setDate(cutoffDate.getDate() - ANALYTICS_RETENTION_DAYS);
 
   Object.entries(pdfAppliesByDay || {}).forEach(([day, value]) => {
-    if (new Date(`${day}T00:00:00.000Z`) >= cutoffDate) {
-      retained[day] = value;
-    }
+    const timestamp = Date.parse(`${day}T00:00:00.000Z`);
+    if (!Number.isNaN(timestamp) && timestamp >= cutoff) retained[day] = value;
   });
 
   return retained;
-}
-
-function getEntitlement(billingState) {
-  const billing = {
-    ...defaultBilling(),
-    ...(billingState || {}),
-  };
-  const hasPaidPlan =
-    billing.status === "active" &&
-    (billing.plan === "pro" || billing.plan === "lifetime");
-  return { isPro: hasPaidPlan };
-}
-
-function defaultBilling() {
-  return {
-    plan: "free",
-    status: "inactive",
-    source: "free",
-    licenseKey: "",
-    instanceId: "",
-    instanceName: "",
-    lastValidatedAt: "",
-    lastValidationAttemptAt: "",
-    licenseStatus: "not_configured",
-    errorMessage: "",
-  };
 }
 
 function getSyncValue(key) {
@@ -578,8 +533,6 @@ function getSyncValue(key) {
 
 function setSyncValue(key, value) {
   return new Promise((resolve) => {
-    chrome.storage.sync.set({ [key]: value }, () => {
-      resolve();
-    });
+    chrome.storage.sync.set({ [key]: value }, () => resolve());
   });
 }
