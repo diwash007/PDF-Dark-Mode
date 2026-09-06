@@ -3,394 +3,1007 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>PDF Dark Mode</title>
+
+  <title>PDF Dark Mode — Dark mode for every PDF you read</title>
   <meta
     name="description"
-    content="PDF Dark Mode is a browser extension that adds customizable dark mode support for online and offline PDF files."
+    content="A browser extension that adds customizable dark mode to online and offline PDFs. Adjustable darkness and contrast, plus Sepia and AMOLED reading modes. One-time payment, no subscription."
   />
-  <link rel="icon" type="image/png" href="/assets/logo.png">
+  <link rel="canonical" href="https://diwashdahal.com.np/PDF-Dark-Mode/" />
+  <meta name="theme-color" content="#07090c" />
+
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="PDF Dark Mode" />
+  <meta property="og:title" content="PDF Dark Mode — Dark mode for every PDF you read" />
+  <meta
+    property="og:description"
+    content="Customizable dark mode for online and offline PDFs. Adjustable darkness, contrast, Sepia and AMOLED modes. Pay once, no subscription."
+  />
+  <meta property="og:url" content="https://diwashdahal.com.np/PDF-Dark-Mode/" />
+  <meta property="og:image" content="https://diwashdahal.com.np/PDF-Dark-Mode/assets/og-image.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="PDF Dark Mode — Dark mode for every PDF you read" />
+  <meta
+    name="twitter:description"
+    content="Customizable dark mode for online and offline PDFs. Pay once, no subscription."
+  />
+  <meta name="twitter:image" content="https://diwashdahal.com.np/PDF-Dark-Mode/assets/og-image.png" />
+
+  <link rel="icon" type="image/png" href="./assets/logo.png" />
+  <link rel="apple-touch-icon" href="./assets/logo.png" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+    rel="stylesheet"
+  />
 
   <script src="https://assets.lemonsqueezy.com/lemon.js" defer></script>
 
   <style>
     :root {
-      --bg: #0b0f14;
-      --card: #111827;
-      --muted: #94a3b8;
-      --text: #f8fafc;
+      --bg: #07090c;
+      --bg-soft: #0b0f14;
+      --surface: rgba(255, 255, 255, 0.035);
+      --surface-2: rgba(255, 255, 255, 0.06);
+      --border: rgba(255, 255, 255, 0.09);
+      --border-strong: rgba(255, 255, 255, 0.17);
+      --text: #eef2f5;
+      --muted: #8d9aa7;
+      --muted-dim: #6b7684;
       --accent: #508b5e;
-      --border: rgba(255,255,255,0.08);
-      --shadow: 0 10px 30px rgba(0,0,0,0.35);
+      --accent-bright: #7cc48f;
+      --accent-deep: #3d7049;
+      --radius: 16px;
+      --radius-lg: 22px;
+      --shadow: 0 18px 48px rgba(0, 0, 0, 0.45);
+      --maxw: 1140px;
     }
 
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { scroll-behavior: smooth; scroll-padding-top: 88px; }
 
     body {
-      font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: linear-gradient(to bottom, #0b0f14, #111827);
+      font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
       color: var(--text);
       line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+      font-feature-settings: "cv11", "ss01";
     }
 
-    a {
-      color: inherit;
-      text-decoration: none;
+    a { color: inherit; text-decoration: none; }
+
+    ::selection { background: rgba(124, 196, 143, 0.28); }
+
+    :focus-visible {
+      outline: 2px solid var(--accent-bright);
+      outline-offset: 3px;
+      border-radius: 6px;
     }
 
     .container {
-      width: min(1120px, calc(100% - 32px));
+      width: min(var(--maxw), calc(100% - 40px));
       margin: 0 auto;
     }
 
+    .skip-link {
+      position: absolute;
+      left: -9999px;
+      top: 8px;
+      background: var(--accent);
+      color: #fff;
+      padding: 10px 16px;
+      border-radius: 10px;
+      z-index: 200;
+    }
+    .skip-link:focus { left: 16px; }
+
+    /* ---------- header ---------- */
+
     header {
-      padding: 24px 0;
-      border-bottom: 1px solid var(--border);
       position: sticky;
       top: 0;
-      backdrop-filter: blur(12px);
-      background: rgba(11,15,20,0.7);
       z-index: 100;
+      border-bottom: 1px solid transparent;
+      background: rgba(7, 9, 12, 0.72);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      transition: border-color 0.2s ease;
     }
+    header.scrolled { border-bottom-color: var(--border); }
 
     .nav {
       display: flex;
-      justify-content: space-between;
       align-items: center;
-      gap: 16px;
+      justify-content: space-between;
+      gap: 20px;
+      padding: 14px 0;
     }
 
     .brand {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 11px;
       font-weight: 700;
-      font-size: 18px;
+      font-size: 16px;
+      letter-spacing: -0.01em;
+      flex-shrink: 0;
     }
 
-    .logo {
-      width: 40px;
-      height: 40px;
-      border-radius: 12px;
-      background: var(--accent);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: 800;
-      color: white;
-      box-shadow: var(--shadow);
+    .brand img {
+      width: 34px;
+      height: 34px;
+      border-radius: 9px;
+      display: block;
     }
 
     .nav-links {
       display: flex;
       align-items: center;
-      gap: 14px;
+      gap: 28px;
+      font-size: 14.5px;
+      color: var(--muted);
+      font-weight: 500;
     }
+    .nav-links a { transition: color 0.16s ease; }
+    .nav-links a:hover { color: var(--text); }
+
+    .nav-actions { display: flex; align-items: center; gap: 10px; }
+
+    .icon-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 38px;
+      height: 38px;
+      border-radius: 11px;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      transition: 0.16s ease;
+    }
+    .icon-link:hover { color: var(--text); border-color: var(--border-strong); }
+    .icon-link svg { width: 18px; height: 18px; fill: currentColor; }
+
+    /* ---------- buttons ---------- */
 
     .button {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      padding: 12px 18px;
-      border-radius: 14px;
+      gap: 9px;
+      padding: 12px 20px;
+      border-radius: 12px;
       font-weight: 600;
-      transition: 0.2s ease;
+      font-size: 15px;
+      font-family: inherit;
+      letter-spacing: -0.005em;
       border: 1px solid var(--border);
+      color: var(--text);
+      background: var(--surface);
+      cursor: pointer;
+      transition: 0.16s ease;
+      white-space: nowrap;
     }
+    .button:hover { background: var(--surface-2); border-color: var(--border-strong); }
 
-    .button:hover {
-      transform: translateY(-1px);
-    }
+    .button svg { width: 17px; height: 17px; flex-shrink: 0; }
 
     .button-primary {
-      background: var(--accent);
-      color: white;
-      border: none;
-      box-shadow: var(--shadow);
+      background: linear-gradient(180deg, var(--accent) 0%, var(--accent-deep) 100%);
+      border-color: rgba(255, 255, 255, 0.14);
+      color: #fff;
+      box-shadow: 0 8px 22px rgba(61, 112, 73, 0.34);
+    }
+    .button-primary:hover {
+      background: linear-gradient(180deg, #5a9a69 0%, #457d52 100%);
+      border-color: rgba(255, 255, 255, 0.22);
     }
 
-    .hero {
-      padding: 100px 0 80px;
-      display: grid;
-      grid-template-columns: 1.1fr 0.9fr;
-      gap: 48px;
+    .button-sm { padding: 9px 15px; font-size: 14px; border-radius: 10px; }
+
+    /* ---------- shared section furniture ---------- */
+
+    section { padding: 96px 0; }
+
+    .eyebrow {
+      display: inline-flex;
       align-items: center;
-    }
-
-    .hero h1 {
-      font-size: clamp(42px, 6vw, 72px);
-      line-height: 1;
-      margin-bottom: 24px;
-    }
-
-    .hero p {
-      font-size: 18px;
-      color: var(--muted);
-      max-width: 640px;
-    }
-
-    .hero-actions {
-      display: flex;
-      gap: 16px;
-      margin-top: 32px;
-      flex-wrap: wrap;
-    }
-
-    .stats {
-      display: flex;
-      gap: 18px;
-      margin-top: 36px;
-      flex-wrap: wrap;
-    }
-
-    .stat {
-      background: rgba(255,255,255,0.04);
-      border: 1px solid var(--border);
-      padding: 16px 20px;
-      border-radius: 18px;
-      min-width: 160px;
-    }
-
-    .stat strong {
-      display: block;
-      font-size: 22px;
-      margin-bottom: 4px;
-    }
-
-    .preview {
-      background: linear-gradient(135deg, rgba(80,139,94,0.25), rgba(255,255,255,0.04));
-      border: 1px solid var(--border);
-      border-radius: 28px;
-      padding: 24px;
-      box-shadow: var(--shadow);
-    }
-
-    .mock-window {
-      background: #0f172a;
-      border-radius: 20px;
-      overflow: hidden;
-      border: 1px solid rgba(255,255,255,0.08);
-    }
-
-    .mock-top {
-      padding: 12px 16px;
-      display: flex;
       gap: 8px;
-      border-bottom: 1px solid rgba(255,255,255,0.08);
-    }
-
-    .dot {
-      width: 10px;
-      height: 10px;
-      border-radius: 999px;
-      background: rgba(255,255,255,0.25);
-    }
-
-    .mock-content {
-      padding: 24px;
-    }
-
-    .pdf-card {
-      background: #111827;
-      border-radius: 18px;
-      padding: 24px;
-      border: 1px solid rgba(255,255,255,0.06);
-    }
-
-    .pdf-line {
-      height: 10px;
-      border-radius: 999px;
-      background: rgba(255,255,255,0.12);
-      margin-bottom: 14px;
-    }
-
-    .pdf-line:nth-child(2) {
-      width: 85%;
-    }
-
-    .pdf-line:nth-child(3) {
-      width: 70%;
-    }
-
-    section {
-      padding: 80px 0;
+      font-size: 12.5px;
+      font-weight: 600;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      color: var(--accent-bright);
+      margin-bottom: 16px;
     }
 
     .section-title {
-      font-size: 40px;
+      font-size: clamp(30px, 3.6vw, 42px);
+      line-height: 1.12;
+      letter-spacing: -0.028em;
+      font-weight: 700;
       margin-bottom: 14px;
     }
 
     .section-subtitle {
       color: var(--muted);
-      max-width: 720px;
-      margin-bottom: 48px;
+      max-width: 620px;
+      font-size: 17px;
+      margin-bottom: 52px;
     }
 
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 24px;
+    .section-head-center {
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
     }
+    .section-head-center .section-subtitle { margin-left: auto; margin-right: auto; }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 5px 11px;
+      border-radius: 999px;
+      font-size: 11.5px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .pill-free { background: rgba(255, 255, 255, 0.07); color: var(--muted); }
+    .pill-pro { background: rgba(124, 196, 143, 0.15); color: var(--accent-bright); }
+
+    /* ---------- hero ---------- */
+
+    .hero {
+      padding: 84px 0 78px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 60px;
+      align-items: center;
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      padding: 7px 14px 7px 9px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      font-size: 13.5px;
+      color: var(--muted);
+      margin-bottom: 26px;
+      font-weight: 500;
+    }
+    .hero-badge b { color: var(--accent-bright); font-weight: 650; }
+    .hero-badge .dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: var(--accent-bright);
+      box-shadow: 0 0 0 3px rgba(124, 196, 143, 0.18);
+    }
+
+    .hero h1 {
+      font-size: clamp(38px, 4.5vw, 55px);
+      line-height: 1.07;
+      letter-spacing: -0.034em;
+      font-weight: 800;
+      margin-bottom: 22px;
+      text-wrap: balance;
+    }
+    .hero h1 em {
+      font-style: normal;
+      color: var(--accent-bright);
+    }
+
+    .hero-lede {
+      font-size: 18.5px;
+      color: var(--muted);
+      max-width: 540px;
+    }
+
+    .hero-actions {
+      display: flex;
+      gap: 12px;
+      margin-top: 32px;
+      flex-wrap: wrap;
+    }
+
+    .hero-note {
+      margin-top: 18px;
+      font-size: 13.5px;
+      color: var(--muted-dim);
+    }
+
+    .trust-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px 30px;
+      margin-top: 40px;
+      padding-top: 30px;
+      border-top: 1px solid var(--border);
+    }
+    .trust-item { font-size: 14px; color: var(--muted); }
+    .trust-item strong {
+      display: block;
+      color: var(--text);
+      font-size: 19px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      line-height: 1.3;
+    }
+
+    /* ---------- pdf demo (uses the extension's real overlay technique) ---------- */
+
+    .demo-frame {
+      background: linear-gradient(160deg, rgba(80, 139, 94, 0.16), rgba(255, 255, 255, 0.03));
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 14px;
+      box-shadow: var(--shadow);
+    }
+
+    .browser {
+      background: #0f1319;
+      border-radius: 14px;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.07);
+    }
+
+    .browser-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 11px 14px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+    }
+    .browser-dot { width: 9px; height: 9px; border-radius: 50%; background: rgba(255, 255, 255, 0.16); }
+    .browser-url {
+      margin-left: 8px;
+      flex: 1;
+      font-size: 11.5px;
+      color: var(--muted-dim);
+      background: rgba(255, 255, 255, 0.04);
+      border-radius: 6px;
+      padding: 4px 10px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    /* the stage isolates the blend so it only affects the mock page */
+    .stage {
+      position: relative;
+      isolation: isolate;
+      overflow: hidden;
+    }
+
+    .stage-layer,
+    .stage-tint {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 2;
+    }
+    .stage-layer { mix-blend-mode: difference; }
+    .stage-tint { mix-blend-mode: multiply; background-color: rgba(112, 66, 20, 0.2); z-index: 3; display: none; }
+
+    /* the mock PDF page — deliberately a light document, like a real PDF */
+    .paper {
+      background: #ffffff;
+      color: #16191d;
+      padding: 30px 32px 34px;
+      font-family: Georgia, "Times New Roman", serif;
+      min-height: 340px;
+    }
+
+    /* clear the Before/After tags in the comparison stage */
+    #compare-stage .paper { padding-top: 56px; }
+
+    .paper-kicker {
+      font-family: "Inter", sans-serif;
+      font-size: 9.5px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: #7c8590;
+      margin-bottom: 13px;
+    }
+    .paper h2 {
+      font-size: 20px;
+      line-height: 1.25;
+      letter-spacing: -0.01em;
+      margin-bottom: 9px;
+      font-weight: 700;
+    }
+    .paper-authors {
+      font-size: 11.5px;
+      color: #5d666f;
+      font-style: italic;
+      margin-bottom: 18px;
+      padding-bottom: 15px;
+      border-bottom: 1px solid #e2e6ea;
+    }
+    .paper h3 {
+      font-family: "Inter", sans-serif;
+      font-size: 10.5px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: #3d444c;
+      margin: 0 0 7px;
+      font-weight: 700;
+    }
+    .paper p {
+      font-size: 12.5px;
+      line-height: 1.62;
+      color: #2c3238;
+      margin-bottom: 13px;
+      text-align: justify;
+      hyphens: auto;
+    }
+    .paper-figure {
+      background: #f1f4f6;
+      border: 1px solid #e2e6ea;
+      border-radius: 5px;
+      padding: 13px;
+      margin: 4px 0 13px;
+    }
+    .paper-bars { display: flex; align-items: flex-end; gap: 7px; height: 46px; }
+    .paper-bar { flex: 1; background: #4a5560; border-radius: 2px 2px 0 0; }
+    .paper-caption {
+      font-family: "Inter", sans-serif;
+      font-size: 9.5px;
+      color: #6b747d;
+      margin-top: 9px;
+      text-align: center;
+    }
+    .paper-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+
+    /* comparison handle */
+    .compare-input {
+      position: absolute;
+      inset: 0;
+      z-index: 6;
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      opacity: 0;
+      cursor: ew-resize;
+      -webkit-appearance: none;
+      appearance: none;
+      background: transparent;
+    }
+    .compare-input::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 44px;
+      height: 440px;
+      cursor: ew-resize;
+    }
+    .compare-input::-moz-range-thumb {
+      width: 44px;
+      height: 440px;
+      border: 0;
+      background: transparent;
+      cursor: ew-resize;
+    }
+
+    .compare-handle {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: var(--split, 50%);
+      width: 2px;
+      background: rgba(255, 255, 255, 0.85);
+      z-index: 5;
+      pointer-events: none;
+      transform: translateX(-1px);
+      box-shadow: 0 0 14px rgba(0, 0, 0, 0.5);
+    }
+    .compare-grip {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      background: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+    }
+    .compare-grip svg { width: 17px; height: 17px; fill: #16191d; }
+
+    .stage-tag {
+      position: absolute;
+      top: 12px;
+      z-index: 5;
+      font-family: "Inter", sans-serif;
+      font-size: 10.5px;
+      font-weight: 700;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+      padding: 5px 10px;
+      border-radius: 999px;
+      pointer-events: none;
+      backdrop-filter: blur(6px);
+    }
+    .stage-tag-off { left: 12px; background: rgba(16, 20, 26, 0.62); color: #fff; }
+    .stage-tag-on { right: 12px; background: rgba(124, 196, 143, 0.9); color: #06240f; }
+
+    .demo-caption {
+      margin-top: 14px;
+      text-align: center;
+      font-size: 13px;
+      color: var(--muted-dim);
+    }
+
+    /* ---------- modes playground ---------- */
+
+    .playground {
+      display: grid;
+      grid-template-columns: 0.85fr 1.15fr;
+      gap: 44px;
+      align-items: center;
+    }
+
+    .mode-tabs { display: flex; gap: 8px; margin-bottom: 26px; flex-wrap: wrap; }
+
+    .mode-tab {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 9px 15px;
+      border-radius: 11px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--muted);
+      font-family: inherit;
+      font-size: 14.5px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: 0.16s ease;
+    }
+    .mode-tab:hover { color: var(--text); border-color: var(--border-strong); }
+    .mode-tab[aria-selected="true"] {
+      background: rgba(124, 196, 143, 0.13);
+      border-color: rgba(124, 196, 143, 0.45);
+      color: var(--accent-bright);
+    }
+    .mode-tab .tag {
+      font-size: 9.5px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      padding: 2px 6px;
+      border-radius: 5px;
+      background: rgba(124, 196, 143, 0.18);
+      color: var(--accent-bright);
+      font-weight: 700;
+    }
+
+    .mode-desc {
+      color: var(--muted);
+      font-size: 15.5px;
+      min-height: 52px;
+      margin-bottom: 26px;
+    }
+
+    .slider-row { margin-bottom: 20px; }
+    .slider-label {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      font-size: 13.5px;
+      font-weight: 600;
+      margin-bottom: 9px;
+    }
+    .slider-label span:last-child {
+      color: var(--accent-bright);
+      font-variant-numeric: tabular-nums;
+      font-weight: 700;
+    }
+
+    input[type="range"].control {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 5px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.11);
+      cursor: pointer;
+    }
+    input[type="range"].control::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 17px;
+      height: 17px;
+      border-radius: 50%;
+      background: var(--accent-bright);
+      border: 3px solid #0d1116;
+      box-shadow: 0 0 0 1px rgba(124, 196, 143, 0.55);
+      cursor: pointer;
+    }
+    input[type="range"].control::-moz-range-thumb {
+      width: 17px;
+      height: 17px;
+      border-radius: 50%;
+      background: var(--accent-bright);
+      border: 3px solid #0d1116;
+      box-shadow: 0 0 0 1px rgba(124, 196, 143, 0.55);
+      cursor: pointer;
+    }
+
+    .playground-note {
+      font-size: 13px;
+      color: var(--muted-dim);
+      border-left: 2px solid var(--border-strong);
+      padding-left: 13px;
+      margin-top: 26px;
+    }
+
+    /* ---------- features ---------- */
+
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
 
     .card {
-      background: rgba(255,255,255,0.04);
+      background: var(--surface);
       border: 1px solid var(--border);
-      border-radius: 24px;
-      padding: 28px;
+      border-radius: var(--radius);
+      padding: 26px;
+      transition: 0.18s ease;
     }
+    .card:hover { border-color: var(--border-strong); background: var(--surface-2); }
 
-    .card h3 {
-      margin-bottom: 12px;
-      font-size: 22px;
+    .card-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 11px;
+      background: rgba(124, 196, 143, 0.11);
+      border: 1px solid rgba(124, 196, 143, 0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 18px;
     }
+    .card-icon svg { width: 19px; height: 19px; stroke: var(--accent-bright); fill: none; stroke-width: 1.7; }
 
-    .card p {
-      color: var(--muted);
+    .card-head {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 9px;
+      flex-wrap: wrap;
     }
+    .card h3 { font-size: 17.5px; font-weight: 650; letter-spacing: -0.015em; }
+    .card p { color: var(--muted); font-size: 14.5px; }
+
+    /* ---------- pricing ---------- */
+
+    .pricing-wrap { background: var(--bg-soft); }
 
     .pricing {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 24px;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 22px;
+      max-width: 800px;
+      margin: 0 auto;
+      align-items: start;
     }
 
     .price-card {
-      background: rgba(255,255,255,0.04);
+      background: var(--surface);
       border: 1px solid var(--border);
-      border-radius: 28px;
+      border-radius: var(--radius-lg);
       padding: 32px;
       position: relative;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
     }
 
     .price-card.featured {
-      border-color: rgba(80,139,94,0.7);
-      transform: scale(1.03);
+      border-color: rgba(124, 196, 143, 0.4);
+      background:
+        radial-gradient(120% 100% at 50% 0%, rgba(80, 139, 94, 0.14), transparent 62%),
+        var(--surface);
+      box-shadow: 0 22px 60px rgba(0, 0, 0, 0.4);
     }
 
     .badge {
       position: absolute;
-      top: 16px;
-      right: 16px;
-      background: var(--accent);
-      color: white;
-      font-size: 12px;
-      padding: 6px 10px;
+      top: -12px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: linear-gradient(180deg, var(--accent) 0%, var(--accent-deep) 100%);
+      color: #fff;
+      font-size: 11.5px;
+      padding: 6px 14px;
       border-radius: 999px;
       font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      white-space: nowrap;
+      box-shadow: 0 6px 18px rgba(61, 112, 73, 0.4);
     }
+
+    .price-card h3 { font-size: 15px; font-weight: 650; color: var(--muted); letter-spacing: 0.01em; }
 
     .price {
-      font-size: 48px;
+      font-size: 52px;
       font-weight: 800;
-      margin: 18px 0;
+      letter-spacing: -0.04em;
+      line-height: 1;
+      margin: 16px 0 4px;
     }
+    .price-suffix { font-size: 14.5px; color: var(--muted); margin-bottom: 26px; }
+    .price-suffix b { color: var(--accent-bright); font-weight: 650; }
 
-    ul {
-      list-style: none;
-      margin: 24px 0;
-    }
-
-    li {
-      margin-bottom: 12px;
+    .price-card ul { list-style: none; margin: 0 0 28px; display: grid; gap: 12px; }
+    .price-card li {
       color: var(--muted);
+      font-size: 14.5px;
+      display: flex;
+      gap: 11px;
+      align-items: flex-start;
+      line-height: 1.5;
+    }
+    .price-card li svg { width: 16px; height: 16px; flex-shrink: 0; margin-top: 3px; stroke-width: 2.4; fill: none; }
+    .check-on { stroke: var(--accent-bright); }
+    .check-off { stroke: var(--muted-dim); }
+    .price-card li.on { color: var(--text); }
+
+    .price-card .button { width: 100%; margin-top: auto; }
+
+    .price-foot {
+      text-align: center;
+      font-size: 12.5px;
+      color: var(--muted-dim);
+      margin-top: 14px;
     }
 
-    .contact-card {
-      background: rgba(255,255,255,0.04);
+    /* why one-time */
+    .manifesto {
+      max-width: 800px;
+      margin: 56px auto 0;
+      background: var(--surface);
       border: 1px solid var(--border);
-      border-radius: 24px;
-      padding: 28px;
-      display: grid;
-      gap: 14px;
-      max-width: 720px;
+      border-left: 3px solid var(--accent);
+      border-radius: var(--radius);
+      padding: 30px 34px;
     }
+    .manifesto h3 {
+      font-size: 19px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin-bottom: 12px;
+    }
+    .manifesto p { color: var(--muted); font-size: 15.5px; }
+    .manifesto p + p { margin-top: 12px; }
+    .manifesto strong { color: var(--text); font-weight: 600; }
 
-    .contact-link {
-      display: inline-flex;
+    /* ---------- activation steps ---------- */
+
+    .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; counter-reset: step; }
+    .step {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 26px;
+    }
+    .step-num {
+      width: 30px;
+      height: 30px;
+      border-radius: 9px;
+      background: rgba(124, 196, 143, 0.12);
+      border: 1px solid rgba(124, 196, 143, 0.24);
+      color: var(--accent-bright);
+      font-size: 14px;
+      font-weight: 700;
+      display: flex;
       align-items: center;
-      gap: 10px;
+      justify-content: center;
+      margin-bottom: 16px;
+    }
+    .step h3 { font-size: 16.5px; font-weight: 650; margin-bottom: 8px; letter-spacing: -0.012em; }
+    .step p { color: var(--muted); font-size: 14.5px; }
+    .step code {
+      background: rgba(255, 255, 255, 0.07);
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      padding: 1px 6px;
+      font-size: 12.5px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
       color: var(--text);
+    }
+
+    /* ---------- faq ---------- */
+
+    .faq { max-width: 760px; margin: 0 auto; }
+    .faq details {
+      border-bottom: 1px solid var(--border);
+      padding: 4px 0;
+    }
+    .faq details:first-of-type { border-top: 1px solid var(--border); }
+    .faq summary {
+      cursor: pointer;
+      list-style: none;
+      padding: 20px 44px 20px 0;
+      font-size: 16.5px;
       font-weight: 600;
-      width: fit-content;
+      letter-spacing: -0.012em;
+      position: relative;
+      transition: color 0.16s ease;
     }
+    .faq summary::-webkit-details-marker { display: none; }
+    .faq summary:hover { color: var(--accent-bright); }
+    .faq summary::after {
+      content: "";
+      position: absolute;
+      right: 6px;
+      top: 50%;
+      width: 9px;
+      height: 9px;
+      border-right: 2px solid var(--muted);
+      border-bottom: 2px solid var(--muted);
+      transform: translateY(-70%) rotate(45deg);
+      transition: transform 0.2s ease;
+    }
+    .faq details[open] summary::after { transform: translateY(-30%) rotate(-135deg); }
+    .faq details p {
+      color: var(--muted);
+      font-size: 15.5px;
+      padding: 0 40px 22px 0;
+      margin-top: -4px;
+    }
+    .faq details p + p { padding-top: 12px; }
+    .faq a { color: var(--accent-bright); text-decoration: underline; text-underline-offset: 3px; }
 
-    .contact-link svg {
-      width: 20px;
-      height: 20px;
-      fill: currentColor;
-    }
+    /* ---------- contact ---------- */
 
-    .contact-link:hover {
-      color: #9fd4aa;
+    .contact-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 18px;
+      max-width: 760px;
     }
+    .contact-link {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 22px 24px;
+      transition: 0.16s ease;
+    }
+    .contact-link:hover { border-color: var(--border-strong); background: var(--surface-2); }
+    .contact-link svg { width: 22px; height: 22px; fill: var(--accent-bright); flex-shrink: 0; }
+    .contact-link b { display: block; font-size: 15.5px; font-weight: 650; }
+    .contact-link span { font-size: 13.5px; color: var(--muted); }
+
+    /* ---------- footer ---------- */
 
     footer {
       border-top: 1px solid var(--border);
-      padding: 48px 0;
+      padding: 56px 0 40px;
+      background: var(--bg-soft);
+    }
+    .footer-top {
+      display: grid;
+      grid-template-columns: 1.6fr 1fr 1fr 1fr;
+      gap: 40px;
+      margin-bottom: 44px;
+    }
+    .footer-brand p {
       color: var(--muted);
-      text-align: center;
+      font-size: 14px;
+      max-width: 290px;
+      margin-top: 14px;
+    }
+    .footer-col h4 {
+      font-size: 12px;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+      color: var(--muted-dim);
+      margin-bottom: 15px;
+      font-weight: 700;
+    }
+    .footer-col ul { list-style: none; display: grid; gap: 11px; }
+    .footer-col a { color: var(--muted); font-size: 14.5px; transition: color 0.16s ease; }
+    .footer-col a:hover { color: var(--text); }
+
+    .footer-bottom {
+      border-top: 1px solid var(--border);
+      padding-top: 26px;
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+      color: var(--muted-dim);
+      font-size: 13.5px;
     }
 
-    .upgrade-button {
-      background-color: #508b5e;
-      border-radius: 10;
+    /* ---------- responsive ---------- */
+
+    @media (max-width: 1000px) {
+      .hero, .playground { grid-template-columns: 1fr; gap: 48px; }
+      .grid-3, .steps { grid-template-columns: 1fr 1fr; }
+      .footer-top { grid-template-columns: 1fr 1fr; gap: 32px; }
+      .nav-links { display: none; }
     }
 
-    @media (max-width: 900px) {
-      .hero,
-      .grid,
-      .pricing {
-        grid-template-columns: 1fr;
-      }
+    @media (max-width: 720px) {
+      section { padding: 68px 0; }
+      .hero { padding: 56px 0 64px; }
+      .grid-3, .steps, .pricing, .contact-grid { grid-template-columns: 1fr; }
+      .price-card.featured { order: -1; }
+      .paper-cols { grid-template-columns: 1fr; gap: 0; }
+      .hero-actions .button { flex: 1 1 100%; }
+      .trust-row { gap: 18px 24px; }
+      .manifesto { padding: 24px; }
+      .footer-top { grid-template-columns: 1fr; gap: 28px; }
+    }
 
-      .hero {
-        padding-top: 60px;
-      }
-
-      .hero h1 {
-        font-size: 52px;
-      }
-
-      .price-card.featured {
-        transform: none;
-      }
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      * { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
     }
   </style>
 </head>
-<body>
-  <header>
-    <div class="container nav">
-      <div class="brand">
-        <img src="./assets/logo.png" class="logo"/>
-        <span>PDF Dark Mode</span>
-      </div>
 
-      <div class="nav-links">
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header id="site-header">
+    <div class="container nav">
+      <a href="#" class="brand" aria-label="PDF Dark Mode, home">
+        <img src="./assets/logo.png" alt="" width="34" height="34" />
+        <span>PDF Dark Mode</span>
+      </a>
+
+      <nav class="nav-links" aria-label="Primary">
+        <a href="#modes">Reading modes</a>
         <a href="#features">Features</a>
         <a href="#pricing">Pricing</a>
-        <a href="#contact">Contact</a>
-        <a href="help.html">Help</a>
-        <a href="privacy.html">Privacy Policy</a>
-        <a href="terms.html">Terms & Conditions</a>
-        <a href="https://github.com/diwash007/PDF-Dark-Mode" target="_blank" class="button">
-          GitHub
+        <a href="#faq">FAQ</a>
+      </nav>
+
+      <div class="nav-actions">
+        <a
+          href="https://github.com/diwash007/PDF-Dark-Mode"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="icon-link"
+          aria-label="View source on GitHub"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 .5A11.5 11.5 0 0 0 .5 12a11.5 11.5 0 0 0 7.86 10.92c.58.1.79-.25.79-.56v-2c-3.2.7-3.88-1.37-3.88-1.37-.53-1.34-1.29-1.7-1.29-1.7-1.05-.72.08-.7.08-.7 1.16.08 1.77 1.2 1.77 1.2 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.55-.29-5.24-1.28-5.24-5.7 0-1.26.45-2.29 1.19-3.1-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.18 1.18a11 11 0 0 1 5.8 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.24 2.76.12 3.05.74.81 1.18 1.84 1.18 3.1 0 4.43-2.69 5.4-5.25 5.69.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 23.5 12 11.5 11.5 0 0 0 12 .5Z"/></svg>
         </a>
+        <a href="#pricing" class="button button-primary button-sm">Get Pro — $9.99</a>
       </div>
     </div>
   </header>
 
-  <main>
+  <main id="main">
+    <!-- ============ HERO ============ -->
     <section class="hero container">
       <div>
-        <h1>Read PDFs comfortably at night.</h1>
+        <div class="hero-badge">
+          <span class="dot" aria-hidden="true"></span>
+          <span>Pay once. <b>No subscription, ever.</b></span>
+        </div>
 
-        <p>
-          PDF Dark Mode adds customizable dark reading modes to online and offline PDFs.
-          Reduce eye strain with adjustable darkness, contrast, and premium reading modes.
+        <h1>Dark mode for <em>every</em> PDF you read.</h1>
+
+        <p class="hero-lede">
+          Online PDFs, offline PDFs, files straight off your disk. Dial in exactly how dark
+          you want the page, then switch to Sepia or AMOLED when your eyes ask for it.
         </p>
 
         <div class="hero-actions">
@@ -400,9 +1013,9 @@
             rel="noopener noreferrer"
             class="button button-primary"
             id="install-chrome"
-            aria-label="Install for Chrome"
           >
-            Install for Chrome
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2a10 10 0 0 1 8.66 5H12a5 5 0 0 0-4.9 4.02L3.6 5.5A10 10 0 0 1 12 2Zm10 10a10 10 0 0 1-9.32 9.98l3.6-6.23A5 5 0 0 0 17 12a5 5 0 0 0-.34-1.8h4.06c.18.58.28 1.18.28 1.8ZM2 12a10 10 0 0 1 .93-4.2l4.06 7.03A5 5 0 0 0 11.3 22 10 10 0 0 1 2 12Zm10 3.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Z"/></svg>
+            Add to Chrome
           </a>
 
           <a
@@ -411,167 +1024,436 @@
             rel="noopener noreferrer"
             class="button"
             id="install-edge"
-            aria-label="Install for Edge"
           >
-            Install for Edge
-          </a>
-
-          <a
-            href="#pricing"
-            class="button"
-          >
-            Upgrade
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2c5.1 0 9.2 3.6 9.2 8.2 0 2.5-1.7 4-4.3 4-2 0-3.6-.9-4.6-2.3.5 2.7 2.6 4.6 5.7 4.9-1.7 3-4.7 5.2-8.3 5.2A9.5 9.5 0 0 1 2 12.6c0-3.3 1.9-6.2 4.7-7.7-1 1.1-1.6 2.5-1.6 4 0 1 .2 1.9.6 2.7C5.4 6.2 8.3 2 12 2Z"/></svg>
+            Add to Edge
           </a>
         </div>
 
-        <div class="stats">
-          <div class="stat">
-            <strong>30k+</strong>
-            Weekly Active Users
-          </div>
+        <p class="hero-note">Free to install. Pro unlocks with a one-time $9.99 licence.</p>
 
-          <div class="stat">
-            <strong>GPL-3.0</strong>
-            Open Source
-          </div>
-
-          <div class="stat">
-            <strong>Online + Offline</strong>
-            PDF Support
-          </div>
+        <div class="trust-row">
+          <div class="trust-item"><strong>30k+</strong>weekly active readers</div>
+          <div class="trust-item"><strong>GPL-3.0</strong>fully open source</div>
+          <div class="trust-item"><strong>No account</strong>nothing to sign up for</div>
         </div>
       </div>
 
-      <div class="preview">
-        <div class="mock-window">
-          <div class="mock-top">
-            <div class="dot"></div>
-            <div class="dot"></div>
-            <div class="dot"></div>
+      <!-- Live before/after. This uses the same difference-blend overlay the extension
+           injects, so what you drag through is the actual rendering, not a screenshot. -->
+      <div>
+        <div class="demo-frame">
+          <div class="browser">
+            <div class="browser-bar" aria-hidden="true">
+              <span class="browser-dot"></span>
+              <span class="browser-dot"></span>
+              <span class="browser-dot"></span>
+              <span class="browser-url">arxiv.org/pdf/2411.08442v2.pdf</span>
+            </div>
+
+            <div class="stage" id="compare-stage">
+              <span class="stage-tag stage-tag-off">Before</span>
+              <span class="stage-tag stage-tag-on">After</span>
+
+              <div class="paper">
+                <div class="paper-kicker">Journal of Human–Computer Studies · Vol. 47</div>
+                <h2>Visual Fatigue in Extended Screen Reading</h2>
+                <div class="paper-authors">R. Mehta, K. Lindqvist, A. Osei — Received 14 March</div>
+
+                <h3>Abstract</h3>
+                <p>
+                  Prolonged exposure to high-luminance documents is associated with measurable
+                  increases in reported ocular discomfort. We examine reading sessions exceeding
+                  ninety minutes across 214 participants and find that perceived strain correlates
+                  more strongly with background luminance than with total session duration.
+                </p>
+
+                <div class="paper-cols">
+                  <div>
+                    <h3>1. Introduction</h3>
+                    <p>
+                      Document formats designed for print carry an implicit assumption: that the
+                      page reflects light rather than emitting it. On a backlit display this
+                      inverts the ergonomics entirely.
+                    </p>
+                  </div>
+                  <div>
+                    <div class="paper-figure">
+                      <div class="paper-bars">
+                        <div class="paper-bar" style="height: 34%"></div>
+                        <div class="paper-bar" style="height: 55%"></div>
+                        <div class="paper-bar" style="height: 78%"></div>
+                        <div class="paper-bar" style="height: 92%"></div>
+                        <div class="paper-bar" style="height: 61%"></div>
+                      </div>
+                      <div class="paper-caption">Fig. 1 — Reported strain by luminance band</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="stage-layer" id="compare-layer"></div>
+              <div class="compare-handle" id="compare-handle">
+                <span class="compare-grip">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5 3 12l5 7V5Zm8 0v14l5-7-5-7Z"/></svg>
+                </span>
+              </div>
+
+              <input
+                type="range"
+                class="compare-input"
+                id="compare-input"
+                min="0" max="100" value="50" step="0.5"
+                aria-label="Drag to compare the PDF with and without dark mode"
+              />
+            </div>
+          </div>
+        </div>
+        <p class="demo-caption">Drag the handle — this is the extension's real overlay, running live.</p>
+      </div>
+    </section>
+
+    <!-- ============ READING MODES ============ -->
+    <section id="modes">
+      <div class="container">
+        <div class="playground">
+          <div>
+            <div class="eyebrow">Reading modes</div>
+            <h2 class="section-title">Tune it until it's comfortable.</h2>
+
+            <div class="mode-tabs" role="tablist" aria-label="Reading modes">
+              <button class="mode-tab" role="tab" aria-selected="true" data-mode="dark">Dark</button>
+              <button class="mode-tab" role="tab" aria-selected="false" data-mode="sepia">
+                Sepia <span class="tag">Pro</span>
+              </button>
+              <button class="mode-tab" role="tab" aria-selected="false" data-mode="amoled">
+                AMOLED <span class="tag">Pro</span>
+              </button>
+            </div>
+
+            <p class="mode-desc" id="mode-desc" aria-live="polite">
+              A clean inversion that keeps figures and diagrams legible. Adjust the darkness and
+              contrast until the page sits right for your screen.
+            </p>
+
+            <div class="slider-row">
+              <label class="slider-label" for="strength">
+                <span>Darkness</span><span id="strength-val">255</span>
+              </label>
+              <input type="range" class="control" id="strength" min="200" max="255" value="255" />
+            </div>
+
+            <div class="slider-row">
+              <label class="slider-label" for="contrast">
+                <span>Contrast</span><span id="contrast-val">100%</span>
+              </label>
+              <input type="range" class="control" id="contrast" min="50" max="130" value="100" />
+            </div>
+
+            <p class="playground-note">
+              These are the extension's own controls, with the same ranges and the same rendering
+              path. What you set here is what you'd see on a real document.
+            </p>
           </div>
 
-          <div class="mock-content">
-            <div class="pdf-card">
-              <div class="pdf-line"></div>
-              <div class="pdf-line"></div>
-              <div class="pdf-line"></div>
-              <div class="pdf-line"></div>
-              <div class="pdf-line"></div>
+          <div class="demo-frame">
+            <div class="browser">
+              <div class="browser-bar" aria-hidden="true">
+                <span class="browser-dot"></span>
+                <span class="browser-dot"></span>
+                <span class="browser-dot"></span>
+                <span class="browser-url">file:///Users/you/reading/thesis-draft.pdf</span>
+              </div>
+
+              <div class="stage" id="play-stage">
+                <div class="paper">
+                  <div class="paper-kicker">Chapter 4 · Working draft</div>
+                  <h2>Legibility Under Reduced Luminance</h2>
+                  <div class="paper-authors">Draft revision 12 — not for circulation</div>
+
+                  <p>
+                    The relationship between contrast ratio and sustained reading comfort is not
+                    linear. Below a certain threshold, increasing contrast produces sharper glyph
+                    edges but also raises the perceived intensity of the background field, which
+                    participants consistently described as harsh rather than crisp.
+                  </p>
+
+                  <h3>4.2 Method</h3>
+                  <p>
+                    Each participant read two documents of comparable length and typographic
+                    density. Luminance was held constant within a session and varied between
+                    sessions, counterbalanced across the cohort to control for order effects.
+                  </p>
+
+                  <div class="paper-figure">
+                    <div class="paper-bars">
+                      <div class="paper-bar" style="height: 42%"></div>
+                      <div class="paper-bar" style="height: 66%"></div>
+                      <div class="paper-bar" style="height: 88%"></div>
+                      <div class="paper-bar" style="height: 51%"></div>
+                      <div class="paper-bar" style="height: 73%"></div>
+                      <div class="paper-bar" style="height: 30%"></div>
+                    </div>
+                    <div class="paper-caption">Fig. 4 — Mean comfort score across luminance bands</div>
+                  </div>
+                </div>
+
+                <div class="stage-layer" id="play-layer"></div>
+                <div class="stage-tint" id="play-tint"></div>
+              </div>
             </div>
           </div>
         </div>
       </div>
     </section>
 
+    <!-- ============ FEATURES ============ -->
     <section id="features">
       <div class="container">
-        <h2 class="section-title">Features</h2>
+        <div class="eyebrow">Features</div>
+        <h2 class="section-title">Built for people who read for hours.</h2>
         <p class="section-subtitle">
-          Built for students, developers, researchers, and anyone who spends hours reading PDFs.
+          Students, researchers, and developers living inside documentation. Everything below is
+          in the extension today — the Pro items unlock with a licence key.
         </p>
 
-        <div class="grid">
+        <div class="grid-3">
           <div class="card">
-            <h3>Dark Reading</h3>
-            <p>
-              Toggle customizable dark mode for PDFs with adjustable darkness strength and contrast.
-            </p>
+            <div class="card-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+            <div class="card-head"><h3>One-key dark mode</h3><span class="pill pill-free">Free</span></div>
+            <p>Flip any PDF with <code style="font-size:13px">Ctrl/⌘ + Shift + 1</code> or the toolbar button. No page reload, no re-render.</p>
           </div>
 
           <div class="card">
-            <h3>Advanced Modes</h3>
-            <p>
-              Use Sepia and AMOLED reading modes for better comfort and readability during long sessions.
-            </p>
+            <div class="card-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 21v-7m0-4V3m8 18v-9m0-4V3m8 18v-5m0-4V3M1 14h6m2-6h6m2 8h6" stroke-linecap="round"/></svg></div>
+            <div class="card-head"><h3>Darkness &amp; contrast</h3><span class="pill pill-free">Free</span></div>
+            <p>Two sliders, not a single on/off switch. Soften the inversion on scanned pages, push contrast on faint text.</p>
           </div>
 
           <div class="card">
-            <h3>Per-Site Rules</h3>
-            <p>
-              Configure allow/block rules for specific websites and PDF sources.
-            </p>
+            <div class="card-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9l-7-7Z" stroke-linejoin="round"/><path d="M13 2v7h7" stroke-linejoin="round"/></svg></div>
+            <div class="card-head"><h3>Online and offline</h3><span class="pill pill-free">Free</span></div>
+            <p>Works on PDFs on the web and on <code style="font-size:13px">file://</code> documents opened straight from your machine.</p>
+          </div>
+
+          <div class="card">
+            <div class="card-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 0 0 18" fill="currentColor" stroke="none" opacity=".28"/></svg></div>
+            <div class="card-head"><h3>Sepia &amp; AMOLED</h3><span class="pill pill-pro">Pro</span></div>
+            <p>A warm paper-like tint for long sessions, and a deeper low-brightness mode built for OLED panels.</p>
+          </div>
+
+          <div class="card">
+            <div class="card-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" stroke-linejoin="round"/><path d="m9 12 2 2 4-4" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+            <div class="card-head"><h3>Per-site rules</h3><span class="pill pill-pro">Pro</span></div>
+            <p>Always on for arXiv, never on for the one viewer that renders badly. Set rules per hostname and forget about them.</p>
+          </div>
+
+          <div class="card">
+            <div class="card-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9" stroke-linecap="round"/></svg></div>
+            <div class="card-head"><h3>Overlay area control</h3><span class="pill pill-pro">Pro</span></div>
+            <p>Trim the overlay away from toolbars and sidebars — and save that layout per site so it sticks.</p>
           </div>
         </div>
       </div>
     </section>
 
-    <section id="pricing">
-      <div class="container">
-        <h2 class="section-title">Simple Pricing</h2>
-        <p class="section-subtitle">
-          Start free and upgrade when you need advanced reading controls.
-        </p>
-
-        <div class="pricing">
-          <div class="price-card">
-            <h3>Free</h3>
-            <div class="price">$0</div>
-
-            <ul>
-              <li>✔ Dark mode</li>
-              <li>✔ Contrast controls</li>
-              <li>✔ Adjustable darkness</li>
-              <li>✔ Online + offline PDFs</li>
-            </ul>
-
-            <a href="#" class="button">Current Plan</a>
+    <!-- ============ PRICING ============ -->
+    <div class="pricing-wrap">
+      <section id="pricing">
+        <div class="container">
+          <div class="section-head-center">
+            <div class="eyebrow">Pricing</div>
+            <h2 class="section-title">One price. Paid once.</h2>
+            <p class="section-subtitle">
+              The core reader is free forever. Pro is a single payment that never renews.
+            </p>
           </div>
 
-          <div class="price-card featured">
-            <div class="badge">Popular</div>
-            <h3>Lifetime</h3>
-            <div class="price">$9.99</div>
+          <div class="pricing">
+            <div class="price-card">
+              <h3>Free</h3>
+              <div class="price">$0</div>
+              <div class="price-suffix">Everything you need to read comfortably.</div>
 
-            <ul>
-              <li>✔ Everything in Free</li>
-              <li>✔ Sepia mode</li>
-              <li>✔ AMOLED mode</li>
-              <li>✔ Per-site rules</li>
-              <li>✔ One-Time Payment</li>
-              <li>✔ All Future Pro Features</li>
-            </ul>
+              <ul>
+                <li class="on"><svg class="check-on" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 13 4 4L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg>Dark mode on any PDF</li>
+                <li class="on"><svg class="check-on" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 13 4 4L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg>Darkness &amp; contrast sliders</li>
+                <li class="on"><svg class="check-on" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 13 4 4L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg>Online &amp; offline PDFs</li>
+                <li class="on"><svg class="check-on" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 13 4 4L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg>Keyboard shortcut</li>
+                <li><svg class="check-off" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" stroke-linecap="round"/></svg>Sepia &amp; AMOLED modes</li>
+                <li><svg class="check-off" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" stroke-linecap="round"/></svg>Per-site rules</li>
+              </ul>
 
-            <a href="https://pdfdark.lemonsqueezy.com/checkout/buy/cf0c359b-a1a2-4826-b589-0ac1306b61ca?embed=1&discount=0"
-              class="lemonsqueezy-button button button-primary">Upgrade</a> </div>
-
-          <div class="price-card">
-            <h3>Monthly</h3>
-            <div class="price">$2.99</div>
-
-            <ul>
-             <li>✔ Everything in Free</li>
-              <li>✔ Sepia mode</li>
-              <li>✔ AMOLED mode</li>
-              <li>✔ Per-site rules</li>
-              <li>✔ Recurring Payment</li>
-              <li>✔ All Future Pro Features while subscribed</li>
-            </ul>
-
-            <a href="https://pdfdark.lemonsqueezy.com/checkout/buy/b95dd6e8-56be-4a4e-9f1b-cd3ae7b98e9f?embed=1&discount=0"
-              class="lemonsqueezy-button button">Subscribe</a>
+              <a
+                href="https://chromewebstore.google.com/detail/pdf-dark-mode/clabimobhdkbfpkdeloigeneocldkmdc"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="button"
+              >Install free</a>
             </div>
+
+            <div class="price-card featured">
+              <div class="badge">One-time payment</div>
+              <h3>Lifetime</h3>
+              <div class="price">$9.99</div>
+              <div class="price-suffix">Paid once. <b>Never renews.</b></div>
+
+              <ul>
+                <li class="on"><svg class="check-on" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 13 4 4L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg>Everything in Free</li>
+                <li class="on"><svg class="check-on" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 13 4 4L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg>Sepia reading mode</li>
+                <li class="on"><svg class="check-on" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 13 4 4L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg>AMOLED reading mode</li>
+                <li class="on"><svg class="check-on" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 13 4 4L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg>Per-site allow &amp; block rules</li>
+                <li class="on"><svg class="check-on" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 13 4 4L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg>Saved overlay area per site</li>
+                <li class="on"><svg class="check-on" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 13 4 4L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg>Every future Pro feature</li>
+              </ul>
+
+              <a
+                href="https://pdfdark.lemonsqueezy.com/checkout/buy/cf0c359b-a1a2-4826-b589-0ac1306b61ca?embed=1&amp;discount=0"
+                class="lemonsqueezy-button button button-primary"
+              >Get Pro — $9.99</a>
+              <p class="price-foot">Secure checkout via Lemon Squeezy · Licence key emailed instantly</p>
+            </div>
+          </div>
+
+          <div class="manifesto">
+            <h3>Why there's no monthly plan</h3>
+            <p>
+              PDF Dark Mode draws an overlay on a page you already have open. There's no server
+              rendering your documents, no account holding your files, no sync bill arriving every
+              month. <strong>Nothing about this tool costs money to keep running.</strong>
+            </p>
+            <p>
+              Charging rent for that would be charging you for the privilege of continuing to use
+              software that already works. So it's one payment — and every Pro feature added later
+              is included, without an upgrade prompt.
+            </p>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- ============ ACTIVATION ============ -->
+    <section id="activate">
+      <div class="container">
+        <div class="eyebrow">Activation</div>
+        <h2 class="section-title">Three steps, about a minute.</h2>
+        <p class="section-subtitle">
+          No account, no sign-in flow. Your licence key is the whole system.
+        </p>
+
+        <div class="steps">
+          <div class="step">
+            <div class="step-num">1</div>
+            <h3>Buy the licence</h3>
+            <p>Checkout runs through Lemon Squeezy. Your key lands in your inbox as soon as the payment clears.</p>
+          </div>
+          <div class="step">
+            <div class="step-num">2</div>
+            <h3>Open the extension</h3>
+            <p>Click the PDF Dark Mode icon, then <em>Have a license? Activate here</em> under the Plan section.</p>
+          </div>
+          <div class="step">
+            <div class="step-num">3</div>
+            <h3>Paste and activate</h3>
+            <p>Drop the key in and hit <em>Activate Pro</em>. Sepia, AMOLED, and per-site rules unlock immediately.</p>
+          </div>
         </div>
       </div>
     </section>
 
+    <!-- ============ FAQ ============ -->
+    <section id="faq">
+      <div class="container">
+        <div class="section-head-center">
+          <div class="eyebrow">FAQ</div>
+          <h2 class="section-title">Questions worth answering.</h2>
+        </div>
+
+        <div class="faq">
+          <details open>
+            <summary>Is $9.99 really the only payment?</summary>
+            <p>
+              Yes. There is no renewal, no expiry date, and no upgrade tier waiting behind it. Pro
+              features that ship in future versions are included in the same licence.
+            </p>
+          </details>
+
+          <details>
+            <summary>Do I need an account?</summary>
+            <p>
+              No. There's nothing to sign up for. Checkout gives you a licence key, you paste it
+              into the extension, and that's the entire process.
+            </p>
+          </details>
+
+          <details>
+            <summary>Can I use my licence on more than one browser?</summary>
+            <p>
+              Activate the same key in the extension on each browser you read in. If an activation
+              is refused because you've reached the limit on your key,
+              <a href="mailto:diwashdahal75+PDF-Dark-Mode@gmail.com">email me</a> and I'll sort it out.
+            </p>
+          </details>
+
+          <details>
+            <summary>Does it work on PDFs saved on my computer?</summary>
+            <p>
+              It does, but Chrome and Edge block extensions from local files by default. You'll need
+              to switch on <em>Allow access to file URLs</em> — the
+              <a href="help.html">help page</a> walks through it with screenshots.
+            </p>
+          </details>
+
+          <details>
+            <summary>What does the extension do with my documents?</summary>
+            <p>
+              Nothing leaves your machine. The overlay is drawn locally over the page you're already
+              viewing, and the usage counters stay on-device. Details are in the
+              <a href="privacy.html">privacy policy</a>.
+            </p>
+          </details>
+
+          <details>
+            <summary>If it's open source, why pay at all?</summary>
+            <p>
+              The whole extension is GPL-3.0 and the source is
+              <a href="https://github.com/diwash007/PDF-Dark-Mode" target="_blank" rel="noopener noreferrer">on GitHub</a>
+              — you're welcome to build it yourself. Paying for a licence is how the maintained,
+              store-published version keeps getting worked on.
+            </p>
+          </details>
+
+          <details>
+            <summary>Can I get a refund?</summary>
+            <p>
+              Refund requests are reviewed case by case. If it isn't working the way you expected,
+              <a href="mailto:diwashdahal75+PDF-Dark-Mode@gmail.com">get in touch</a> before anything
+              else — most problems turn out to be a settings fix. See the
+              <a href="terms.html">terms</a> for the full policy.
+            </p>
+          </details>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ CONTACT ============ -->
     <section id="contact">
       <div class="container">
-        <h2 class="section-title">Contact</h2>
+        <div class="eyebrow">Contact</div>
+        <h2 class="section-title">Something broken, or an idea?</h2>
         <p class="section-subtitle">
-          Reach out for support, feedback, or collaboration.
+          Bug reports and feature requests genuinely shape what gets built next.
         </p>
-        <div class="contact-card">
+
+        <div class="contact-grid">
           <a class="contact-link" href="mailto:diwashdahal75+PDF-Dark-Mode@gmail.com">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M2 6a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v.35l-10 6.25L2 6.35V6Zm0 2.7V18a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8.7l-9.47 5.92a1 1 0 0 1-1.06 0L2 8.7Z" />
-            </svg>
-            Email Us
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 6a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v.35l-10 6.25L2 6.35V6Zm0 2.7V18a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8.7l-9.47 5.92a1 1 0 0 1-1.06 0L2 8.7Z"/></svg>
+            <span><b>Email</b><span>Support, licences, and refunds</span></span>
           </a>
+
           <a class="contact-link" href="https://discord.gg/WDd4wbJ6qU" target="_blank" rel="noopener noreferrer">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M20.32 4.37a16.7 16.7 0 0 0-4.11-1.3l-.2.37c1.5.37 2.19.9 2.19.9a14.1 14.1 0 0 0-4.18-1.02 13.8 13.8 0 0 0-4.05 0A14.1 14.1 0 0 0 5.8 4.34s.7-.53 2.19-.9l-.2-.37a16.7 16.7 0 0 0-4.11 1.3C1.08 8.05.37 11.65.72 15.2a16.9 16.9 0 0 0 4.95 2.5l1.07-1.7c-.62-.24-1.22-.53-1.79-.87.15.11 1.2.92 3.41 1.25.92.14 1.84.2 2.76.2.92 0 1.84-.06 2.76-.2 2.22-.33 3.27-1.14 3.42-1.25-.57.34-1.17.63-1.8.87l1.08 1.7a16.9 16.9 0 0 0 4.95-2.5c.41-4.12-.7-7.7-2.2-10.83ZM8.9 13.18c-.81 0-1.47-.74-1.47-1.66 0-.92.65-1.66 1.47-1.66.82 0 1.49.74 1.47 1.66 0 .92-.65 1.66-1.47 1.66Zm6.2 0c-.82 0-1.47-.74-1.47-1.66 0-.92.65-1.66 1.47-1.66.82 0 1.49.74 1.47 1.66 0 .92-.65 1.66-1.47 1.66Z" />
-            </svg>
-            Join our Discord server
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.32 4.37a16.7 16.7 0 0 0-4.11-1.3l-.2.37c1.5.37 2.19.9 2.19.9a14.1 14.1 0 0 0-4.18-1.02 13.8 13.8 0 0 0-4.05 0A14.1 14.1 0 0 0 5.8 4.34s.7-.53 2.19-.9l-.2-.37a16.7 16.7 0 0 0-4.11 1.3C1.08 8.05.37 11.65.72 15.2a16.9 16.9 0 0 0 4.95 2.5l1.07-1.7c-.62-.24-1.22-.53-1.79-.87.15.11 1.2.92 3.41 1.25.92.14 1.84.2 2.76.2.92 0 1.84-.06 2.76-.2 2.22-.33 3.27-1.14 3.42-1.25-.57.34-1.17.63-1.8.87l1.08 1.7a16.9 16.9 0 0 0 4.95-2.5c.41-4.12-.7-7.7-2.2-10.83ZM8.9 13.18c-.81 0-1.47-.74-1.47-1.66 0-.92.65-1.66 1.47-1.66.82 0 1.49.74 1.47 1.66 0 .92-.65 1.66-1.47 1.66Zm6.2 0c-.82 0-1.47-.74-1.47-1.66 0-.92.65-1.66 1.47-1.66.82 0 1.49.74 1.47 1.66 0 .92-.65 1.66-1.47 1.66Z"/></svg>
+            <span><b>Discord</b><span>Talk to other readers</span></span>
           </a>
         </div>
       </div>
@@ -580,29 +1462,174 @@
 
   <footer>
     <div class="container">
-      <p>
-        PDF Dark Mode is an open-source GPL-3.0 browser extension built to improve PDF reading comfort.
-      </p>
+      <div class="footer-top">
+        <div class="footer-brand">
+          <div class="brand">
+            <img src="./assets/logo.png" alt="" width="34" height="34" />
+            <span>PDF Dark Mode</span>
+          </div>
+          <p>
+            An open-source browser extension that makes PDFs readable at any hour. GPL-3.0 licensed.
+          </p>
+        </div>
+
+        <div class="footer-col">
+          <h4>Product</h4>
+          <ul>
+            <li><a href="#modes">Reading modes</a></li>
+            <li><a href="#features">Features</a></li>
+            <li><a href="#pricing">Pricing</a></li>
+            <li><a href="#activate">Activation</a></li>
+          </ul>
+        </div>
+
+        <div class="footer-col">
+          <h4>Install</h4>
+          <ul>
+            <li><a href="https://chromewebstore.google.com/detail/pdf-dark-mode/clabimobhdkbfpkdeloigeneocldkmdc" target="_blank" rel="noopener noreferrer">Chrome Web Store</a></li>
+            <li><a href="https://microsoftedge.microsoft.com/addons/detail/pdf-dark-mode/nghkmkbjhpgdibgopgekgjnbocfmnjdo" target="_blank" rel="noopener noreferrer">Edge Add-ons</a></li>
+            <li><a href="https://github.com/diwash007/PDF-Dark-Mode" target="_blank" rel="noopener noreferrer">Source on GitHub</a></li>
+          </ul>
+        </div>
+
+        <div class="footer-col">
+          <h4>Support</h4>
+          <ul>
+            <li><a href="help.html">Help</a></li>
+            <li><a href="#faq">FAQ</a></li>
+            <li><a href="privacy.html">Privacy policy</a></li>
+            <li><a href="terms.html">Terms &amp; conditions</a></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="footer-bottom">
+        <span>Built to make long reading sessions easier on the eyes.</span>
+        <span>GPL-3.0 · Open source</span>
+      </div>
     </div>
   </footer>
+
   <script>
     (() => {
-      const chromeBtn = document.getElementById('install-chrome');
-      const edgeBtn = document.getElementById('install-edge');
-      if (!chromeBtn || !edgeBtn) return;
+      "use strict";
 
-      const brandList = navigator.userAgentData?.brands || [];
-      const brandNames = brandList.map((brand) => brand.brand);
-      const userAgent = navigator.userAgent;
-      const isEdge = brandNames.some((brand) => /Microsoft Edge|Edg/i.test(brand)) || /Edg\//i.test(userAgent);
+      /* ---- sticky header hairline ---- */
+      const header = document.getElementById("site-header");
+      const onScroll = () => header.classList.toggle("scrolled", window.scrollY > 8);
+      onScroll();
+      window.addEventListener("scroll", onScroll, { passive: true });
 
-      // Highlight current browser's button as primary; keep both visible always
-      if (isEdge) {
-        edgeBtn.classList.add('button-primary');
-        chromeBtn.classList.remove('button-primary');
-      } else {
-        chromeBtn.classList.add('button-primary');
-        edgeBtn.classList.remove('button-primary');
+      /* ---- highlight the install button for the current browser ---- */
+      const chromeBtn = document.getElementById("install-chrome");
+      const edgeBtn = document.getElementById("install-edge");
+      if (chromeBtn && edgeBtn) {
+        const brands = (navigator.userAgentData && navigator.userAgentData.brands) || [];
+        const isEdge =
+          brands.some((b) => /Microsoft Edge|Edg/i.test(b.brand)) || /Edg\//i.test(navigator.userAgent);
+        const primary = isEdge ? edgeBtn : chromeBtn;
+        const secondary = isEdge ? chromeBtn : edgeBtn;
+        primary.classList.add("button-primary");
+        secondary.classList.remove("button-primary");
+        if (isEdge) primary.parentNode.prepend(primary);
+      }
+
+      /*
+        Mirrors scripts/invert.js exactly: a fixed layer painted over the document in
+        `difference` blend mode, with contrast/brightness applied to the layer itself.
+        Sepia adds a second multiply layer. Keep these in sync with the extension.
+      */
+      const clamp = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+
+      function paint(layer, tint, mode, strength, contrast) {
+        const s = clamp(Number(strength) || 255, 200, 255);
+        const c = clamp(Number(contrast) || 100, 50, 130);
+        const hex = mode === "amoled" ? "ff" : s.toString(16).padStart(2, "0");
+        const contrastValue = mode === "amoled" ? Math.max(c, 110) : c;
+        const brightnessValue = mode === "amoled" ? 78 : 100;
+
+        layer.style.backgroundColor = "#" + hex + "ffffff";
+        layer.style.filter = "contrast(" + contrastValue + "%) brightness(" + brightnessValue + "%)";
+        if (tint) tint.style.display = mode === "sepia" ? "block" : "none";
+      }
+
+      /* ---- hero: before / after comparison ---- */
+      const compareLayer = document.getElementById("compare-layer");
+      const compareInput = document.getElementById("compare-input");
+      const compareStage = document.getElementById("compare-stage");
+      const compareHandle = document.getElementById("compare-handle");
+
+      if (compareLayer && compareInput) {
+        paint(compareLayer, null, "dark", 255, 100);
+
+        const setSplit = (pct) => {
+          // the layer only covers the region to the right of the handle
+          compareLayer.style.clipPath = "inset(0 0 0 " + pct + "%)";
+          compareHandle.style.left = pct + "%";
+        };
+
+        setSplit(50);
+        compareInput.addEventListener("input", () => setSplit(Number(compareInput.value)));
+
+        // nudge on first view so the interaction is discoverable
+        if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+          const io = new IntersectionObserver((entries) => {
+            entries.forEach((entry) => {
+              if (!entry.isIntersecting) return;
+              io.disconnect();
+              let t = 0;
+              const id = setInterval(() => {
+                t += 1;
+                const pct = 50 + Math.sin(t / 5) * 14 * Math.max(0, 1 - t / 40);
+                setSplit(pct);
+                compareInput.value = String(pct);
+                if (t >= 40) { clearInterval(id); setSplit(50); compareInput.value = "50"; }
+              }, 26);
+            });
+          }, { threshold: 0.45 });
+          io.observe(compareStage);
+        }
+      }
+
+      /* ---- modes playground ---- */
+      const playLayer = document.getElementById("play-layer");
+      const playTint = document.getElementById("play-tint");
+      const strengthInput = document.getElementById("strength");
+      const contrastInput = document.getElementById("contrast");
+      const strengthVal = document.getElementById("strength-val");
+      const contrastVal = document.getElementById("contrast-val");
+      const modeDesc = document.getElementById("mode-desc");
+      const tabs = Array.from(document.querySelectorAll(".mode-tab"));
+
+      const COPY = {
+        dark: "A clean inversion that keeps figures and diagrams legible. Adjust the darkness and contrast until the page sits right for your screen.",
+        sepia: "A warm amber wash layered over the inversion. Easier on the eyes than pure grey when you're several hours into a document.",
+        amoled: "Deeper blacks and reduced brightness, built for OLED panels where true black costs no backlight at all.",
+      };
+
+      let mode = "dark";
+
+      function render() {
+        if (!playLayer) return;
+        paint(playLayer, playTint, mode, strengthInput.value, contrastInput.value);
+        strengthVal.textContent = mode === "amoled" ? "255" : strengthInput.value;
+        contrastVal.textContent =
+          (mode === "amoled" ? Math.max(Number(contrastInput.value), 110) : contrastInput.value) + "%";
+      }
+
+      tabs.forEach((tab) => {
+        tab.addEventListener("click", () => {
+          mode = tab.dataset.mode;
+          tabs.forEach((t) => t.setAttribute("aria-selected", String(t === tab)));
+          modeDesc.textContent = COPY[mode];
+          render();
+        });
+      });
+
+      if (strengthInput && contrastInput) {
+        strengthInput.addEventListener("input", render);
+        contrastInput.addEventListener("input", render);
+        render();
       }
     })();
   </script>
