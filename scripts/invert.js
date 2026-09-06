@@ -1,251 +1,210 @@
+/*
+ * Content script. Injected as ["scripts/core.js", "scripts/invert.js"], so
+ * PDFDarkModeCore is already defined by the time this runs.
+ *
+ * Can be injected into the same page many times (tab update, popup change,
+ * keyboard shortcut, settings sync), so everything here is idempotent.
+ */
+
 (() => {
-  const DARK_LAYER_ID = "darkDiv";
-  const TINT_LAYER_ID = "tintDiv";
+  const core = globalThis.PDFDarkModeCore;
+  if (!core) {
+    console.error("PDF Dark Mode: core module missing, refusing to run");
+    return;
+  }
+
   const ACTION_DOCK_ID = "pdfDarkModeDock";
   const TOGGLE_BUTTON_ID = "pdfDarkModeToggle";
   const INFO_BUTTON_ID = "pdfDarkModeInfo";
+
+  /* How long to keep watching for a PDF viewer to appear on an ambiguous page. */
+  const EMBED_WATCH_MS = 10000;
+  const EMBED_DEBOUNCE_MS = 120;
+
   const href = window.location.href;
-  const pageEnabled =
-    typeof window.__pdfDarkModePageEnabled === "boolean"
-      ? window.__pdfDarkModePageEnabled
-      : true;
 
-  chrome.storage.sync.get(
-    ["active", "strength", "contrast", "mode", "siteRules", "billing", "overlayAreaSettings", "siteOverlayAreas"],
-    (state) => {
-      const entitlement = getEntitlement(state.billing);
-      const policy = buildPagePolicy(href, state.siteRules || {}, entitlement);
-      installFloatingActions(policy.shouldApply);
-      applyTheme(state, policy, entitlement);
+  const SETTINGS_KEYS = [
+    "active",
+    "strength",
+    "contrast",
+    "mode",
+    "siteRules",
+    "billing",
+    "overlayAreaSettings",
+    "siteOverlayAreas",
+    "showDock",
+  ];
 
-      if (policy.requiresEmbeddedPreview) {
-        installPreviewObserver(state, policy, entitlement);
-      }
-    }
-  );
+  chrome.storage.sync.get(SETTINGS_KEYS, (state) => {
+    if (chrome.runtime.lastError) return;
+    render(state);
+  });
 
-  function buildPagePolicy(url, siteRules, entitlement) {
-    const hostname = getHostnameFromUrl(url);
-    const siteRule = entitlement.isPro && hostname ? siteRules[hostname] : "";
+  function render(state) {
+    const entitlement = core.getEntitlement(state.billing);
+    const policy = core.buildPolicy(href, state.siteRules || {}, entitlement);
+    const hasEmbed = policy.requiresPdfEmbed ? core.hasPdfEmbed() : false;
 
-    if (siteRule === "block") {
-      return { shouldApply: false, requiresEmbeddedPreview: false };
-    }
-
-    const isStandardPdf =
-      /\.pdf($|[?#&])/i.test(url) ||
-      (/^chrome-extension:\/\/[^/]+\/index\.html/i.test(url) &&
-        (new URL(url).searchParams.get("src") || "").match(
-          /\.pdf($|[?#&])|%2Epdf/i
-        )) ||
-      /^https:\/\/drive\.google\.com\/file\/d\/[^/]+\/(?:view|preview)/i.test(
-        url
-      ) ||
-      /^https:\/\/docs\.google\.com\/(?:viewer|gview)/i.test(url);
-
-    if (isStandardPdf) {
-      return { shouldApply: true, requiresEmbeddedPreview: false };
-    }
-
-    if (siteRule === "allow") {
-      return { shouldApply: true, requiresEmbeddedPreview: false };
-    }
-
-    return { shouldApply: false, requiresEmbeddedPreview: false };
-  }
-
-  function installPreviewObserver(state, policy, entitlement) {
-    if (window.__pdfDarkModePreviewObserverInstalled) {
-      return;
-    }
-    window.__pdfDarkModePreviewObserverInstalled = true;
-
-    let queued = false;
-    const observer = new MutationObserver((mutations) => {
-      if (queued || areOnlyExtensionLayerMutations(mutations)) {
-        return;
-      }
-
-      queued = true;
-      setTimeout(() => {
-        queued = false;
-        applyTheme(state, policy, entitlement);
-      }, 120);
+    const visible = core.shouldPaint({
+      shouldInject: policy.shouldInject,
+      requiresPdfEmbed: policy.requiresPdfEmbed,
+      active: state.active !== false,
+      pageEnabled: isPageEnabled(),
+      hasEmbed,
     });
 
-    observer.observe(document.documentElement || document.body, {
-      childList: true,
-      subtree: true,
-    });
-  }
+    if (!visible) {
+      core.removeOverlay();
 
-  function areOnlyExtensionLayerMutations(mutations) {
-    const isExtensionLayerNode = (node) =>
-      node?.nodeType === Node.ELEMENT_NODE &&
-      (node.id === DARK_LAYER_ID || node.id === TINT_LAYER_ID);
-
-    return mutations.every((mutation) => {
-      const added = Array.from(mutation.addedNodes || []);
-      const removed = Array.from(mutation.removedNodes || []);
-      const touched = [...added, ...removed];
-
-      if (touched.length > 0 && touched.some((node) => !isExtensionLayerNode(node))) {
-        return false;
+      // The URL mentions a PDF but no viewer is on the page yet — it may still be
+      // loading. Watch briefly rather than giving up or darkening blindly.
+      if (policy.shouldInject && policy.requiresPdfEmbed && !hasEmbed && state.active !== false) {
+        watchForEmbed();
       }
 
-      return !mutation.target || isExtensionLayerNode(mutation.target);
-    });
-  }
-
-  function applyTheme(state, policy, entitlement) {
-    removeLayer(DARK_LAYER_ID);
-    removeLayer(TINT_LAYER_ID);
-
-    if (!policy.shouldApply || !getPageToggleState()) {
+      // Keep the dock while the page is merely toggled off, so the user can turn
+      // it back on; drop it entirely when this is not a PDF or the extension is off.
+      const dockStillUseful =
+        policy.shouldInject && state.active !== false && (!policy.requiresPdfEmbed || hasEmbed);
+      installDock(dockStillUseful && state.showDock !== false);
       return;
     }
 
-    if (policy.requiresEmbeddedPreview && !hasEmbeddedPdfPreview()) {
-      return;
-    }
+    paint(state, entitlement);
+    installDock(state.showDock !== false);
+  }
 
-    const strength = clamp(Number(state.strength) || 255, 200, 255);
-    const contrast = clamp(Number(state.contrast) || 100, 50, 130);
-    const mode = !entitlement.isPro && state.mode !== "dark" ? "dark" : state.mode || "dark";
-    const blendStrengthHex = mode === "amoled" ? "ff" : strength.toString(16).padStart(2, "0");
-    const contrastValue = mode === "amoled" ? Math.max(contrast, 110) : contrast;
-    const brightnessValue = mode === "amoled" ? 78 : 100;
-
-    const hostname = getHostnameFromUrl(href);
+  function paint(state, entitlement) {
+    const hostname = core.getHostnameFromUrl(href);
     const siteAreas = state.siteOverlayAreas || {};
-    const globalArea = state.overlayAreaSettings || { top: 0, right: 0, bottom: 0, left: 0 };
-    
-    // Apply custom area settings for pro users (site-specific) or all users (global defaults)
-    const area = entitlement.isPro && hostname && siteAreas[hostname] 
-      ? siteAreas[hostname] 
-      : globalArea;
+    const area =
+      entitlement.isPro && hostname && siteAreas[hostname]
+        ? siteAreas[hostname]
+        : state.overlayAreaSettings;
 
-    const darkLayer = document.createElement("div");
-    darkLayer.id = DARK_LAYER_ID;
-    darkLayer.setAttribute(
-      "style",
-      `
-        position: fixed;
-        pointer-events: none;
-        top: ${area.top}px;
-        left: ${area.left}px;
-        right: ${area.right}px;
-        bottom: ${area.bottom}px;
-        width: calc(100vw - ${area.left}px - ${area.right}px);
-        height: calc(100vh - ${area.top}px - ${area.bottom}px);
-        background-color: #${blendStrengthHex}ffffff;
-        mix-blend-mode: difference;
-        z-index: 2147483646;
-        filter: contrast(${contrastValue}%) brightness(${brightnessValue}%);
-      `
+    core.paintOverlay(
+      core.buildOverlayStyles({
+        mode: state.mode,
+        strength: state.strength,
+        contrast: state.contrast,
+        area,
+        isPro: entitlement.isPro,
+      })
     );
-    document.body.appendChild(darkLayer);
-
-    if (mode === "sepia") {
-      const tintLayer = document.createElement("div");
-      tintLayer.id = TINT_LAYER_ID;
-      tintLayer.setAttribute(
-        "style",
-        `
-          position: fixed;
-          pointer-events: none;
-          top: ${area.top}px;
-          left: ${area.left}px;
-          right: ${area.right}px;
-          bottom: ${area.bottom}px;
-          width: calc(100vw - ${area.left}px - ${area.right}px);
-          height: calc(100vh - ${area.top}px - ${area.bottom}px);
-          background-color: rgba(112, 66, 20, 0.2);
-          mix-blend-mode: multiply;
-          z-index: 2147483647;
-        `
-      );
-      document.body.appendChild(tintLayer);
-    }
   }
 
-  function installFloatingActions(shouldShow) {
-    if (!shouldShow || document.getElementById(ACTION_DOCK_ID)) {
+  /* ------------------------------------------------------- embed watching */
+
+  function watchForEmbed() {
+    if (window.__pdfDarkModeEmbedWatcher) return;
+
+    let timer = null;
+    const observer = new MutationObserver(() => {
+      if (timer) return;
+      timer = setTimeout(() => {
+        timer = null;
+        if (!core.hasPdfEmbed()) return;
+        stop();
+        chrome.storage.sync.get(SETTINGS_KEYS, (fresh) => {
+          if (chrome.runtime.lastError) return;
+          render(fresh);
+        });
+      }, EMBED_DEBOUNCE_MS);
+    });
+
+    function stop() {
+      observer.disconnect();
+      if (timer) clearTimeout(timer);
+      clearTimeout(giveUp);
+      window.__pdfDarkModeEmbedWatcher = null;
+    }
+
+    const giveUp = setTimeout(stop, EMBED_WATCH_MS);
+    window.__pdfDarkModeEmbedWatcher = stop;
+
+    const root = document.documentElement || document.body;
+    if (!root) {
+      stop();
       return;
     }
+    observer.observe(root, { childList: true, subtree: true });
+  }
+
+  /* ------------------------------------------------------------ page state */
+
+  function isPageEnabled() {
+    return window.__pdfDarkModePageEnabled !== false;
+  }
+
+  function setPageEnabled(enabled) {
+    window.__pdfDarkModePageEnabled = !!enabled;
+  }
+
+  /* ------------------------------------------------------------- floating dock */
+
+  function removeDock() {
+    const existing = document.getElementById(ACTION_DOCK_ID);
+    if (existing) existing.remove();
+  }
+
+  function installDock(shouldShow) {
+    if (!shouldShow) {
+      removeDock();
+      return;
+    }
+
+    // Already present: just resync the label so a re-injection cannot leave it lying.
+    const existing = document.getElementById(ACTION_DOCK_ID);
+    if (existing) {
+      syncToggleLabel(existing.querySelector(`#${TOGGLE_BUTTON_ID}`));
+      return;
+    }
+
+    if (!document.body) return;
 
     const dock = document.createElement("div");
     dock.id = ACTION_DOCK_ID;
     dock.setAttribute(
       "style",
-      `
-        position: fixed;
-        right: 16px;
-        bottom: 16px;
-        z-index: 2147483647;
-        display: flex;
-        flex-direction: column;
-        align-items: flex-end;
-        gap: 8px;
-      `
+      "position:fixed;right:16px;bottom:16px;z-index:2147483647;" +
+        "display:flex;flex-direction:column;align-items:flex-end;gap:8px;"
     );
+
+    const buttonStyle =
+      "border:1px solid rgba(255,255,255,0.18);border-radius:999px;" +
+      "background:rgba(17,24,39,0.92);color:#f9fafb;cursor:pointer;" +
+      "box-shadow:0 6px 18px rgba(0,0,0,0.18);" +
+      'font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;';
 
     const infoButton = document.createElement("button");
     infoButton.id = INFO_BUTTON_ID;
     infoButton.type = "button";
     infoButton.title = "Open PDF Dark Mode";
-    infoButton.setAttribute("aria-label", "Open PDF Dark Mode popup");
+    infoButton.setAttribute("aria-label", "Open PDF Dark Mode settings");
     infoButton.textContent = "i";
     infoButton.setAttribute(
       "style",
-      `
-        width: 28px;
-        height: 28px;
-        border: 1px solid rgba(255, 255, 255, 0.18);
-        border-radius: 999px;
-        padding: 0;
-        background: rgba(17, 24, 39, 0.92);
-        color: #f9fafb;
-        font: 700 14px/1 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-        cursor: pointer;
-        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
-      `
+      buttonStyle + "width:28px;height:28px;padding:0;font-size:14px;font-weight:700;line-height:1;"
     );
-
-    infoButton.addEventListener("click", () => {
-      openPopupFromPage();
-    });
+    infoButton.addEventListener("click", openPopupFromPage);
 
     const toggleButton = document.createElement("button");
     toggleButton.id = TOGGLE_BUTTON_ID;
     toggleButton.type = "button";
-    toggleButton.setAttribute("aria-pressed", String(getPageToggleState()));
-    toggleButton.title = "Toggle dark mode";
-    toggleButton.textContent = getPageToggleState() ? "Dark mode: On" : "Dark mode: Off";
+    toggleButton.title = "Toggle dark mode on this page";
     toggleButton.setAttribute(
       "style",
-      `
-        border: 1px solid rgba(255, 255, 255, 0.18);
-        border-radius: 999px;
-        padding: 8px 12px;
-        background: rgba(17, 24, 39, 0.92);
-        color: #f9fafb;
-        font: 600 12px/1.2 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-        cursor: pointer;
-        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
-      `
+      buttonStyle + "padding:8px 12px;font-size:12px;font-weight:600;line-height:1.2;"
     );
+    syncToggleLabel(toggleButton);
 
     toggleButton.addEventListener("click", () => {
-      const nextEnabled = !getPageToggleState();
-      setPageToggleState(nextEnabled);
-      toggleButton.setAttribute("aria-pressed", String(nextEnabled));
-      toggleButton.textContent = nextEnabled ? "Dark mode: On" : "Dark mode: Off";
+      setPageEnabled(!isPageEnabled());
+      syncToggleLabel(toggleButton);
       chrome.runtime.sendMessage({ type: "analytics-event", event: "pageToggle" });
-      chrome.storage.sync.get(["active", "siteRules", "billing"], (state) => {
-        const entitlement = getEntitlement(state.billing);
-        const policy = buildPagePolicy(href, state.siteRules || {}, entitlement);
-        applyTheme(state, policy, entitlement);
+      chrome.storage.sync.get(SETTINGS_KEYS, (state) => {
+        if (chrome.runtime.lastError) return;
+        render(state);
       });
     });
 
@@ -254,79 +213,27 @@
     document.body.appendChild(dock);
   }
 
+  function syncToggleLabel(button) {
+    if (!button) return;
+    const enabled = isPageEnabled();
+    button.setAttribute("aria-pressed", String(enabled));
+    button.textContent = enabled ? "Dark mode: On" : "Dark mode: Off";
+  }
+
   function openPopupFromPage() {
-    if (globalThis.chrome?.runtime?.sendMessage) {
-      chrome.runtime.sendMessage({ type: "open-popup" }, () => {
-        const runtimeError = chrome.runtime.lastError?.message;
-        if (runtimeError && globalThis.chrome?.runtime?.getURL) {
-          window.open(chrome.runtime.getURL("popup/popup.html"), "_blank", "noopener,noreferrer");
-        }
-      });
+    const fallback = () => {
+      if (globalThis.chrome?.runtime?.getURL) {
+        window.open(chrome.runtime.getURL("popup/popup.html"), "_blank", "noopener,noreferrer");
+      }
+    };
+
+    if (!globalThis.chrome?.runtime?.sendMessage) {
+      fallback();
       return;
     }
 
-    if (globalThis.chrome?.runtime?.getURL) {
-      window.open(chrome.runtime.getURL("popup/popup.html"), "_blank", "noopener,noreferrer");
-    }
-  }
-
-  function getPageToggleState() {
-    return window.__pdfDarkModePageEnabled !== false && pageEnabled;
-  }
-
-  function setPageToggleState(enabled) {
-    window.__pdfDarkModePageEnabled = !!enabled;
-  }
-
-  function hasEmbeddedPdfPreview() {
-    return !!document.querySelector(
-      'embed[type="application/pdf"], object[type="application/pdf"], iframe[src*=".pdf"], iframe[src*="/file/d/"][src*="/preview"], iframe[src*="docs.google.com/gview"], iframe[src*="/viewerng/viewer"], iframe[src*="/viewer"]'
-    );
-  }
-
-  function getHostnameFromUrl(url) {
-    try {
-      return new URL(url).hostname;
-    } catch {
-      return "";
-    }
-  }
-
-  function removeLayer(id) {
-    const layer = document.getElementById(id);
-    if (layer) {
-      layer.remove();
-    }
-  }
-
-  function clamp(value, min, max) {
-    return Math.max(min, Math.min(max, value));
-  }
-
-  function getEntitlement(billingState) {
-    const billing = {
-      ...defaultBilling(),
-      ...(billingState || {}),
-    };
-    const hasPaidPlan =
-      billing.status === "active" &&
-      (billing.plan === "pro" || billing.plan === "lifetime");
-
-    return { isPro: hasPaidPlan };
-  }
-
-  function defaultBilling() {
-    return {
-      plan: "free",
-      status: "inactive",
-      source: "free",
-      licenseKey: "",
-      instanceId: "",
-      instanceName: "",
-      lastValidatedAt: "",
-      lastValidationAttemptAt: "",
-      licenseStatus: "not_configured",
-      errorMessage: "",
-    };
+    chrome.runtime.sendMessage({ type: "open-popup" }, (response) => {
+      if (chrome.runtime.lastError || !response?.ok) fallback();
+    });
   }
 })();
