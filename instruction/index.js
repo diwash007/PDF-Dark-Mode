@@ -49,8 +49,9 @@ chrome.storage.sync.get("billing", ({ billing }) => {
     secondaryCta.textContent = "View Website";
     secondaryCta.href = "https://diwashdahal.com.np/PDF-Dark-Mode"; // Or a specific changelog anchor
   } else {
-    secondaryCta.textContent = "Manage Subscription";
-    secondaryCta.href = "https://diwashdahal.com.np/PDF-Dark-Mode#pricing";
+    // Pro is a one-time licence — there is no subscription to manage.
+    secondaryCta.textContent = "View Website";
+    secondaryCta.href = "https://diwashdahal.com.np/PDF-Dark-Mode";
   }
   
   secondaryCta.target = "_blank";
