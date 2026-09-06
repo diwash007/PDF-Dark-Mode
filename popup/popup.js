@@ -1,3 +1,13 @@
+const core = globalThis.PDFDarkModeCore;
+
+// Aliased at the top: these are used during module initialisation below,
+// so they must not sit in a temporal dead zone.
+const getHostnameFromUrl = core.getHostnameFromUrl;
+const getEntitlement = core.getEntitlement;
+const defaultBilling = core.defaultBilling;
+const clamp = core.clamp;
+
+
 const PRICING_URL = "https://diwashdahal.com.np/PDF-Dark-Mode#pricing";
 const SUPPORT_URL = "https://diwashdahal.com.np/PDF-Dark-Mode#contact";
 const ENABLE_DEBUG_BILLING_TOOLS = false;
@@ -5,6 +15,9 @@ const EXTENSION_DETAILS_URL = `chrome://extensions/?id=${chrome.runtime.id}`;
 
 const slider = document.getElementById("slider");
 const toggle = document.getElementById("toggle");
+const toggleStateLabel = document.getElementById("toggleStateLabel");
+const shortcutHint = document.getElementById("shortcutHint");
+const showDockToggle = document.getElementById("showDockToggle");
 const fileAccessBanner = document.getElementById("fileAccessBanner");
 const openFileAccessSettingsBtn = document.getElementById("openFileAccessSettingsBtn");
 const contrastSlider = document.getElementById("contrastSlider");
@@ -155,10 +168,14 @@ saveAreaBtn.addEventListener("click", async () => {
 
 toggle.addEventListener("click", () => {
   activeState = !activeState;
-  toggle.style.color = activeState ? "lime" : "red";
+  renderToggleState();
   persistSyncValue("active", activeState);
   applyPreviewFromControls();
   sendAnalyticsEvent("iconToggles");
+});
+
+showDockToggle.addEventListener("change", () => {
+  persistSyncValue("showDock", showDockToggle.checked);
 });
 
 modeSelect.addEventListener("change", () => {
@@ -292,6 +309,43 @@ window.addEventListener("DOMContentLoaded", () => {
   });
 });
 
+/*
+ * State is conveyed by text and aria-pressed, not just colour. The old version
+ * set style.color to lime or red, which is invisible to screen readers and hard
+ * to read for red-green colour blindness.
+ */
+function renderToggleState() {
+  toggle.setAttribute("aria-pressed", String(activeState));
+  toggle.classList.toggle("is-on", activeState);
+  toggle.classList.toggle("is-off", !activeState);
+  if (toggleStateLabel) {
+    toggleStateLabel.textContent = activeState ? "Dark mode on" : "Dark mode off";
+  }
+}
+
+/*
+ * Show the shortcut the user actually has bound. This used to be hardcoded to
+ * "Command + Shift + 1", which is wrong on Windows and Linux, and wrong for
+ * anyone who rebound it in chrome://extensions/shortcuts.
+ */
+function renderShortcutHint() {
+  if (!shortcutHint || !chrome.commands?.getAll) return;
+
+  chrome.commands.getAll((commands) => {
+    if (chrome.runtime.lastError) return;
+
+    const command = (commands || []).find((entry) => entry.name === "run-dark-mode");
+    const binding = command?.shortcut;
+
+    shortcutHint.textContent = binding
+      ? binding.split("+").join(" + ")
+      : "No shortcut set";
+    shortcutHint.title = binding
+      ? "Keyboard shortcut for toggling dark mode"
+      : "Set one in chrome://extensions/shortcuts";
+  });
+}
+
 function loadVersionFromManifest() {
   const manifest = chrome.runtime.getManifest();
   const versionDisplay = document.getElementById("versionDisplay");
@@ -314,7 +368,8 @@ function setActiveTab(tabId) {
 
 async function initializePopup() {
   loadVersionFromManifest();
-  
+  renderShortcutHint();
+
   const syncState = await getSyncState([
     "strength",
     "contrast",
@@ -323,6 +378,7 @@ async function initializePopup() {
     "billing",
     "overlayAreaSettings",
     "siteOverlayAreas",
+    "showDock",
   ]);
 
   entitlement = getEntitlement(syncState.billing);
@@ -330,8 +386,9 @@ async function initializePopup() {
   slider.value = syncState.strength || 255;
   contrastSlider.value = syncState.contrast || 100;
   modeSelect.value = enforceAllowedMode(syncState.mode || "dark");
-  activeState = typeof syncState.active === "boolean" ? syncState.active : true;
-  toggle.style.color = activeState ? "lime" : "red";
+  activeState = syncState.active !== false;
+  showDockToggle.checked = syncState.showDock !== false;
+  renderToggleState();
 
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   currentTab = tab || null;
@@ -385,101 +442,62 @@ async function detectAndUpdateSliderMax(tab) {
   }
 }
 
+/*
+ * Live preview while the user drags a slider.
+ *
+ * The styles are computed here with the shared core, then handed to the page as
+ * plain strings. The injected function is a dumb DOM setter on purpose — it used
+ * to be a 70-line copy of the overlay renderer, which is exactly how the three
+ * implementations drifted apart in the first place.
+ *
+ * Committed changes (the `change` event) additionally reach every other open PDF
+ * via the worker's storage listener; this path only keeps the visible tab in sync
+ * without spending a storage write per pixel of slider travel.
+ */
 async function applyPreviewFromControls() {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   currentTab = tab || currentTab;
-  const tabUrl = currentTab?.url || "";
 
   const siteRules = (await getSyncState(["siteRules"])).siteRules || {};
-  const policy = buildUrlPolicy(tabUrl, siteRules, entitlement);
+  const policy = core.buildPolicy(currentTab?.url || "", siteRules, entitlement);
 
-  if (!policy.shouldInject || !currentTab?.id) {
-    return;
-  }
+  if (!policy.shouldInject || !currentTab?.id) return;
 
-  const settings = {
-    active: activeState,
-    strength: Number(slider.value),
-    contrast: Number(contrastSlider.value),
-    mode: enforceAllowedMode(modeSelect.value),
-    overlayArea: overlayAreaCustomizations,
-  };
+  const styles = activeState
+    ? core.buildOverlayStyles({
+        mode: enforceAllowedMode(modeSelect.value),
+        strength: Number(slider.value),
+        contrast: Number(contrastSlider.value),
+        area: overlayAreaCustomizations,
+        isPro: entitlement.isPro,
+      })
+    : null;
 
   await chrome.scripting
     .executeScript({
       target: { tabId: currentTab.id },
-      func: (previewSettings) => {
-        const DARK_LAYER_ID = "darkDiv";
-        const TINT_LAYER_ID = "tintDiv";
+      func: (payload) => {
+        ["darkDiv", "tintDiv"].forEach((id) => {
+          const node = document.getElementById(id);
+          if (node) node.remove();
+        });
 
-        const removeLayer = (id) => {
-          const layer = document.getElementById(id);
-          if (layer) layer.remove();
+        if (!payload || !document.body) return;
+
+        const add = (id, style) => {
+          const layer = document.createElement("div");
+          layer.id = id;
+          layer.setAttribute("style", style);
+          document.body.appendChild(layer);
         };
 
-        removeLayer(DARK_LAYER_ID);
-        removeLayer(TINT_LAYER_ID);
-
-        if (!previewSettings.active) return;
-
-        const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
-        const strength = clamp(Number(previewSettings.strength) || 255, 200, 255);
-        const contrast = clamp(Number(previewSettings.contrast) || 100, 50, 130);
-        const mode = previewSettings.mode || "dark";
-        const blendStrengthHex =
-          mode === "amoled" ? "ff" : strength.toString(16).padStart(2, "0");
-        const contrastValue = mode === "amoled" ? Math.max(contrast, 110) : contrast;
-        const brightnessValue = mode === "amoled" ? 78 : 100;
-
-        const area = previewSettings.overlayArea || { top: 0, right: 0, bottom: 0, left: 0 };
-
-        const darkLayer = document.createElement("div");
-        darkLayer.id = DARK_LAYER_ID;
-        darkLayer.setAttribute(
-          "style",
-          `
-            position: fixed;
-            pointer-events: none;
-            top: ${area.top}px;
-            left: ${area.left}px;
-            right: ${area.right}px;
-            bottom: ${area.bottom}px;
-            width: calc(100vw - ${area.left}px - ${area.right}px);
-            height: calc(100vh - ${area.top}px - ${area.bottom}px);
-            background-color: #${blendStrengthHex}ffffff;
-            mix-blend-mode: difference;
-            z-index: 2147483646;
-            filter: contrast(${contrastValue}%) brightness(${brightnessValue}%);
-          `
-        );
-        document.body.appendChild(darkLayer);
-
-        if (mode === "sepia") {
-          const tintLayer = document.createElement("div");
-          tintLayer.id = TINT_LAYER_ID;
-          tintLayer.setAttribute(
-            "style",
-            `
-              position: fixed;
-              pointer-events: none;
-              top: ${area.top}px;
-              left: ${area.left}px;
-              right: ${area.right}px;
-              bottom: ${area.bottom}px;
-              width: calc(100vw - ${area.left}px - ${area.right}px);
-              height: calc(100vh - ${area.top}px - ${area.bottom}px);
-              background-color: rgba(112, 66, 20, 0.2);
-              mix-blend-mode: multiply;
-              z-index: 2147483647;
-            `
-          );
-          document.body.appendChild(tintLayer);
-        }
+        add("darkDiv", payload.dark);
+        if (payload.tint) add("tintDiv", payload.tint);
       },
-      args: [settings],
+      args: [styles && { dark: styles.dark, tint: styles.tint }],
     })
-    .catch((error) => {
-      console.error("PDF Dark Mode: failed to apply mode", error);
+    .catch(() => {
+      /* Tab closed or navigated mid-drag. */
     });
 }
 
@@ -493,8 +511,11 @@ function renderEntitlementUI() {
   }
   licenseKeyInput.value = entitlement.billing.licenseKey || "";
 
-  modeSelect.options[1].disabled = !entitlement.isPro;
-  modeSelect.options[2].disabled = !entitlement.isPro;
+  // Keyed by value, not index — reordering the <option> list used to silently
+  // gate the wrong modes.
+  Array.from(modeSelect.options).forEach((option) => {
+    option.disabled = option.value !== "dark" && !entitlement.isPro;
+  });
 
   const controls = [
     allowCurrentSiteBtn,
@@ -508,7 +529,7 @@ function renderEntitlementUI() {
     element.disabled = !entitlement.isPro;
   });
 
-  subscribeBtn.style.display = entitlement.isPro ? "none" : "block";
+  subscribeBtn.classList.toggle("hidden", entitlement.isPro);
 
   siteRuleBox.classList.toggle("locked", !entitlement.isPro);
 }
@@ -658,15 +679,6 @@ function getSyncState(keys) {
   });
 }
 
-function getHostnameFromUrl(url) {
-  if (!url) return "";
-  try {
-    return new URL(url).hostname;
-  } catch {
-    return "";
-  }
-}
-
 function normalizeHostname(value) {
   const text = (value || "").trim().toLowerCase();
   if (!text) return "";
@@ -683,72 +695,11 @@ function normalizeLicenseKey(value) {
   return (value || "").trim().toUpperCase();
 }
 
-function buildUrlPolicy(url, siteRules, currentEntitlement) {
-  const host = getHostnameFromUrl(url);
-  const canUseSiteRules = currentEntitlement.isPro;
-  const siteRule = canUseSiteRules && host ? siteRules[host] : "";
-
-  if (siteRule === "block") {
-    return { shouldInject: false };
-  }
-
-  const isStandardPdf =
-    /\.pdf($|[?#&])/i.test(url || "") ||
-    (/^chrome-extension:\/\/[^/]+\/index\.html/i.test(url || "") &&
-      (new URL(url).searchParams.get("src") || "").match(
-        /\.pdf($|[?#&])|%2Epdf/i
-      ));
-
-  if (isStandardPdf) {
-    return { shouldInject: true };
-  }
-
-  if (siteRule === "allow") {
-    return { shouldInject: true };
-  }
-
-  return { shouldInject: false };
-}
-
 function enforceAllowedMode(mode) {
   if (!entitlement.isPro && mode !== "dark") {
     return "dark";
   }
   return mode || "dark";
-}
-
-function getEntitlement(billingState) {
-  const billing = {
-    ...defaultBilling(),
-    ...(billingState || {}),
-  };
-
-  const hasPaidPlan =
-    billing.status === "active" &&
-    (billing.plan === "pro" || billing.plan === "lifetime");
-  const isPro = hasPaidPlan;
-  const planName = isPro ? (billing.plan === "lifetime" ? "Lifetime" : "Pro") : "Free";
-
-  return {
-    isPro,
-    planName,
-    billing,
-  };
-}
-
-function defaultBilling() {
-  return {
-    plan: "free",
-    status: "inactive",
-    source: "free",
-    licenseKey: "",
-    instanceId: "",
-    instanceName: "",
-    lastValidatedAt: "",
-    lastValidationAttemptAt: "",
-    licenseStatus: "not_configured",
-    errorMessage: "",
-  };
 }
 
 async function loadAreaSettings() {
@@ -827,10 +778,6 @@ async function saveAreaForCurrentSite() {
       });
     });
   });
-}
-
-function clamp(value, min, max) {
-  return Math.max(min, Math.min(max, value));
 }
 
 function applyOverlaySide(side, rawValue) {

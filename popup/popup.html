@@ -3,10 +3,6 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="stylesheet" href="popup.css" />
-    <link
-      rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css"
-    />
   </head>
   <body>
     <div class="app-shell">
@@ -26,10 +22,26 @@
         <button id="openFileAccessSettingsBtn" type="button">Open extension settings</button>
       </section>
 
-      <div id="toggle" class="toggle-card">
-        <i class="fa fa-power-off" style="font-size: 32px"></i>
-        <p class="shortcut-hint">Command + Shift + 1</p>
-      </div>
+      <button id="toggle" class="toggle-card" type="button" aria-pressed="true">
+        <svg class="toggle-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <path
+            d="M12 3v9"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.2"
+            stroke-linecap="round"
+          />
+          <path
+            d="M7.05 6.05a7 7 0 1 0 9.9 0"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.2"
+            stroke-linecap="round"
+          />
+        </svg>
+        <span id="toggleStateLabel" class="toggle-state">Dark mode on</span>
+        <span id="shortcutHint" class="shortcut-hint">Ctrl + Shift + 1</span>
+      </button>
 
       <div class="tab-bar" role="tablist" aria-label="Popup sections">
         <button id="essentialTabBtn" class="tab-button active" type="button" role="tab" aria-selected="true" aria-controls="essentialTabPanel">
@@ -45,7 +57,7 @@
           <div class="section-title">Plan</div>
           <div id="planLabel" class="plan-label">Plan: Free</div>
           <div class="billing-actions">
-            <button id="subscribeBtn" type="button">Subscribe</button>
+            <button id="subscribeBtn" type="button">Get Pro — one-time</button>
           </div>
           <button id="haveLicenseToggleBtn" type="button" class="text-link-button">
             Have a license? Activate here
@@ -161,6 +173,17 @@
             <button id="blockManualSiteBtn" type="button">+Block</button>
           </div>
         </section>
+
+        <section class="card">
+          <div class="section-title">On-page controls</div>
+          <label class="checkbox-row" for="showDockToggle">
+            <input id="showDockToggle" type="checkbox" checked />
+            <span>
+              Show the floating button on PDFs
+              <small>The small toggle in the bottom-right corner of a PDF.</small>
+            </span>
+          </label>
+        </section>
       </div>
 
       <footer class="footer">
@@ -171,6 +194,7 @@
         </div>
       </footer>
     </div>
+    <script src="../scripts/core.js"></script>
     <script src="popup.js"></script>
   </body>
 </html>
