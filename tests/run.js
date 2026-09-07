@@ -38,3 +38,7 @@ if (failed) {
 }
 
 console.log(`\nAll ${suites.length} suites passed.`);
+console.log(
+  "Note: these stub Chrome. Before publishing, also run the real-browser test:\n" +
+    "  CHROME_BIN=/path/to/chrome node tests/browser/extension.test.js"
+);
