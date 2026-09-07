@@ -201,14 +201,14 @@
    * @param {boolean} input.requiresPdfEmbed from buildPolicy
    * @param {boolean} input.active          global on/off switch
    * @param {boolean} input.pageEnabled     per-page override from the floating dock
-   * @param {boolean} input.hasEmbed        a real PDF embed was found in the DOM
+   * @param {boolean} input.isPdf           the page really is a PDF document
    */
   function shouldPaint(input) {
     const opts = input || {};
     if (!opts.shouldInject) return false;
     if (opts.active === false) return false;
     if (opts.pageEnabled === false) return false;
-    if (opts.requiresPdfEmbed && !opts.hasEmbed) return false;
+    if (opts.requiresPdfEmbed && !opts.isPdf) return false;
     return true;
   }
 
@@ -310,12 +310,38 @@
     }
   }
 
-  /** Chrome renders built-in PDFs into an <embed type="application/pdf">. */
-  function hasPdfEmbed(doc) {
+  /**
+   * Is the page we are on actually a PDF?
+   *
+   * Content type first, and it has to be first. Chrome renders a top-level PDF
+   * in a separate plugin process: the content script sees a document with an
+   * EMPTY body and no <embed> whatsoever. An earlier version of this check
+   * looked only for embed[type="application/pdf"], which therefore never
+   * matched a real PDF and silently stopped darkening every document whose URL
+   * carried .pdf in the query string rather than the path.
+   *
+   * The element check is still worth keeping for PDFs embedded inside an
+   * ordinary HTML page, where contentType is text/html.
+   */
+  function isPdfDocument(doc) {
     const target = doc || globalThis.document;
-    if (!target || !target.querySelector) return false;
+    if (!target) return false;
+
+    const contentType = String(target.contentType || "").toLowerCase();
+    if (contentType === "application/pdf" || contentType === "application/x-pdf") {
+      return true;
+    }
+
+    if (!target.querySelector) return false;
+
     return !!target.querySelector(
-      'embed[type="application/pdf"], object[type="application/pdf"], iframe[src*=".pdf"]'
+      // Native plugin viewers.
+      'embed[type="application/pdf"], object[type="application/pdf"], ' +
+        'embed[type="application/x-google-chrome-pdf"], iframe[src*=".pdf"], ' +
+        // pdf.js renders pages into <canvas>, so there is no embed and the
+        // content type is text/html. These are its standard container hooks —
+        // without them, sites using a custom pdf.js viewer would stop darkening.
+        "#viewerContainer, .pdfViewer, canvas.pdfPage"
     );
   }
 
@@ -339,7 +365,7 @@
     buildOverlayStyles,
     paintOverlay,
     removeOverlay,
-    hasPdfEmbed,
+    isPdfDocument,
   };
 
   globalThis.PDFDarkModeCore = api;

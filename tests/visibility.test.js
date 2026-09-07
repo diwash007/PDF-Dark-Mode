@@ -17,7 +17,7 @@ const base = {
   requiresPdfEmbed: false,
   active: true,
   pageEnabled: true,
-  hasEmbed: false,
+  isPdf: false,
 };
 
 const cases = [
@@ -28,20 +28,20 @@ const cases = [
   // The regression this whole change exists to fix.
   ["global switch off", { active: false }, false],
   ["global switch off on a confirmed PDF", { active: false, requiresPdfEmbed: false }, false],
-  ["global switch off even with an embed", { active: false, requiresPdfEmbed: true, hasEmbed: true }, false],
+  ["global switch off even on a real PDF", { active: false, requiresPdfEmbed: true, isPdf: true }, false],
 
   // Per-page dock toggle.
   ["page toggled off by the dock", { pageEnabled: false }, false],
   ["page toggled back on", { pageEnabled: true }, true],
 
   // Ambiguous URLs need DOM proof.
-  ["ambiguous URL with no PDF embed", { requiresPdfEmbed: true, hasEmbed: false }, false],
-  ["ambiguous URL once the viewer appears", { requiresPdfEmbed: true, hasEmbed: true }, true],
+  ["ambiguous URL that is not a PDF document", { requiresPdfEmbed: true, isPdf: false }, false],
+  ["ambiguous URL that really is a PDF", { requiresPdfEmbed: true, isPdf: true }, true],
 
   // Precedence: a disabled extension beats everything else.
   [
-    "global off wins over page on and embed present",
-    { active: false, pageEnabled: true, requiresPdfEmbed: true, hasEmbed: true },
+    "global off wins over page on and a real PDF",
+    { active: false, pageEnabled: true, requiresPdfEmbed: true, isPdf: true },
     false,
   ],
   [

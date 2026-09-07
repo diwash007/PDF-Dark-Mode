@@ -17,7 +17,7 @@
   const TOGGLE_BUTTON_ID = "pdfDarkModeToggle";
   const INFO_BUTTON_ID = "pdfDarkModeInfo";
 
-  /* How long to keep watching for a PDF viewer to appear on an ambiguous page. */
+  /* How long to keep watching for a PDF to appear on an ambiguous HTML page. */
   const EMBED_WATCH_MS = 10000;
   const EMBED_DEBOUNCE_MS = 120;
 
@@ -43,14 +43,14 @@
   function render(state) {
     const entitlement = core.getEntitlement(state.billing);
     const policy = core.buildPolicy(href, state.siteRules || {}, entitlement);
-    const hasEmbed = policy.requiresPdfEmbed ? core.hasPdfEmbed() : false;
+    const isPdf = policy.requiresPdfEmbed ? core.isPdfDocument() : false;
 
     const visible = core.shouldPaint({
       shouldInject: policy.shouldInject,
       requiresPdfEmbed: policy.requiresPdfEmbed,
       active: state.active !== false,
       pageEnabled: isPageEnabled(),
-      hasEmbed,
+      isPdf,
     });
 
     if (!visible) {
@@ -58,14 +58,14 @@
 
       // The URL mentions a PDF but no viewer is on the page yet — it may still be
       // loading. Watch briefly rather than giving up or darkening blindly.
-      if (policy.shouldInject && policy.requiresPdfEmbed && !hasEmbed && state.active !== false) {
+      if (policy.shouldInject && policy.requiresPdfEmbed && !isPdf && state.active !== false) {
         watchForEmbed();
       }
 
       // Keep the dock while the page is merely toggled off, so the user can turn
       // it back on; drop it entirely when this is not a PDF or the extension is off.
       const dockStillUseful =
-        policy.shouldInject && state.active !== false && (!policy.requiresPdfEmbed || hasEmbed);
+        policy.shouldInject && state.active !== false && (!policy.requiresPdfEmbed || isPdf);
       installDock(dockStillUseful && state.showDock !== false);
       return;
     }
@@ -103,7 +103,7 @@
       if (timer) return;
       timer = setTimeout(() => {
         timer = null;
-        if (!core.hasPdfEmbed()) return;
+        if (!core.isPdfDocument()) return;
         stop();
         chrome.storage.sync.get(SETTINGS_KEYS, (fresh) => {
           if (chrome.runtime.lastError) return;
