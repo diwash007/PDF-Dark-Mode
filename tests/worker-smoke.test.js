@@ -45,6 +45,9 @@ function boot({ syncState = {} } = {}) {
     },
     tabs: {
       onUpdated: register("onUpdated"),
+      onZoomChange: register("onZoomChange"),
+      sendMessage: () => Promise.resolve(),
+      captureVisibleTab: () => Promise.resolve("data:image/jpeg;base64,"),
       create: () => {},
       query: () => {
         calls.tabsQueried += 1;
@@ -154,7 +157,8 @@ async function main() {
   {
     const { listeners, context } = boot();
     assert.ok(context.PDFDarkModeCore, "worker must importScripts core.js");
-    ["onUpdated", "onInstalled", "onStartup", "onMessage", "onAlarm", "onCommand", "onChanged"].forEach(
+    ["onUpdated", "onInstalled", "onStartup", "onMessage", "onAlarm", "onCommand", "onChanged",
+     "onZoomChange"].forEach(
       (name) => assert.ok(listeners[name]?.length, `missing listener: ${name}`)
     );
   }
@@ -274,11 +278,13 @@ async function main() {
     assert.equal(written.showDock, true);
     assert.equal(written.strength, 255);
     assert.equal(written.mode, "dark");
+    assert.equal(written.pageClip, false, "the experimental clip must default OFF");
   }
 
   {
     const { calls } = boot({
-      syncState: { active: false, strength: 210, contrast: 90, mode: "sepia", siteRules: {}, showDock: false, billing: {} },
+      syncState: { active: false, strength: 210, contrast: 90, mode: "sepia", siteRules: {},
+        showDock: false, pageClip: true, billing: {} },
     });
     await settle();
     assert.equal(

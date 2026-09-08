@@ -31,6 +31,7 @@ function makeDom({ embeds = [], contentType = "text/html" } = {}) {
       set id(v) { this._id = v; byId.set(v, this); },
       children: [],
       attributes: {},
+      dataset: {},
       textContent: "",
       type: "",
       title: "",
@@ -73,6 +74,8 @@ function makeDom({ embeds = [], contentType = "text/html" } = {}) {
     body,
     documentElement,
     contentType,
+    visibilityState: "visible",
+    addEventListener() {},
     createElement: (tag) => makeNode(tag),
     getElementById: (id) => byId.get(id) || null,
     querySelector: (sel) => body.querySelector(sel) || documentElement.querySelector(sel),
@@ -114,7 +117,13 @@ function inject({ href, state, embeds = [], contentType = "text/html", preloaded
 
   const context = {
     document,
-    window: { location: { href } },
+    window: {
+      location: { href },
+      devicePixelRatio: 1,
+      addEventListener() {},
+    },
+    requestAnimationFrame: (fn) => setTimeout(fn, 0),
+    devicePixelRatio: 1,
     console: { error: (...a) => errors.push(a.join(" ")), log: () => {}, warn: () => {} },
     chrome: {
       runtime: {
@@ -124,6 +133,7 @@ function inject({ href, state, embeds = [], contentType = "text/html", preloaded
           if (typeof cb === "function") cb({ ok: true });
         },
         getURL: (p) => `chrome-extension://x/${p}`,
+        onMessage: { addListener() {} },
       },
       storage: { sync: { get: (_keys, cb) => cb(state) } },
     },

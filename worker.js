@@ -28,6 +28,7 @@ const RENDER_KEYS = [
   "overlayAreaSettings",
   "siteOverlayAreas",
   "showDock",
+  "pageClip",
 ];
 
 const SYNC_DEFAULTS = {
@@ -37,8 +38,17 @@ const SYNC_DEFAULTS = {
   mode: "dark",
   siteRules: {},
   showDock: true,
+  // EXPERIMENTAL, off by default. See docs/pdf-viewer-constraints.md.
+  pageClip: false,
   billing: core.defaultBilling(),
 };
+
+/*
+ * captureVisibleTab is rate limited by Chrome (roughly two calls a second) and
+ * a capture costs ~60 ms, so requests are spaced out and coalesced.
+ */
+const CAPTURE_MIN_INTERVAL_MS = 700;
+let lastCaptureAt = 0;
 
 ensureDefaults();
 revalidateStoredLicenseIfNeeded();
@@ -111,7 +121,29 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
   refreshOpenTabs();
 });
 
-chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+/*
+ * Browser zoom (Ctrl +/-) is the one viewer-layout change Chrome tells us about
+ * directly. The PDF viewer's own zoom button and its sidebar toggle are silent —
+ * they live in a closed out-of-process frame and emit no event, no DOM change
+ * and no URL change, which is why the page-clip feature also offers a manual
+ * re-align button.
+ */
+chrome.tabs.onZoomChange.addListener(({ tabId }) => {
+  chrome.tabs.sendMessage(tabId, { type: "page-clip-remeasure" }).catch(() => {
+    /* no content script in that tab */
+  });
+});
+
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message?.type === "measure-page-rect") {
+    measurePageRect(message, sender)
+      .then(sendResponse)
+      .catch((error) =>
+        sendResponse({ ok: false, error: error?.message || "Measurement failed." })
+      );
+    return true;
+  }
+
   if (message?.type === "analytics-event" && message?.event) {
     recordAnalyticsEvent(message.event);
     sendResponse({ ok: true });
@@ -176,6 +208,71 @@ async function refreshOpenTabs() {
     if (!core.buildPolicy(tab.url, siteRules || {}, entitlement).shouldInject) return;
     injectContentScript(tab.id);
   });
+}
+
+/* -------------------------------------------------- experimental page clip */
+
+/**
+ * Find where the PDF viewer is drawing the page, by looking at a screenshot.
+ *
+ * Lives in the worker because captureVisibleTab is not available to content
+ * scripts. Returns insets in CSS pixels, ready to drop straight into the
+ * overlay's existing area model.
+ */
+async function measurePageRect(message, sender) {
+  const tab = sender?.tab;
+  if (!tab?.id) return { ok: false, error: "No tab context." };
+
+  // captureVisibleTab grabs whatever is frontmost in the window, so measuring a
+  // background tab would silently return another tab's pixels.
+  if (!tab.active) return { ok: false, error: "inactive-tab", insets: null };
+
+  const wait = CAPTURE_MIN_INTERVAL_MS - (Date.now() - lastCaptureAt);
+  if (wait > 0) await new Promise((resolve) => setTimeout(resolve, wait));
+  lastCaptureAt = Date.now();
+
+  let dataUrl;
+  try {
+    // PNG rather than JPEG: the capture is taken through the inverted overlay,
+    // and JPEG artefacts in the near-black regions survive the un-inversion.
+    dataUrl = await chrome.tabs.captureVisibleTab(tab.windowId, { format: "png" });
+  } catch (error) {
+    return { ok: false, error: error?.message || "capture-failed", insets: null };
+  }
+  if (!dataUrl) return { ok: false, error: "empty-capture", insets: null };
+
+  let image;
+  try {
+    const blob = await (await fetch(dataUrl)).blob();
+    const bitmap = await createImageBitmap(blob);
+    const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+    ctx.drawImage(bitmap, 0, 0);
+    image = ctx.getImageData(0, 0, bitmap.width, bitmap.height);
+    bitmap.close();
+  } catch (error) {
+    return { ok: false, error: error?.message || "decode-failed", insets: null };
+  }
+
+  // The capture was taken through our own overlay, so undo it rather than
+  // making the reader watch the page flash white while we measure.
+  if (message.inverted) core.uninvertInPlace(image.data);
+
+  const raw = core.detectPageInsets(image.data, image.width, image.height);
+  if (!raw) return { ok: true, insets: null };
+
+  // Screenshots are in device pixels; the overlay is positioned in CSS pixels.
+  const scale = Number(message.dpr) > 0 ? Number(message.dpr) : 1;
+  return {
+    ok: true,
+    insets: {
+      top: Math.round(raw.top / scale),
+      right: Math.round(raw.right / scale),
+      bottom: Math.round(raw.bottom / scale),
+      left: Math.round(raw.left / scale),
+      confident: raw.confident,
+    },
+  };
 }
 
 /* ------------------------------------------------------------------ licence */

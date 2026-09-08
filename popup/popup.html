@@ -184,6 +184,29 @@
             <button id="blockManualSiteBtn" type="button">+Block</button>
           </div>
         </section>
+
+        <section class="card experimental-box">
+          <div class="section-title">
+            Experimental <span class="experimental-tag">Beta</span>
+          </div>
+          <label class="checkbox-row" for="pageClipToggle">
+            <input id="pageClipToggle" type="checkbox" />
+            <span>
+              Darken only the page, not the viewer
+              <small>
+                Keeps Chrome's toolbar and sidebar in their normal dark colours
+                instead of flipping them to light. Asks for screen access, because
+                Chrome hides the viewer's layout from extensions.
+              </small>
+            </span>
+          </label>
+          <div id="pageClipStatus" class="plan-note"></div>
+          <div class="experimental-note">
+            Chrome doesn't tell extensions when you zoom the PDF or open the
+            sidebar, so use <strong>Re-align</strong> on the page after doing
+            either. Falls back to the full overlay on PDFs that are already dark.
+          </div>
+        </section>
       </div>
 
       <footer class="footer">

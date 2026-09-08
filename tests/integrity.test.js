@@ -51,6 +51,38 @@ check("no new permissions were introduced", () => {
   );
 });
 
+check("<all_urls> stays OPTIONAL", () => {
+  // captureVisibleTab needs <all_urls>, but putting it in host_permissions would
+  // disable the extension for every existing user until they re-approved it.
+  assert.ok(
+    !manifest.host_permissions.includes("<all_urls>"),
+    "<all_urls> must never be a required host permission"
+  );
+  assert.deepEqual(
+    manifest.optional_host_permissions,
+    ["<all_urls>"],
+    "the experimental clip requests <all_urls> at runtime instead"
+  );
+});
+
+check("the experimental page clip defaults to off", () => {
+  const worker = read("worker.js");
+  assert.match(
+    worker,
+    /pageClip:\s*false/,
+    "pageClip must ship disabled"
+  );
+  assert.match(
+    read("popup/popup.html"),
+    /id="pageClipToggle"[^>]*type="checkbox"\s*\/>/,
+    "the checkbox must not be pre-checked in the markup"
+  );
+});
+
+check("the referenced constraints doc exists", () => {
+  assert.ok(exists("docs/pdf-viewer-constraints.md"), "code comments point at it");
+});
+
 /* ------------------------------------------------------- files injected */
 
 const worker = read("worker.js");

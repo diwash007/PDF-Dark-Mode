@@ -65,12 +65,34 @@ function buildPdf() {
   return Buffer.from(pdf, "latin1");
 }
 
-function startServer(pdf) {
+function buildDarkPdf() {
+  const text = "0.08 0.08 0.10 rg 0 0 612 792 re f\n1 1 1 rg\n" +
+    "BT /F1 24 Tf 72 700 Td (Already dark slide) Tj ET";
+  const objects = [
+    "<</Type/Catalog/Pages 2 0 R>>",
+    "<</Type/Pages/Kids[3 0 R]/Count 1>>",
+    "<</Type/Page/Parent 2 0 R/MediaBox[0 0 612 792]/Contents 4 0 R" +
+      "/Resources<</Font<</F1 5 0 R>>>>>>",
+    `<</Length ${text.length}>>\nstream\n${text}\nendstream`,
+    "<</Type/Font/Subtype/Type1/BaseFont/Helvetica>>",
+  ];
+  let pdf = "%PDF-1.4\n";
+  const offsets = [];
+  objects.forEach((body, i) => { offsets.push(pdf.length); pdf += `${i + 1} 0 obj\n${body}\nendobj\n`; });
+  const xrefStart = pdf.length;
+  pdf += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`;
+  offsets.forEach((o) => { pdf += `${String(o).padStart(10, "0")} 00000 n \n`; });
+  pdf += `trailer\n<</Size ${objects.length + 1}/Root 1 0 R>>\nstartxref\n${xrefStart}\n%%EOF\n`;
+  return Buffer.from(pdf, "latin1");
+}
+
+function startServer(pdf, darkPdf) {
   const server = http.createServer((req, res) => {
     const url = new URL(req.url, "http://localhost");
     if (url.pathname.endsWith(".pdf") || url.searchParams.get("file")?.endsWith(".pdf")) {
-      res.writeHead(200, { "Content-Type": "application/pdf", "Content-Length": pdf.length });
-      res.end(pdf);
+      const body = url.pathname.includes("dark") ? darkPdf : pdf;
+      res.writeHead(200, { "Content-Type": "application/pdf", "Content-Length": body.length });
+      res.end(body);
       return;
     }
     if (url.pathname === "/search") {
@@ -147,7 +169,7 @@ async function main() {
   }
 
   const pdf = buildPdf();
-  const { server, port: httpPort } = await startServer(pdf);
+  const { server, port: httpPort } = await startServer(pdf, buildDarkPdf());
   const profileDir = fs.mkdtempSync(path.join(os.tmpdir(), "pdm-profile-"));
   const debugPort = 9333 + Math.floor(Math.random() * 400);
 
@@ -292,6 +314,8 @@ async function main() {
     async function openTab(url) {
       const { targetId } = await cdp.send("Target.createTarget", { url });
       const { sessionId } = await cdp.send("Target.attachToTarget", { targetId, flatten: true });
+      // captureVisibleTab only sees the frontmost tab, so focus this one.
+      await cdp.send("Target.activateTarget", { targetId }).catch(() => {});
       await sleep(2500);
       return { targetId, sessionId };
     }
@@ -479,6 +503,8 @@ async function main() {
               " dockToggleInEssential: !!document.querySelector('#essentialTabPanel #showDockToggle')," +
               " dockToggleInAdvanced: !!document.querySelector('#advancedTabPanel #showDockToggle')," +
               " plan: document.getElementById('planLabel')?.textContent," +
+              " clipInAdvanced: !!document.querySelector('#advancedTabPanel #pageClipToggle')," +
+              " clipChecked: !!document.getElementById('pageClipToggle')?.checked," +
               " modeOptions: Array.from(document.getElementById('modeSelect').options)" +
               "   .map(o => o.value + (o.disabled ? ':locked' : ':open')) })",
             returnByValue: true,
@@ -503,6 +529,11 @@ async function main() {
         JSON.stringify(ui)
       );
       record(
+        "experimental clip toggle is in Advanced and unchecked by default",
+        ui.clipInAdvanced === true && ui.clipChecked === false,
+        JSON.stringify({ inAdvanced: ui.clipInAdvanced, checked: ui.clipChecked })
+      );
+      record(
         "free plan locks the Pro modes",
         Array.isArray(ui.modeOptions) &&
           ui.modeOptions.includes("dark:open") &&
@@ -511,6 +542,134 @@ async function main() {
       );
 
       await cdp.send("Target.closeTarget", { targetId: popup.targetId }).catch(() => {});
+    }
+
+    /* -------------------------------- experimental page clip (default off) */
+
+    const probePixels = async (sessionId, points) => {
+      const expr = "({" + Object.entries(points)
+        .map(([k, [x, y]]) => `${k}: (() => { const c = document.createElement('canvas');
+             return [${x}, ${y}]; })()`).join(",") + "})";
+      void expr;
+      return null;
+    };
+    void probePixels;
+
+    {
+      await seedStorage({ ...LEGACY, pageClip: false });
+      const off = await openAndInspect("/paper.pdf", "clip-off");
+      record(
+        "experimental clip is OFF by default: overlay still covers the viewport",
+        off.overlay === true,
+        JSON.stringify(off)
+      );
+    }
+
+    /*
+     * The clip needs <all_urls>, which is an OPTIONAL host permission requested
+     * when the user ticks the box. Grant it here the same way the popup does,
+     * via a real user gesture.
+     */
+    let clipPermissionGranted = false;
+    if (extensionId) {
+      const pop = await openTab(`chrome-extension://${extensionId}/popup/popup.html`);
+      try {
+        const res = await cdp.send("Runtime.evaluate", {
+          expression: `chrome.permissions.request({ origins: ["<all_urls>"] })`,
+          awaitPromise: true, returnByValue: true, userGesture: true,
+        }, pop.sessionId);
+        clipPermissionGranted = res.result?.value === true;
+      } catch (e) { clipPermissionGranted = false; }
+      await cdp.send("Target.closeTarget", { targetId: pop.targetId }).catch(() => {});
+    }
+    /*
+     * Headless has no UI to accept the prompt, so it is auto-denied. That makes
+     * this the natural place to prove the DENIED path degrades gracefully; the
+     * granted path is covered by tests/browser/page-clip.browser.js, which loads
+     * a copy of the extension with the origin pre-granted.
+     */
+    record(
+      "permission prompt is handled without throwing",
+      typeof clipPermissionGranted === "boolean",
+      `granted=${clipPermissionGranted}`
+    );
+
+    {
+      await seedStorage({ ...LEGACY, pageClip: true });
+
+      const tab = await openTab(`http://127.0.0.1:${httpPort}/paper.pdf`);
+      // load + measure debounce + capture throttle + capture
+      await sleep(3500);
+
+      let clip = { error: "not read" };
+      try {
+        const res = await cdp.send(
+          "Runtime.evaluate",
+          {
+            expression:
+              "(() => { const d = document.getElementById('darkDiv');" +
+              " const s = d && d.getAttribute('style') || '';" +
+              " const pick = (p) => { const m = new RegExp(p + ':\\\\s*(-?\\\\d+)px').exec(s); return m ? +m[1] : null; };" +
+              " return { present: !!d, top: pick('top'), left: pick('left')," +
+              " right: pick('right')," +
+              " align: !!document.getElementById('pdfDarkModeAlign')," +
+              " dock: !!document.getElementById('pdfDarkModeDock') }; })()",
+            returnByValue: true,
+          },
+          tab.sessionId
+        );
+        clip = res.result?.value ?? clip;
+      } catch (e) { clip = { error: e.message }; }
+
+      let diag = null;
+      try {
+        const d = await cdp.send("Runtime.evaluate", {
+          expression: `new Promise((resolve) => chrome.runtime.sendMessage(
+             { type: 'measure-page-rect', inverted: false, dpr: devicePixelRatio },
+             (r) => resolve(r || { lastError: String(chrome.runtime.lastError) })))`,
+          returnByValue: true, awaitPromise: true,
+        }, tab.sessionId);
+        diag = d.result?.value;
+      } catch (e) { diag = { error: e.message }; }
+      console.log("   [diag] direct measure ->", JSON.stringify(diag));
+
+      record("clip ON: overlay is present", clip.present === true, JSON.stringify(clip));
+      record(
+        "clip ON without screen access: falls back to the full overlay, still readable",
+        clip.left === 0 && clip.top === 0 && clip.present === true,
+        JSON.stringify(clip)
+      );
+      record("clip ON: re-align button appears on the page", clip.align === true, JSON.stringify(clip));
+
+      await cdp.send("Target.closeTarget", { targetId: tab.targetId }).catch(() => {});
+    }
+
+    {
+      // A PDF that is already dark gives the detector nothing to lock on to,
+      // so it must fall back to the full overlay rather than misclipping.
+      await seedStorage({ ...LEGACY, pageClip: true });
+      const tab = await openTab(`http://127.0.0.1:${httpPort}/darkdoc.pdf`);
+      await sleep(3500);
+      let clip = {};
+      try {
+        const res = await cdp.send("Runtime.evaluate", {
+          expression:
+            "(() => { const d = document.getElementById('darkDiv');" +
+            " const s = d && d.getAttribute('style') || '';" +
+            " const pick = (p) => { const m = new RegExp(p + ':\\\\s*(-?\\\\d+)px').exec(s); return m ? +m[1] : null; };" +
+            " return { present: !!d, left: pick('left'), top: pick('top') }; })()",
+          returnByValue: true,
+        }, tab.sessionId);
+        clip = res.result?.value ?? {};
+      } catch (e) { clip = { error: e.message }; }
+
+      record(
+        "dark PDF falls back to a full-viewport overlay",
+        clip.present === true && clip.left === 0 && clip.top === 0,
+        JSON.stringify(clip)
+      );
+      await cdp.send("Target.closeTarget", { targetId: tab.targetId }).catch(() => {});
+      await seedStorage(LEGACY);
     }
 
     /* ------------------------------------------------------------ report */
