@@ -93,6 +93,7 @@ The suites are plain Node, no framework:
 | `visibility` | The truth table for when the overlay is shown, including the global on/off switch |
 | `policy` | Which URLs count as PDFs, including the false positives that used to darken search results |
 | `content-smoke` | `invert.js` runs against a DOM and actually paints: overlay, dock, sepia, re-injection |
+| `page-clip` | The experimental page-rect detector, on synthetic images |
 | `popup-smoke` | `popup.js` runs against the real `popup.html` element set, for free and Pro |
 | `worker-smoke` | Injection, the keyboard shortcut, cross-tab syncing and first-run defaults |
 | `integrity` | Manifest references resolve, scripts parse, no third-party requests, no duplicated overlay code |
@@ -107,10 +108,19 @@ opens real PDFs and inspects the live DOM:
 CHROME_BIN=/path/to/chrome node tests/browser/extension.test.js
 ```
 
-It skips cleanly when no Chrome binary is present. It covers first-load
-darkening, the floating dock, live toggling in an already-open tab, upgrading
-from a 2.1.3 profile, and the popup rendering — and it reports any error thrown
-inside the service worker.
+There is a second one for the experimental page clip, which loads a copy of the
+extension with `<all_urls>` pre-granted (headless cannot accept the permission
+prompt):
+
+```
+CHROME_BIN=/path/to/chrome node tests/browser/page-clip.browser.js
+```
+
+They skip cleanly when no Chrome binary is present. Between them they cover
+first-load darkening, the floating dock, live toggling in an already-open tab,
+upgrading from a 2.1.3 profile, the popup rendering, and the page clip keeping
+Chrome's toolbar and sidebar untouched — and they report any error thrown inside
+the service worker.
 
 **Run it before publishing.** The stubbed suites once passed while the extension
 was visibly broken: a `hasPdfEmbed()` check looked for
@@ -142,6 +152,27 @@ plugin process, so the content script sees an **empty body and no `<embed>` at
 all**. Element matching alone is not enough, and relying on it broke every
 `?file=x.pdf` style endpoint. The element selectors remain for PDFs embedded in
 HTML pages and for pdf.js, which paints into `<canvas>`.
+
+## Experimental: darken only the page
+
+Off by default, in the popup's Advanced tab.
+
+The normal overlay covers the whole viewport, which also inverts Chrome's PDF
+toolbar and sidebar — they are already dark, so dark mode makes them light. With
+this on, the overlay is clipped to the page itself and Chrome's own chrome is
+left alone.
+
+Chrome gives extensions no way to read the viewer's layout (see
+[docs/pdf-viewer-constraints.md](./docs/pdf-viewer-constraints.md)), so the page
+rectangle is found by taking one screenshot of the tab and running a luminance
+projection over it — 1–3 ms, event-driven, never polled. That needs
+`<all_urls>`, which is requested at runtime when the feature is switched on
+rather than declared up front.
+
+It re-measures on window resize and on browser zoom. The viewer's own zoom
+button and its sidebar toggle emit **no event of any kind**, so a **Re-align**
+button appears on the page for those. On a PDF that is already dark, or where no
+page can be found, it falls back to the full-viewport overlay.
 
 ## Contributing
 

@@ -18,6 +18,8 @@ const toggle = document.getElementById("toggle");
 const toggleStateLabel = document.getElementById("toggleStateLabel");
 const shortcutHint = document.getElementById("shortcutHint");
 const showDockToggle = document.getElementById("showDockToggle");
+const pageClipToggle = document.getElementById("pageClipToggle");
+const pageClipStatus = document.getElementById("pageClipStatus");
 const fileAccessBanner = document.getElementById("fileAccessBanner");
 const openFileAccessSettingsBtn = document.getElementById("openFileAccessSettingsBtn");
 const contrastSlider = document.getElementById("contrastSlider");
@@ -177,6 +179,70 @@ toggle.addEventListener("click", () => {
 showDockToggle.addEventListener("change", () => {
   persistSyncValue("showDock", showDockToggle.checked);
 });
+
+/*
+ * The experimental clip needs a screenshot of the tab to find the page, and
+ * captureVisibleTab specifically demands <all_urls> — the existing
+ * http/https/file host permissions are NOT accepted for it.
+ *
+ * It is requested here, on the click, rather than being added to the manifest:
+ * a manifest-level increase would disable the extension for every existing
+ * user until they re-approved it, for a feature almost nobody turns on.
+ */
+pageClipToggle.addEventListener("change", async () => {
+  const wanted = pageClipToggle.checked;
+
+  if (!wanted) {
+    await persistSyncValue("pageClip", false);
+    renderPageClipNote("");
+    sendAnalyticsEvent("pageClipOff");
+    return;
+  }
+
+  let granted = false;
+  try {
+    granted = await chrome.permissions.request({ origins: ["<all_urls>"] });
+  } catch (error) {
+    granted = false;
+  }
+
+  if (!granted) {
+    pageClipToggle.checked = false;
+    await persistSyncValue("pageClip", false);
+    renderPageClipNote(
+      "Screen access was declined, so this stays off. It needs to read the tab " +
+        "image to find where the page is drawn.",
+      "error"
+    );
+    return;
+  }
+
+  await persistSyncValue("pageClip", true);
+  renderPageClipNote("On. Use Re-align on the page after zooming.", "success");
+  sendAnalyticsEvent("pageClipOn");
+});
+
+/* The user can revoke the host permission from chrome://extensions at any
+   time, which would leave the toggle lying about being on. */
+async function verifyPageClipPermission() {
+  let has = true;
+  try {
+    has = await chrome.permissions.contains({ origins: ["<all_urls>"] });
+  } catch (error) {
+    has = true;
+  }
+  if (has) return;
+  pageClipToggle.checked = false;
+  await persistSyncValue("pageClip", false);
+  renderPageClipNote("Turned off because screen access was revoked.", "error");
+}
+
+function renderPageClipNote(message, type) {
+  if (!pageClipStatus) return;
+  pageClipStatus.textContent = message;
+  pageClipStatus.classList.remove("error", "success");
+  if (type) pageClipStatus.classList.add(type);
+}
 
 modeSelect.addEventListener("change", () => {
   const nextMode = enforceAllowedMode(modeSelect.value);
@@ -379,6 +445,7 @@ async function initializePopup() {
     "overlayAreaSettings",
     "siteOverlayAreas",
     "showDock",
+    "pageClip",
   ]);
 
   entitlement = getEntitlement(syncState.billing);
@@ -388,6 +455,8 @@ async function initializePopup() {
   modeSelect.value = enforceAllowedMode(syncState.mode || "dark");
   activeState = syncState.active !== false;
   showDockToggle.checked = syncState.showDock !== false;
+  pageClipToggle.checked = syncState.pageClip === true;
+  if (pageClipToggle.checked) verifyPageClipPermission();
   renderToggleState();
 
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });

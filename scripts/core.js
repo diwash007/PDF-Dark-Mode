@@ -345,6 +345,114 @@
     );
   }
 
+  /* ----------------------------------------------------- page-rect detection */
+
+  /*
+   * EXPERIMENTAL. Chrome's PDF viewer is a closed shadow root hosting another
+   * extension's out-of-process frame, so its geometry cannot be read from the
+   * DOM (see docs/pdf-viewer-constraints.md). The only way to find where the
+   * page is drawn is to look at a screenshot of the tab.
+   *
+   * This is a luminance projection, not a search: collapse the image onto each
+   * axis, then take the longest contiguous run of document-coloured rows and
+   * columns. O(pixels) once over a 4x downsample — measured at 1-3 ms for a
+   * 1280x760 tab. It never runs on a loop.
+   */
+  const PAGE_CLIP_DEFAULTS = {
+    step: 4,
+    coverage: 0.45,
+    lightThreshold: 200,
+    minSpanFraction: 0.15,
+    maxSpanFraction: 0.995,
+  };
+
+  /** Longest contiguous run of buckets whose hit count clears the threshold. */
+  function longestRun(counts, samplesPerBucket, coverage) {
+    const need = samplesPerBucket * coverage;
+    let best = null;
+    let start = -1;
+
+    for (let i = 0; i <= counts.length; i += 1) {
+      const inRun = i < counts.length && counts[i] >= need;
+      if (inRun) {
+        if (start < 0) start = i;
+      } else if (start >= 0) {
+        if (!best || i - start > best[1] - best[0] + 1) best = [start, i - 1];
+        start = -1;
+      }
+    }
+    return best;
+  }
+
+  /**
+   * @param {Uint8ClampedArray} data RGBA, row major, from getImageData
+   * @returns {{top,right,bottom,left,confident}|null}
+   *   confident:false means fall back to a full-viewport overlay — a mostly
+   *   dark PDF or a page filling the window leaves nothing to lock on to.
+   */
+  function detectPageInsets(data, width, height, options) {
+    const o = { ...PAGE_CLIP_DEFAULTS, ...(options || {}) };
+    const step = Math.max(1, o.step | 0);
+    if (!data || !width || !height) return null;
+
+    const colCount = Math.ceil(width / step);
+    const rowCount = Math.ceil(height / step);
+    const cols = new Uint32Array(colCount);
+    const rows = new Uint32Array(rowCount);
+
+    let ri = 0;
+    for (let y = 0; y < height; y += step, ri += 1) {
+      const rowBase = y * width * 4;
+      let ci = 0;
+      for (let x = 0; x < width; x += step, ci += 1) {
+        const i = rowBase + x * 4;
+        // Rec.601 luma; no sqrt, and close enough for a threshold.
+        const luma = (data[i] * 299 + data[i + 1] * 587 + data[i + 2] * 114) / 1000;
+        if (luma >= o.lightThreshold) {
+          cols[ci] += 1;
+          rows[ri] += 1;
+        }
+      }
+    }
+
+    const colSpan = longestRun(cols, rowCount, o.coverage);
+    const rowSpan = longestRun(rows, colCount, o.coverage);
+    if (!colSpan || !rowSpan) return null;
+
+    const x0 = colSpan[0] * step;
+    const x1 = Math.min(width, (colSpan[1] + 1) * step);
+    const y0 = rowSpan[0] * step;
+    const y1 = Math.min(height, (rowSpan[1] + 1) * step);
+
+    const spanW = (x1 - x0) / width;
+    const spanH = (y1 - y0) / height;
+
+    return {
+      top: y0,
+      right: Math.max(0, width - x1),
+      bottom: Math.max(0, height - y1),
+      left: x0,
+      confident:
+        spanW >= o.minSpanFraction && spanH >= o.minSpanFraction &&
+        spanW <= o.maxSpanFraction && spanH <= o.maxSpanFraction,
+    };
+  }
+
+  /**
+   * Undo the overlay in place so a capture taken *through* it can be measured.
+   * The overlay is `difference` against opaque white, which is exactly
+   * 255 - channel, so this is lossless. It means a re-measure never has to
+   * remove the overlay first, i.e. never flashes a white page at the reader.
+   */
+  function uninvertInPlace(data) {
+    for (let i = 0; i < data.length; i += 4) {
+      data[i] = 255 - data[i];
+      data[i + 1] = 255 - data[i + 1];
+      data[i + 2] = 255 - data[i + 2];
+    }
+    return data;
+  }
+
   const api = {
     DARK_LAYER_ID,
     TINT_LAYER_ID,
@@ -366,6 +474,10 @@
     paintOverlay,
     removeOverlay,
     isPdfDocument,
+    PAGE_CLIP_DEFAULTS,
+    detectPageInsets,
+    uninvertInPlace,
+    longestRun,
   };
 
   globalThis.PDFDarkModeCore = api;

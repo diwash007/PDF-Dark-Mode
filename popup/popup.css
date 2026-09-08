@@ -697,3 +697,30 @@ input[type="range"] {
   border: 1px solid #374151;
   margin-top: 2px;
 }
+
+/* Experimental feature block in the Advanced tab. */
+.experimental-box {
+  border-color: #4a3f2a;
+  background: #241f16;
+}
+
+.experimental-tag {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: #4a3f2a;
+  color: #f5d08a;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  vertical-align: middle;
+}
+
+.experimental-note {
+  margin-top: 8px;
+  font-size: 10.5px;
+  line-height: 1.5;
+  color: #b6a88a;
+}
