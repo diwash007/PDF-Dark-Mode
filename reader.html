@@ -215,18 +215,18 @@
 
   <header>
     <div class="container nav">
-      <a href="./index.html" class="brand" aria-label="PDF Dark Mode, home">
+      <a href="./" class="brand" aria-label="PDF Dark Mode, home">
         <img src="./assets/logo.png" alt="PDF Dark Mode logo" width="34" height="34" />
         <span>PDF Dark Mode</span>
       </a>
       <nav class="nav-links" aria-label="Primary">
-        <a href="./index.html#modes">Reading modes</a>
-        <a href="./index.html#features">Features</a>
+        <a href="./#modes">Reading modes</a>
+        <a href="./#features">Features</a>
         <a href="./reader.html" aria-current="page">Web reader</a>
-        <a href="./index.html#pricing">Pricing</a>
+        <a href="./#pricing">Pricing</a>
       </nav>
       <div>
-        <a href="./index.html#pricing" class="button button-primary button-sm">Get Pro — $9.99</a>
+        <a href="./#pricing" class="button button-primary button-sm">Get Pro — $9.99</a>
       </div>
     </div>
   </header>
@@ -248,7 +248,7 @@
       <p>Supports regular, scanned, and large PDFs up to ~100MB.</p>
       <div class="drop-actions">
         <button class="button button-primary" id="pick-btn" type="button">Choose PDF file</button>
-        <a class="button" href="./index.html">Get the extension instead</a>
+        <a class="button" href="./">Get the extension instead</a>
       </div>
       <p class="privacy">Private: processed locally in your browser with PDF.js. Nothing is uploaded.</p>
       <input type="file" id="file-input" accept=".pdf,application/pdf" hidden />
@@ -313,7 +313,7 @@
       </ol>
       <p>
         For PDFs you open every day — arXiv papers, docs, ebooks — the
-        <a href="./index.html" style="color:var(--accent-bright)">browser extension</a>
+        <a href="./" style="color:var(--accent-bright)">browser extension</a>
         applies the same modes automatically, online and offline.
       </p>
     </section>
@@ -346,7 +346,7 @@
   <footer>
     <div class="container footer-inner">
       <span>PDF Dark Mode — built for long reading sessions.</span>
-      <span><a href="./index.html">Home</a> · <a href="./help.html">Help</a> · <a href="./privacy.html">Privacy</a> · <a href="./terms.html">Terms</a></span>
+      <span><a href="./">Home</a> · <a href="./help.html">Help</a> · <a href="./privacy.html">Privacy</a> · <a href="./terms.html">Terms</a></span>
     </div>
   </footer>
 
@@ -587,7 +587,11 @@
       }
 
       pickBtn.addEventListener("click", (e) => { e.stopPropagation(); fileInput.click(); });
-      dropzone.addEventListener("click", () => fileInput.click());
+      dropzone.querySelectorAll("a").forEach((a) => a.addEventListener("click", (e) => e.stopPropagation()));
+      dropzone.addEventListener("click", (e) => {
+        if (e.target.closest("a,button")) return;
+        fileInput.click();
+      });
       dropzone.addEventListener("keydown", (e) => {
         if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fileInput.click(); }
       });
