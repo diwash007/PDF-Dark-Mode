@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <title>Read PDF Online in Dark Mode — Free PDF Reader | PDF Dark Mode</title>
+  <meta
+    name="description"
+    content="Upload and read any PDF directly in your browser with dark, sepia, or AMOLED mode. Free, private — files never leave your device. No signup."
+  />
+  <link rel="canonical" href="https://pdf-dark.com/reader.html" />
+  <meta name="robots" content="index, follow, max-image-preview:large" />
+  <meta name="theme-color" content="#07090c" />
+
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="PDF Dark Mode" />
+  <meta property="og:title" content="Read PDF Online in Dark Mode — Free PDF Reader" />
+  <meta
+    property="og:description"
+    content="Upload and read any PDF in your browser with dark, sepia, or AMOLED mode. Free, private — files never leave your device."
+  />
+  <meta property="og:url" content="https://pdf-dark.com/reader.html" />
+  <meta property="og:image" content="https://pdf-dark.com/assets/og-image.png" />
+
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Read PDF Online in Dark Mode — Free PDF Reader" />
+  <meta
+    name="twitter:description"
+    content="Upload and read any PDF in your browser with dark mode. Free, private, no signup."
+  />
+  <meta name="twitter:image" content="https://pdf-dark.com/assets/og-image.png" />
+
+  <link rel="icon" type="image/png" href="./assets/logo.png" />
+  <link rel="apple-touch-icon" href="./assets/logo.png" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+    rel="stylesheet"
+  />
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "SoftwareApplication",
+        "name": "PDF Dark Mode Web Reader",
+        "applicationCategory": "UtilitiesApplication",
+        "operatingSystem": "Web",
+        "url": "https://pdf-dark.com/reader.html",
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+        "description": "Upload and read any PDF directly in the browser with dark, sepia, or AMOLED reading modes. Files are processed locally and never uploaded."
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "Is this online PDF reader free?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Yes. Reading PDFs on this page is free with no signup. The optional browser extension adds dark mode to PDFs anywhere on the web, with a one-time $9.99 Pro upgrade." }
+          },
+          {
+            "@type": "Question",
+            "name": "Are my PDFs uploaded to a server?",
+            "acceptedAnswer": { "@type": "Answer", "text": "No. Your PDF is processed locally in your browser using PDF.js. Files never leave your device." }
+          },
+          {
+            "@type": "Question",
+            "name": "What is the maximum file size?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Most PDFs under 100MB open smoothly. Very large files may be slow on mobile — try closing other tabs or using the browser extension instead." }
+          },
+          {
+            "@type": "Question",
+            "name": "How is this different from the extension?",
+            "acceptedAnswer": { "@type": "Answer", "text": "This page is for reading a file you upload right now. The extension adds dark mode to any PDF you open in Chrome or Edge, including online PDFs and local files." }
+          },
+          {
+            "@type": "Question",
+            "name": "Does it work on mobile?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Yes. The reader defaults to fit-width on small screens with prev/next navigation and adjustable darkness and contrast." }
+          }
+        ]
+      },
+      {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://pdf-dark.com/" },
+          { "@type": "ListItem", "position": 2, "name": "Reader", "item": "https://pdf-dark.com/reader.html" }
+        ]
+      }
+    ]
+  }
+  </script>
+
+  <style>
+    :root {
+      --bg: #07090c;
+      --bg-soft: #0b0f14;
+      --surface: rgba(255, 255, 255, 0.035);
+      --surface-2: rgba(255, 255, 255, 0.06);
+      --border: rgba(255, 255, 255, 0.09);
+      --border-strong: rgba(255, 255, 255, 0.17);
+      --text: #eef2f5;
+      --muted: #8d9aa7;
+      --muted-dim: #6b7684;
+      --accent: #508b5e;
+      --accent-bright: #7cc48f;
+      --accent-deep: #3d7049;
+      --radius: 16px;
+      --radius-lg: 22px;
+      --maxw: 1140px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: inherit; text-decoration: none; }
+    ::selection { background: rgba(124, 196, 143, 0.28); }
+    :focus-visible { outline: 2px solid var(--accent-bright); outline-offset: 3px; border-radius: 6px; }
+    .container { width: min(var(--maxw), calc(100% - 40px)); margin: 0 auto; }
+    .skip-link { position: absolute; left: -9999px; top: 8px; background: var(--accent); color: #fff; padding: 10px 16px; border-radius: 10px; z-index: 200; }
+    .skip-link:focus { left: 16px; }
+
+    header { position: sticky; top: 0; z-index: 100; background: rgba(7, 9, 12, 0.78); backdrop-filter: blur(14px); border-bottom: 1px solid var(--border); }
+    .nav { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 14px 0; }
+    .brand { display: flex; align-items: center; gap: 11px; font-weight: 700; font-size: 16px; }
+    .brand img { width: 34px; height: 34px; border-radius: 9px; display: block; }
+    .nav-links { display: flex; align-items: center; gap: 24px; font-size: 14.5px; color: var(--muted); font-weight: 500; }
+    .nav-links a:hover { color: var(--text); }
+
+    .button { display: inline-flex; align-items: center; justify-content: center; gap: 9px; padding: 12px 20px; border-radius: 12px; font-weight: 600; font-size: 15px; font-family: inherit; border: 1px solid var(--border); color: var(--text); background: var(--surface); cursor: pointer; transition: 0.16s ease; white-space: nowrap; }
+    .button:hover { background: var(--surface-2); border-color: var(--border-strong); }
+    .button-primary { background: linear-gradient(180deg, var(--accent) 0%, var(--accent-deep) 100%); border-color: rgba(255,255,255,0.14); color: #fff; }
+    .button-sm { padding: 9px 15px; font-size: 14px; border-radius: 10px; }
+
+    .reader-hero { padding: 56px 0 24px; text-align: center; }
+    .reader-hero h1 { font-size: clamp(32px, 4vw, 48px); letter-spacing: -0.03em; line-height: 1.1; font-weight: 800; margin-bottom: 14px; text-wrap: balance; }
+    .reader-hero h1 em { font-style: normal; color: var(--accent-bright); }
+    .reader-hero p { color: var(--muted); max-width: 640px; margin: 0 auto; font-size: 17px; }
+
+    .dropzone { margin: 32px auto 0; max-width: 720px; border: 1.5px dashed var(--border-strong); border-radius: var(--radius-lg); background: var(--surface); padding: 44px 28px; text-align: center; cursor: pointer; transition: 0.16s ease; }
+    .dropzone:hover, .dropzone.drag { border-color: var(--accent-bright); background: rgba(124,196,143,0.06); }
+    .dropzone h2 { font-size: 20px; margin-bottom: 8px; }
+    .dropzone p { color: var(--muted); font-size: 14.5px; }
+    .dropzone .privacy { margin-top: 14px; font-size: 13px; color: var(--muted-dim); }
+    .drop-actions { display: flex; gap: 12px; justify-content: center; margin-top: 20px; flex-wrap: wrap; }
+    .error { display: none; max-width: 720px; margin: 16px auto 0; padding: 12px 16px; border-radius: 12px; background: rgba(255,100,100,0.1); border: 1px solid rgba(255,100,100,0.35); color: #ffb4b4; font-size: 14px; }
+    .progress { display: none; max-width: 720px; margin: 16px auto 0; font-size: 14px; color: var(--muted); text-align: center; }
+
+    .toolbar { display: none; position: sticky; top: 63px; z-index: 90; background: rgba(11,15,20,0.92); backdrop-filter: blur(12px); border: 1px solid var(--border); border-radius: 14px; padding: 10px 12px; margin: 24px auto 0; max-width: 1000px; flex-wrap: wrap; gap: 10px; align-items: center; }
+    .toolbar.visible { display: flex; }
+    .tb-group { display: flex; align-items: center; gap: 8px; }
+    .tb-sep { width: 1px; height: 24px; background: var(--border); }
+    .tb-btn { padding: 8px 12px; border-radius: 9px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font: inherit; font-size: 13.5px; font-weight: 600; cursor: pointer; }
+    .tb-btn:hover { background: var(--surface-2); }
+    .tb-btn:disabled { opacity: 0.4; cursor: default; }
+    .page-input { width: 64px; padding: 7px 8px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font: inherit; font-size: 13.5px; text-align: center; }
+    .page-total { color: var(--muted); font-size: 13.5px; }
+    .zoom-label { min-width: 52px; text-align: center; font-size: 13.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+    .file-name { font-size: 13px; color: var(--muted); max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    .tune-bar { display: none; max-width: 1000px; margin: 12px auto 0; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); padding: 14px 16px; gap: 18px; flex-wrap: wrap; align-items: center; }
+    .tune-bar.visible { display: flex; }
+    .mode-tabs { display: flex; gap: 8px; }
+    .mode-tab { padding: 8px 13px; border-radius: 10px; border: 1px solid var(--border); background: var(--bg-soft); color: var(--muted); font: inherit; font-size: 13.5px; font-weight: 600; cursor: pointer; }
+    .mode-tab[aria-selected="true"] { background: rgba(124,196,143,0.13); border-color: rgba(124,196,143,0.45); color: var(--accent-bright); }
+    .slider-wrap { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--muted); }
+    .slider-wrap output { color: var(--accent-bright); font-weight: 700; min-width: 44px; }
+    input[type="range"].control { -webkit-appearance: none; appearance: none; width: 130px; height: 5px; border-radius: 999px; background: rgba(255,255,255,0.11); cursor: pointer; }
+    input[type="range"].control::-webkit-slider-thumb { -webkit-appearance: none; width: 15px; height: 15px; border-radius: 50%; background: var(--accent-bright); border: 3px solid #0d1116; cursor: pointer; }
+    input[type="range"].control::-moz-range-thumb { width: 15px; height: 15px; border-radius: 50%; background: var(--accent-bright); border: 3px solid #0d1116; cursor: pointer; }
+
+    .pages { max-width: 1000px; margin: 20px auto 0; display: grid; gap: 20px; padding-bottom: 8px; }
+    .page-frame { background: #0f1319; border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
+    .page-meta { padding: 8px 14px; font-size: 12.5px; color: var(--muted-dim); border-bottom: 1px solid rgba(255,255,255,0.06); }
+    .stage { position: relative; isolation: isolate; overflow: hidden; background: #fff; }
+    .stage canvas { display: block; width: 100%; height: auto; }
+    .stage-layer, .stage-tint { position: absolute; inset: 0; pointer-events: none; z-index: 2; }
+    .stage-layer { mix-blend-mode: difference; }
+    .stage-tint { mix-blend-mode: multiply; background-color: rgba(112,66,20,0.2); display: none; }
+
+    .seo { max-width: 760px; margin: 0 auto; padding: 64px 0 8px; }
+    .seo h2 { font-size: clamp(24px, 3vw, 32px); letter-spacing: -0.02em; margin-bottom: 12px; }
+    .seo p, .seo li { color: var(--muted); font-size: 15.5px; }
+    .seo ol, .seo ul { padding-left: 22px; margin: 12px 0 20px; display: grid; gap: 8px; }
+    .faq { max-width: 760px; margin: 0 auto; padding: 24px 0 72px; }
+    .faq details { border-bottom: 1px solid var(--border); }
+    .faq details:first-of-type { border-top: 1px solid var(--border); }
+    .faq summary { cursor: pointer; padding: 18px 0; font-weight: 600; font-size: 16px; }
+    .faq p { color: var(--muted); padding: 0 0 18px; font-size: 15px; }
+    .faq a { color: var(--accent-bright); text-decoration: underline; text-underline-offset: 3px; }
+
+    footer { border-top: 1px solid var(--border); padding: 40px 0; background: var(--bg-soft); color: var(--muted-dim); font-size: 13.5px; }
+    .footer-inner { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+    footer a:hover { color: var(--text); }
+
+    @media (max-width: 720px) {
+      .nav-links { display: none; }
+      .toolbar { top: 62px; }
+      input[type="range"].control { width: 100px; }
+      .file-name { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header>
+    <div class="container nav">
+      <a href="./index.html" class="brand" aria-label="PDF Dark Mode, home">
+        <img src="./assets/logo.png" alt="PDF Dark Mode logo" width="34" height="34" />
+        <span>PDF Dark Mode</span>
+      </a>
+      <nav class="nav-links" aria-label="Primary">
+        <a href="./index.html#modes">Reading modes</a>
+        <a href="./index.html#features">Features</a>
+        <a href="./reader.html" aria-current="page">Web reader</a>
+        <a href="./index.html#pricing">Pricing</a>
+      </nav>
+      <div>
+        <a href="./index.html#pricing" class="button button-primary button-sm">Get Pro — $9.99</a>
+      </div>
+    </div>
+  </header>
+
+  <main id="main" class="container">
+    <div class="reader-hero">
+      <h1>Read PDF online in <em>dark mode.</em></h1>
+      <p>Upload any PDF and read it right here — adjustable darkness, contrast, Sepia and AMOLED modes. Private by design: your file never leaves your device.</p>
+    </div>
+
+    <div
+      class="dropzone"
+      id="dropzone"
+      role="button"
+      tabindex="0"
+      aria-label="Upload a PDF to read. Activate to choose a file, or drag and drop a PDF here."
+    >
+      <h2>Drop your PDF here, or click to browse</h2>
+      <p>Supports regular, scanned, and large PDFs up to ~100MB.</p>
+      <div class="drop-actions">
+        <button class="button button-primary" id="pick-btn" type="button">Choose PDF file</button>
+        <a class="button" href="./index.html">Get the extension instead</a>
+      </div>
+      <p class="privacy">Private: processed locally in your browser with PDF.js. Nothing is uploaded.</p>
+      <input type="file" id="file-input" accept=".pdf,application/pdf" hidden />
+    </div>
+    <div class="error" id="error" role="alert"></div>
+    <div class="progress" id="progress" role="status" aria-live="polite"></div>
+
+    <div class="toolbar" id="toolbar" aria-label="PDF controls">
+      <div class="tb-group">
+        <button class="tb-btn" id="prev-btn" type="button">← Prev</button>
+        <label class="page-total" for="page-input">Page</label>
+        <input class="page-input" id="page-input" type="number" min="1" value="1" />
+        <span class="page-total" id="page-total">/ 1</span>
+        <button class="tb-btn" id="next-btn" type="button">Next →</button>
+      </div>
+      <div class="tb-sep" aria-hidden="true"></div>
+      <div class="tb-group" aria-label="Zoom controls">
+        <button class="tb-btn" id="zoom-out" type="button" aria-label="Zoom out">−</button>
+        <span class="zoom-label" id="zoom-label">100%</span>
+        <button class="tb-btn" id="zoom-in" type="button" aria-label="Zoom in">+</button>
+        <button class="tb-btn" id="fit-btn" type="button">Fit width</button>
+      </div>
+      <div class="tb-sep" aria-hidden="true"></div>
+      <div class="tb-group">
+        <span class="file-name" id="file-name"></span>
+        <button class="tb-btn" id="change-btn" type="button">Change file</button>
+        <button class="tb-btn" id="close-btn" type="button">Close</button>
+      </div>
+    </div>
+
+    <div class="tune-bar" id="tune-bar">
+      <div class="mode-tabs" role="tablist" aria-label="Reading modes">
+        <button class="mode-tab" role="tab" aria-selected="true" data-mode="dark" type="button">Dark</button>
+        <button class="mode-tab" role="tab" aria-selected="false" data-mode="sepia" type="button">Sepia</button>
+        <button class="mode-tab" role="tab" aria-selected="false" data-mode="amoled" type="button">AMOLED</button>
+      </div>
+      <label class="slider-wrap" for="strength">Darkness
+        <input type="range" class="control" id="strength" min="200" max="255" value="255" />
+        <output id="strength-val">255</output>
+      </label>
+      <label class="slider-wrap" for="contrast">Contrast
+        <input type="range" class="control" id="contrast" min="50" max="130" value="100" />
+        <output id="contrast-val">100%</output>
+      </label>
+    </div>
+
+    <div class="pages" id="pages" aria-live="polite"></div>
+
+    <section class="seo" aria-label="About this reader">
+      <h2>A simple PDF reader with real dark mode.</h2>
+      <p>
+        Most online PDF readers give you a blinding white page. This one renders your document
+        locally with PDF.js and applies the same difference-blend overlay as the PDF Dark Mode
+        extension — so darkness, contrast, Sepia, and AMOLED behave exactly like they do in the
+        extension's playground.
+      </p>
+      <ol>
+        <li><strong>Upload</strong> — click above or drag in any <code>.pdf</code> file.</li>
+        <li><strong>Read</strong> — scroll, use Prev/Next, or type a page number.</li>
+        <li><strong>Adjust</strong> — tune Darkness and Contrast until the page feels right.</li>
+        <li><strong>Close</strong> — the file is discarded from memory when you close it.</li>
+      </ol>
+      <p>
+        For PDFs you open every day — arXiv papers, docs, ebooks — the
+        <a href="./index.html" style="color:var(--accent-bright)">browser extension</a>
+        applies the same modes automatically, online and offline.
+      </p>
+    </section>
+
+    <section class="faq" aria-label="Reader FAQ">
+      <h2 style="font-size:clamp(24px,3vw,32px);letter-spacing:-0.02em;margin-bottom:16px;">Reader FAQ</h2>
+      <details open>
+        <summary>Is this online PDF reader free?</summary>
+        <p>Yes — no signup, no watermark. The optional extension is free too, with a one-time $9.99 Pro upgrade for Sepia, AMOLED, and per-site rules.</p>
+      </details>
+      <details>
+        <summary>Are my PDFs uploaded to a server?</summary>
+        <p>No. Your PDF is parsed and rendered locally in your browser. Close the tab and it's gone. See the <a href="./privacy.html">privacy policy</a>.</p>
+      </details>
+      <details>
+        <summary>What is the maximum file size?</summary>
+        <p>Most files under 100MB open smoothly. Above that, desktop Chrome/Edge handle it best; on mobile, try the extension or split the file.</p>
+      </details>
+      <details>
+        <summary>How is this different from the extension?</summary>
+        <p>This page reads one uploaded file right now. The extension adds dark mode to every PDF you open on the web or from disk, with keyboard shortcuts and saved settings.</p>
+      </details>
+      <details>
+        <summary>My PDF is password-protected. Will it open?</summary>
+        <p>You'll be prompted for the password in your browser. The password is used only to decrypt the file locally and is never sent anywhere.</p>
+      </details>
+    </section>
+  </main>
+
+  <footer>
+    <div class="container footer-inner">
+      <span>PDF Dark Mode — built for long reading sessions.</span>
+      <span><a href="./index.html">Home</a> · <a href="./help.html">Help</a> · <a href="./privacy.html">Privacy</a> · <a href="./terms.html">Terms</a></span>
+    </div>
+  </footer>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script>
+    (() => {
+      "use strict";
+      if (window.pdfjsLib) {
+        pdfjsLib.GlobalWorkerOptions.workerSrc =
+          "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+      }
+
+      const clamp = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+      const $ = (id) => document.getElementById(id);
+      const dropzone = $("dropzone"), fileInput = $("file-input"), pickBtn = $("pick-btn");
+      const errorBox = $("error"), progress = $("progress");
+      const toolbar = $("toolbar"), tuneBar = $("tune-bar"), pagesEl = $("pages");
+      const prevBtn = $("prev-btn"), nextBtn = $("next-btn"), pageInput = $("page-input"), pageTotal = $("page-total");
+      const zoomIn = $("zoom-in"), zoomOut = $("zoom-out"), zoomLabel = $("zoom-label"), fitBtn = $("fit-btn");
+      const fileNameEl = $("file-name"), changeBtn = $("change-btn"), closeBtn = $("close-btn");
+      const strengthInput = $("strength"), contrastInput = $("contrast");
+      const strengthVal = $("strength-val"), contrastVal = $("contrast-val");
+      const tabs = Array.from(document.querySelectorAll(".mode-tab"));
+
+      let pdfDoc = null, objectUrl = null, mode = "dark";
+      let numPages = 0, currentPage = 1, scale = 1, baseScale = 1;
+      let pageProxies = [], observer = null, renderTasks = {};
+
+      function paint(layer, tint) {
+        const s = clamp(Number(strengthInput.value) || 255, 200, 255);
+        const c = clamp(Number(contrastInput.value) || 100, 50, 130);
+        const hex = mode === "amoled" ? "ff" : s.toString(16).padStart(2, "0");
+        const contrastValue = mode === "amoled" ? Math.max(c, 110) : c;
+        const brightnessValue = mode === "amoled" ? 78 : 100;
+        layer.style.backgroundColor = "#" + hex + "ffffff";
+        layer.style.filter = "contrast(" + contrastValue + "%) brightness(" + brightnessValue + "%)";
+        if (tint) tint.style.display = mode === "sepia" ? "block" : "none";
+        strengthVal.textContent = mode === "amoled" ? "255" : String(s);
+        contrastVal.textContent = contrastValue + "%";
+      }
+
+      function repaintAll() {
+        document.querySelectorAll(".stage").forEach((st) => {
+          paint(st.querySelector(".stage-layer"), st.querySelector(".stage-tint"));
+        });
+      }
+
+      function showError(msg) {
+        errorBox.textContent = msg;
+        errorBox.style.display = "block";
+      }
+      function clearError() { errorBox.style.display = "none"; errorBox.textContent = ""; }
+      function setProgress(msg) {
+        progress.textContent = msg || "";
+        progress.style.display = msg ? "block" : "none";
+      }
+
+      function fitScale(viewportWidth) {
+        const avail = Math.min(pagesEl.clientWidth || 960, 1000);
+        return avail / viewportWidth;
+      }
+
+      async function renderPage(n) {
+        if (!pdfDoc || renderTasks[n]) return;
+        const frame = document.querySelector('[data-page="' + n + '"]');
+        if (!frame) return;
+        const canvas = frame.querySelector("canvas");
+        try {
+          renderTasks[n] = true;
+          const page = pageProxies[n - 1];
+          const viewport = page.getViewport({ scale: scale * window.devicePixelRatio });
+          canvas.width = Math.floor(viewport.width);
+          canvas.height = Math.floor(viewport.height);
+          canvas.style.aspectRatio = canvas.width + " / " + canvas.height;
+          await page.render({ canvasContext: canvas.getContext("2d"), viewport }).promise;
+          frame.dataset.renderedAt = String(scale);
+        } catch (e) {
+          console.warn("Render failed for page " + n, e);
+        } finally {
+          delete renderTasks[n];
+        }
+      }
+
+      function observePages() {
+        if (observer) observer.disconnect();
+        observer = new IntersectionObserver((entries) => {
+          entries.forEach((en) => {
+            if (en.isIntersecting) {
+              const n = Number(en.target.dataset.page);
+              currentPage = n;
+              pageInput.value = String(n);
+              if (en.target.dataset.renderedAt !== String(scale)) renderPage(n);
+              if (n + 1 <= numPages) {
+                const next = document.querySelector('[data-page="' + (n + 1) + '"]');
+                if (next && next.dataset.renderedAt !== String(scale)) renderPage(n + 1);
+              }
+            }
+          });
+        }, { rootMargin: "400px 0px" });
+        document.querySelectorAll(".page-frame").forEach((f) => observer.observe(f));
+      }
+
+      function buildScaffold() {
+        pagesEl.innerHTML = "";
+        for (let i = 1; i <= numPages; i++) {
+          const frame = document.createElement("div");
+          frame.className = "page-frame";
+          frame.dataset.page = String(i);
+          frame.innerHTML =
+            '<div class="page-meta">Page ' + i + " of " + numPages + "</div>" +
+            '<div class="stage"><canvas aria-label="PDF page ' + i + '"></canvas>' +
+            '<div class="stage-layer"></div><div class="stage-tint"></div></div>';
+          pagesEl.appendChild(frame);
+        }
+        repaintAll();
+        observePages();
+      }
+
+      async function rerenderVisible() {
+        document.querySelectorAll(".page-frame").forEach((f) => { delete f.dataset.renderedAt; });
+        const visible = [];
+        document.querySelectorAll(".page-frame").forEach((f) => {
+          const r = f.getBoundingClientRect();
+          if (r.top < window.innerHeight + 400 && r.bottom > -400) visible.push(Number(f.dataset.page));
+        });
+        for (const n of visible.slice(0, 6)) await renderPage(n);
+        repaintAll();
+      }
+
+      let rerenderTimer = null;
+      function scheduleRerender() {
+        clearTimeout(rerenderTimer);
+        rerenderTimer = setTimeout(rerenderVisible, 150);
+      }
+
+      function updateNav() {
+        pageTotal.textContent = "/ " + numPages;
+        pageInput.max = String(numPages);
+        prevBtn.disabled = currentPage <= 1;
+        nextBtn.disabled = currentPage >= numPages;
+        zoomLabel.textContent = Math.round((scale / baseScale) * 100) + "%";
+      }
+
+      function goTo(n) {
+        n = clamp(n, 1, numPages);
+        const el = document.querySelector('[data-page="' + n + '"]');
+        if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+        currentPage = n;
+        pageInput.value = String(n);
+        updateNav();
+      }
+
+      async function openFile(file) {
+        clearError();
+        if (!file) return;
+        if (!/\.pdf$/i.test(file.name) && file.type !== "application/pdf") {
+          showError("That doesn't look like a PDF. Please choose a .pdf file.");
+          return;
+        }
+        if (file.size > 250 * 1024 * 1024) {
+          showError("This file is over 250MB and too large to render reliably in the browser. Try a smaller file or the extension.");
+          return;
+        }
+        if (file.size > 100 * 1024 * 1024) {
+          showError("Heads up: this file is over 100MB, so rendering may be slow on mobile.");
+        }
+        closeDoc(false);
+        setProgress("Loading " + file.name + "…");
+        try {
+          if (!window.pdfjsLib) throw new Error("PDF engine failed to load (CDN blocked?). Check connection and reload.");
+          objectUrl = URL.createObjectURL(file);
+          const loadingTask = pdfjsLib.getDocument({ url: objectUrl, isEvalSupported: false });
+          loadingTask.onProgress = (p) => {
+            if (p.total > 0) setProgress("Loading " + file.name + "… " + Math.round((p.loaded / p.total) * 100) + "%");
+          };
+          pdfDoc = await loadingTask.promise;
+          numPages = pdfDoc.numPages;
+          pageProxies = [];
+          for (let i = 1; i <= numPages; i++) pageProxies.push(await pdfDoc.getPage(i));
+          const v1 = pageProxies[0].getViewport({ scale: 1 });
+          baseScale = fitScale(v1.width);
+          scale = baseScale;
+          currentPage = 1;
+          fileNameEl.textContent = file.name;
+          pageInput.value = "1";
+          buildScaffold();
+          toolbar.classList.add("visible");
+          tuneBar.classList.add("visible");
+          dropzone.style.display = "none";
+          updateNav();
+          setProgress("");
+          await rerenderVisible();
+          document.querySelector('[data-page="1"]').scrollIntoView({ block: "start" });
+        } catch (e) {
+          console.error(e);
+          if (e && e.name === "PasswordException") {
+            const pw = window.prompt("This PDF is password-protected. Enter the password:");
+            if (pw) {
+              try {
+                pdfDoc = await pdfjsLib.getDocument({ url: objectUrl, password: pw }).promise;
+                numPages = pdfDoc.numPages;
+                pageProxies = [];
+                for (let i = 1; i <= numPages; i++) pageProxies.push(await pdfDoc.getPage(i));
+                const v1 = pageProxies[0].getViewport({ scale: 1 });
+                baseScale = fitScale(v1.width);
+                scale = baseScale;
+                fileNameEl.textContent = file.name;
+                buildScaffold();
+                toolbar.classList.add("visible");
+                tuneBar.classList.add("visible");
+                dropzone.style.display = "none";
+                updateNav();
+                setProgress("");
+                await rerenderVisible();
+                return;
+              } catch (e2) { /* fall through */ }
+            }
+            showError("Couldn't unlock this PDF with that password.");
+          } else {
+            showError("Couldn't open this PDF. It may be corrupt or use unsupported features. Try another file.");
+          }
+          setProgress("");
+          closeDoc(false);
+        }
+      }
+
+      function closeDoc(showDropzone = true) {
+        if (observer) { observer.disconnect(); observer = null; }
+        Object.keys(renderTasks).forEach((k) => delete renderTasks[k]);
+        if (pdfDoc) { try { pdfDoc.destroy(); } catch (e) {} pdfDoc = null; }
+        if (objectUrl) { URL.revokeObjectURL(objectUrl); objectUrl = null; }
+        pagesEl.innerHTML = "";
+        numPages = 0; currentPage = 1; pageProxies = [];
+        toolbar.classList.remove("visible");
+        tuneBar.classList.remove("visible");
+        setProgress("");
+        if (showDropzone) { dropzone.style.display = "block"; fileInput.value = ""; }
+      }
+
+      pickBtn.addEventListener("click", (e) => { e.stopPropagation(); fileInput.click(); });
+      dropzone.addEventListener("click", () => fileInput.click());
+      dropzone.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fileInput.click(); }
+      });
+      fileInput.addEventListener("change", () => openFile(fileInput.files[0]));
+      ["dragenter", "dragover"].forEach((ev) => dropzone.addEventListener(ev, (e) => {
+        e.preventDefault(); dropzone.classList.add("drag");
+      }));
+      ["dragleave", "drop"].forEach((ev) => dropzone.addEventListener(ev, (e) => {
+        e.preventDefault(); dropzone.classList.remove("drag");
+      }));
+      dropzone.addEventListener("drop", (e) => {
+        const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+        if (f) openFile(f);
+      });
+
+      prevBtn.addEventListener("click", () => goTo(currentPage - 1));
+      nextBtn.addEventListener("click", () => goTo(currentPage + 1));
+      pageInput.addEventListener("change", () => goTo(Number(pageInput.value) || 1));
+      zoomIn.addEventListener("click", () => { scale = clamp(scale * 1.2, baseScale * 0.5, baseScale * 4); updateNav(); scheduleRerender(); });
+      zoomOut.addEventListener("click", () => { scale = clamp(scale / 1.2, baseScale * 0.5, baseScale * 4); updateNav(); scheduleRerender(); });
+      fitBtn.addEventListener("click", () => { scale = baseScale; updateNav(); scheduleRerender(); });
+      changeBtn.addEventListener("click", () => fileInput.click());
+      closeBtn.addEventListener("click", () => { closeDoc(true); clearError(); });
+
+      tabs.forEach((tab) => tab.addEventListener("click", () => {
+        mode = tab.dataset.mode;
+        tabs.forEach((t) => t.setAttribute("aria-selected", String(t === tab)));
+        repaintAll();
+      }));
+      strengthInput.addEventListener("input", repaintAll);
+      contrastInput.addEventListener("input", repaintAll);
+
+      document.addEventListener("keydown", (e) => {
+        if (!pdfDoc) return;
+        if (e.key === "ArrowRight") goTo(currentPage + 1);
+        else if (e.key === "ArrowLeft") goTo(currentPage - 1);
+        else if (e.key === "+" || e.key === "=") { scale = clamp(scale * 1.2, baseScale * 0.5, baseScale * 4); updateNav(); scheduleRerender(); }
+        else if (e.key === "-") { scale = clamp(scale / 1.2, baseScale * 0.5, baseScale * 4); updateNav(); scheduleRerender(); }
+      });
+
+      window.addEventListener("resize", () => { if (pdfDoc) scheduleRerender(); });
+      repaintAll();
+    })();
+  </script>
+</body>
+</html>

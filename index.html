@@ -9,7 +9,8 @@
     name="description"
     content="A browser extension that adds customizable dark mode to online and offline PDFs. Adjustable darkness and contrast, plus Sepia and AMOLED reading modes. One-time payment, no subscription."
   />
-  <link rel="canonical" href="https://diwashdahal.com.np/PDF-Dark-Mode/" />
+  <link rel="canonical" href="https://pdf-dark.com/" />
+  <meta name="robots" content="index, follow, max-image-preview:large" />
   <meta name="theme-color" content="#07090c" />
 
   <meta property="og:type" content="website" />
@@ -19,8 +20,8 @@
     property="og:description"
     content="Customizable dark mode for online and offline PDFs. Adjustable darkness, contrast, Sepia and AMOLED modes. Pay once, no subscription."
   />
-  <meta property="og:url" content="https://diwashdahal.com.np/PDF-Dark-Mode/" />
-  <meta property="og:image" content="https://diwashdahal.com.np/PDF-Dark-Mode/assets/og-image.png" />
+  <meta property="og:url" content="https://pdf-dark.com/" />
+  <meta property="og:image" content="https://pdf-dark.com/assets/og-image.png" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
 
@@ -30,7 +31,7 @@
     name="twitter:description"
     content="Customizable dark mode for online and offline PDFs. Pay once, no subscription."
   />
-  <meta name="twitter:image" content="https://diwashdahal.com.np/PDF-Dark-Mode/assets/og-image.png" />
+  <meta name="twitter:image" content="https://pdf-dark.com/assets/og-image.png" />
 
   <link rel="icon" type="image/png" href="./assets/logo.png" />
   <link rel="apple-touch-icon" href="./assets/logo.png" />
@@ -956,6 +957,32 @@
       * { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
     }
   </style>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "SoftwareApplication",
+        "name": "PDF Dark Mode",
+        "applicationCategory": "UtilitiesApplication",
+        "operatingSystem": "Chrome, Edge",
+        "url": "https://pdf-dark.com/",
+        "offers": { "@type": "Offer", "price": "9.99", "priceCurrency": "USD" },
+        "description": "Browser extension that adds customizable dark mode to online and offline PDFs, with adjustable darkness, contrast, Sepia and AMOLED reading modes."
+      },
+      { "@type": "WebSite", "name": "PDF Dark Mode", "url": "https://pdf-dark.com/" },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          { "@type": "Question", "name": "Is $9.99 really the only payment?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. No renewal, no expiry, no upgrade tier. Future Pro features are included." } },
+          { "@type": "Question", "name": "Do I need an account?", "acceptedAnswer": { "@type": "Answer", "text": "No. Checkout gives you a licence key; paste it into the extension." } },
+          { "@type": "Question", "name": "Does it work on PDFs saved on my computer?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. Enable Allow access to file URLs for the extension, or use the free web reader." } },
+          { "@type": "Question", "name": "What does the extension do with my documents?", "acceptedAnswer": { "@type": "Answer", "text": "Nothing leaves your machine. The overlay is drawn locally." } }
+        ]
+      }
+    ]
+  }
+  </script>
 </head>
 
 <body>
@@ -971,6 +998,7 @@
       <nav class="nav-links" aria-label="Primary">
         <a href="#modes">Reading modes</a>
         <a href="#features">Features</a>
+        <a href="./reader.html">Web reader</a>
         <a href="#pricing">Pricing</a>
         <a href="#faq">FAQ</a>
       </nav>
@@ -1027,6 +1055,11 @@
           >
             <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2c5.1 0 9.2 3.6 9.2 8.2 0 2.5-1.7 4-4.3 4-2 0-3.6-.9-4.6-2.3.5 2.7 2.6 4.6 5.7 4.9-1.7 3-4.7 5.2-8.3 5.2A9.5 9.5 0 0 1 2 12.6c0-3.3 1.9-6.2 4.7-7.7-1 1.1-1.6 2.5-1.6 4 0 1 .2 1.9.6 2.7C5.4 6.2 8.3 2 12 2Z"/></svg>
             Add to Edge
+          </a>
+
+          <a href="./reader.html" class="button" id="try-reader">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 2h9l5 5v15a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1Zm8 1.5V8h4.5L14 3.5ZM8 12h8v1.5H8V12Zm0 4h8v1.5H8V16Z"/></svg>
+            Try web reader
           </a>
         </div>
 
@@ -1391,7 +1424,7 @@
             <p>
               Activate the same key in the extension on each browser you read in. If an activation
               is refused because you've reached the limit on your key,
-              <a href="mailto:diwashdahal75+PDF-Dark-Mode@gmail.com">email me</a> and I'll sort it out.
+              <a href="mailto:contact@pdf-dark.com">email me</a> and I'll sort it out.
             </p>
           </details>
 
@@ -1427,7 +1460,7 @@
             <summary>Can I get a refund?</summary>
             <p>
               Refund requests are reviewed case by case. If it isn't working the way you expected,
-              <a href="mailto:diwashdahal75+PDF-Dark-Mode@gmail.com">get in touch</a> before anything
+              <a href="mailto:contact@pdf-dark.com">get in touch</a> before anything
               else — most problems turn out to be a settings fix. See the
               <a href="terms.html">terms</a> for the full policy.
             </p>
@@ -1446,7 +1479,7 @@
         </p>
 
         <div class="contact-grid">
-          <a class="contact-link" href="mailto:diwashdahal75+PDF-Dark-Mode@gmail.com">
+          <a class="contact-link" href="mailto:contact@pdf-dark.com">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 6a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v.35l-10 6.25L2 6.35V6Zm0 2.7V18a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8.7l-9.47 5.92a1 1 0 0 1-1.06 0L2 8.7Z"/></svg>
             <span><b>Email</b><span>Support, licences, and refunds</span></span>
           </a>
@@ -1478,6 +1511,7 @@
           <ul>
             <li><a href="#modes">Reading modes</a></li>
             <li><a href="#features">Features</a></li>
+            <li><a href="./reader.html">Web reader</a></li>
             <li><a href="#pricing">Pricing</a></li>
             <li><a href="#activate">Activation</a></li>
           </ul>
