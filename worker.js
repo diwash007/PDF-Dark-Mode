@@ -68,15 +68,6 @@ chrome.runtime.onInstalled.addListener((details) => {
 
   if (details.reason === chrome.runtime.OnInstalledReason.INSTALL) {
     chrome.tabs.create({ url: "./instruction/index.html" });
-    return;
-  }
-
-  if (details.reason === chrome.runtime.OnInstalledReason.UPDATE) {
-    const previousVersion = details.previousVersion;
-    const currentVersion = chrome.runtime.getManifest().version;
-    if (previousVersion !== currentVersion) {
-      chrome.tabs.create({ url: "./instruction/update.html" });
-    }
   }
 });
 
