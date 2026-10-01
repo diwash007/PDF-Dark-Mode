@@ -119,8 +119,8 @@ check("the only network endpoint is the licence API", () => {
       .forEach((url) => endpoints.add(new URL(url.replace(/[.,;]$/, "")).host));
   });
 
-  // diwashdahal.com.np is opened in a tab on user click, not fetched.
-  const allowed = new Set(["api.lemonsqueezy.com", "diwashdahal.com.np"]);
+  // pdf-dark.com is opened in a tab on user click, not fetched.
+  const allowed = new Set(["api.lemonsqueezy.com", "pdf-dark.com"]);
   endpoints.forEach((host) => {
     assert.ok(allowed.has(host), `unexpected network host: ${host}`);
   });

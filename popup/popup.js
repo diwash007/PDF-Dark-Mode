@@ -8,8 +8,8 @@ const defaultBilling = core.defaultBilling;
 const clamp = core.clamp;
 
 
-const PRICING_URL = "https://diwashdahal.com.np/PDF-Dark-Mode#pricing";
-const SUPPORT_URL = "https://diwashdahal.com.np/PDF-Dark-Mode#contact";
+const PRICING_URL = "https://pdf-dark.com/#pricing";
+const SUPPORT_URL = "https://pdf-dark.com/help.html";
 const ENABLE_DEBUG_BILLING_TOOLS = false;
 const EXTENSION_DETAILS_URL = `chrome://extensions/?id=${chrome.runtime.id}`;
 

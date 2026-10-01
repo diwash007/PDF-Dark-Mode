@@ -72,8 +72,14 @@ the instruction pages work offline and leak nothing to third parties.
 
 ## Installation
 
+- Website: https://pdf-dark.com/
 - Chrome Web Store: https://chromewebstore.google.com/detail/pdf-dark-mode/clabimobhdkbfpkdeloigeneocldkmdc
 - Microsoft Edge Add-ons: https://microsoftedge.microsoft.com/addons/detail/pdf-dark-mode/nghkmkbjhpgdibgopgekgjnbocfmnjdo
+
+## Support
+
+- Help: https://pdf-dark.com/help.html
+- Email: contact@pdf-dark.com
 
 
 ## Development
