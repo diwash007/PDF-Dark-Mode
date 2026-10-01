@@ -126,6 +126,24 @@ check("the only network endpoint is the licence API", () => {
   });
 });
 
+check("global .hidden stays the last display rule in popup.css", () => {
+  // Same specificity as component classes, so source order decides: a
+  // display:flex/grid declared after .hidden overrides it and the element
+  // stays visible (this once kept the file-access banner stuck on screen).
+  const css = read("popup/popup.css").replace(/\/\*[\s\S]*?\*\//g, "");
+  const hiddenRules = [...css.matchAll(/\.hidden\s*\{[^}]*display\s*:\s*none[^}]*\}/g)];
+  assert.ok(hiddenRules.length >= 1, "global .hidden rule missing from popup.css");
+
+  const lastHidden = hiddenRules[hiddenRules.length - 1];
+  const lastHiddenEnd = lastHidden.index + lastHidden[0].length;
+  const displaysAfter = (css.slice(lastHiddenEnd).match(/display\s*:/g) || []).length;
+  assert.equal(
+    displaysAfter,
+    0,
+    ".hidden must be the last display rule in popup.css — move it back to the end"
+  );
+});
+
 /* ------------------------------------------- single overlay implementation */
 
 check("the overlay renderer exists exactly once", () => {

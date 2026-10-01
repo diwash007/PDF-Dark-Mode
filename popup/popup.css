@@ -11,10 +11,6 @@ body {
   background: #1f2733;
 }
 
-.hidden {
-  display: none;
-}
-
 .app-shell {
   padding: 10px 12px 12px;
   display: flex;
@@ -148,13 +144,6 @@ body {
   flex-shrink: 0;
 }
 
-.checkbox-row small {
-  display: block;
-  margin-top: 2px;
-  font-size: 11px;
-  color: #9ca3af;
-}
-
 .file-access-banner {
   background: #3a1d1d;
   border: 1px solid #7f1d1d;
@@ -262,13 +251,6 @@ input[type="range"] {
   font-size: 12px;
 }
 
-.analytics-summary {
-  text-align: center;
-  color: #d1d5db;
-  font-size: 12px;
-  line-height: 1.35;
-}
-
 .plan-label {
   font-size: 12px;
   text-align: center;
@@ -278,41 +260,6 @@ input[type="range"] {
   font-weight: 700;
   background: transparent;
   border: none;
-  position: relative;
-}
-
-.plan-label::after {
-  content: "Auto-validates every 24h";
-  position: absolute;
-  bottom: 100%;
-  left: 50%;
-  transform: translateX(-50%);
-  background: #111827;
-  color: #f9fafb;
-  font-size: 10px;
-  padding: 6px 10px;
-  border-radius: 6px;
-  white-space: nowrap;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 0.2s ease;
-  margin-bottom: 6px;
-  font-weight: normal;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-color: #e5e7eb;
-  z-index: 1000;
-}
-
-.plan-label::before {
-  content: "ℹ";
-  font-size: 11px;
-  margin-left: 4px;
-  color: #9ca3af;
-  cursor: help;
-}
-
-.plan-label:hover::after {
-  opacity: 1;
 }
 
 .plan-label.pro,
@@ -322,10 +269,6 @@ input[type="range"] {
 
 .plan-label.free {
   color: #9ca3af;
-}
-
-.plan-label.free::before {
-  display: none;
 }
 
 .billing-actions {
@@ -364,10 +307,6 @@ input[type="range"] {
   align-items: center;
   gap: 8px;
   margin-bottom: 6px;
-}
-
-.license-activation-panel.hidden {
-  display: none;
 }
 
 .license-activation-panel {
@@ -463,10 +402,6 @@ input[type="range"] {
   margin-top: 8px;
 }
 
-.debug-tools.hidden {
-  display: none;
-}
-
 #debugRevokeBtn {
   width: 100%;
   background: #7f1d1d;
@@ -487,25 +422,14 @@ input[type="range"] {
   word-break: break-word;
 }
 
-.site-rule-actions,
-.manual-site-row {
+.site-rule-actions {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
   gap: 5px;
   align-items: center;
 }
 
-.manual-site-row {
-  margin-top: 5px;
-  display: none;
-}
-
-.manual-site-row {
-  grid-template-columns: 1.5fr 1fr 1fr;
-}
-
-.site-rule-actions button,
-.manual-site-row button {
+.site-rule-actions button {
   background: #1f2937;
   color: #e5e7eb;
   border: 1px solid #4b5563;
@@ -516,27 +440,23 @@ input[type="range"] {
   transition: transform 0.12s ease, box-shadow 0.2s ease;
 }
 
-#allowCurrentSiteBtn,
-#allowManualSiteBtn {
+#allowCurrentSiteBtn {
   background: #14532d;
   color: #bbf7d0;
   border: 1px solid #166534;
 }
 
-#allowCurrentSiteBtn:hover:not(:disabled),
-#allowManualSiteBtn:hover:not(:disabled) {
+#allowCurrentSiteBtn:hover:not(:disabled) {
   transform: translateY(-1px);
 }
 
-#blockCurrentSiteBtn,
-#blockManualSiteBtn {
+#blockCurrentSiteBtn {
   background: #4c1d1d;
   color: #fecaca;
   border: 1px solid #7f1d1d;
 }
 
-#blockCurrentSiteBtn:hover:not(:disabled),
-#blockManualSiteBtn:hover:not(:disabled) {
+#blockCurrentSiteBtn:hover:not(:disabled) {
   transform: translateY(-1px);
 }
 
@@ -550,31 +470,9 @@ input[type="range"] {
   transform: translateY(-1px);
 }
 
-.site-rule-actions button:disabled,
-.manual-site-row button:disabled {
+.site-rule-actions button:disabled {
   opacity: 0.45;
   cursor: not-allowed;
-}
-
-#manualSiteInput {
-  width: 100%;
-  font-size: 11px;
-  border-radius: 8px;
-  border: 1px solid #4b5563;
-  background: #111827;
-  color: #f3f4f6;
-  padding: 7px 8px;
-  transition: all 0.2s ease;
-}
-
-#manualSiteInput:focus {
-  outline: none;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
-}
-
-#manualSiteInput:disabled {
-  opacity: 0.45;
 }
 
 .site-rule-box.locked {
@@ -696,4 +594,15 @@ input[type="range"] {
   background: #1f2937;
   border: 1px solid #374151;
   margin-top: 2px;
+}
+
+/*
+ * Utility hide class. It MUST stay the last display rule in this file:
+ * same specificity as component classes (e.g. .file-access-banner sets
+ * display:flex), so source order decides — anything declared after this
+ * would override it and the element would stay visible. Removing a
+ * component-specific ".x.hidden" rule is only safe while this stays last.
+ */
+.hidden {
+  display: none;
 }

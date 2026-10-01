@@ -22,15 +22,11 @@ const fileAccessBanner = document.getElementById("fileAccessBanner");
 const openFileAccessSettingsBtn = document.getElementById("openFileAccessSettingsBtn");
 const contrastSlider = document.getElementById("contrastSlider");
 const modeSelect = document.getElementById("modeSelect");
-const analyticsSummary = document.getElementById("analyticsSummary");
 const currentHostLabel = document.getElementById("currentHostLabel");
 const currentRuleLabel = document.getElementById("currentRuleLabel");
 const allowCurrentSiteBtn = document.getElementById("allowCurrentSiteBtn");
 const blockCurrentSiteBtn = document.getElementById("blockCurrentSiteBtn");
 const clearCurrentSiteBtn = document.getElementById("clearCurrentSiteBtn");
-const manualSiteInput = document.getElementById("manualSiteInput");
-const allowManualSiteBtn = document.getElementById("allowManualSiteBtn");
-const blockManualSiteBtn = document.getElementById("blockManualSiteBtn");
 const planLabel = document.getElementById("planLabel");
 const subscribeBtn = document.getElementById("subscribeBtn");
 const haveLicenseToggleBtn = document.getElementById("haveLicenseToggleBtn");
@@ -204,24 +200,6 @@ clearCurrentSiteBtn.addEventListener("click", async () => {
   await clearSiteRule(currentHost);
   await refreshSiteRuleLabels();
   applyPreviewFromControls();
-});
-
-allowManualSiteBtn.addEventListener("click", async () => {
-  if (!entitlement.isPro) return;
-  const host = normalizeHostname(manualSiteInput.value);
-  if (!host) return;
-  await setSiteRule(host, "allow");
-  manualSiteInput.value = "";
-  await refreshSiteRuleLabels();
-});
-
-blockManualSiteBtn.addEventListener("click", async () => {
-  if (!entitlement.isPro) return;
-  const host = normalizeHostname(manualSiteInput.value);
-  if (!host) return;
-  await setSiteRule(host, "block");
-  manualSiteInput.value = "";
-  await refreshSiteRuleLabels();
 });
 
 subscribeBtn.addEventListener("click", () => {
@@ -401,7 +379,6 @@ async function initializePopup() {
   renderEntitlementUI();
   updateAreaUI();
   await refreshSiteRuleLabels();
-  renderAnalyticsSummary();
   renderLicenseActivationPanel();
   renderDebugBillingTools();
 
@@ -409,9 +386,7 @@ async function initializePopup() {
     await persistSyncValue("mode", modeSelect.value);
   }
 
-  if (syncState.billing?.status === "active") {
-    renderLicenseStatus("License found. Background validation runs automatically.", "success");
-  }
+  renderLicenseStatus("", "");
 }
 
 async function detectAndUpdateSliderMax(tab) {
@@ -521,9 +496,6 @@ function renderEntitlementUI() {
     allowCurrentSiteBtn,
     blockCurrentSiteBtn,
     clearCurrentSiteBtn,
-    manualSiteInput,
-    allowManualSiteBtn,
-    blockManualSiteBtn,
   ];
   controls.forEach((element) => {
     element.disabled = !entitlement.isPro;
@@ -554,11 +526,12 @@ async function refreshSiteRuleLabels() {
 }
 
 function renderLicenseStatus(message, type) {
-  licenseStatus.textContent = message;
+  licenseStatus.textContent = message || "";
   licenseStatus.classList.remove("error", "success");
   if (type === "error" || type === "success") {
     licenseStatus.classList.add(type);
   }
+  licenseStatus.classList.toggle("hidden", !message);
 }
 
 function renderLicenseActivationPanel() {
@@ -652,43 +625,10 @@ function sendAnalyticsEvent(eventName) {
   chrome.runtime.sendMessage({ type: "analytics-event", event: eventName });
 }
 
-function renderAnalyticsSummary() {
-  chrome.storage.local.get("analytics", ({ analytics }) => {
-    const totals = sumLast7Days(analytics?.pdfAppliesByDay || {});
-    analyticsSummary.textContent = `Local analytics: ${totals} PDF sessions in last 7 days`;
-  });
-}
-
-function sumLast7Days(pdfAppliesByDay) {
-  const currentDay = new Date();
-  let sum = 0;
-
-  for (let i = 0; i < 7; i += 1) {
-    const day = new Date(currentDay);
-    day.setDate(currentDay.getDate() - i);
-    const dayKey = day.toISOString().slice(0, 10);
-    sum += pdfAppliesByDay[dayKey] || 0;
-  }
-
-  return sum;
-}
-
 function getSyncState(keys) {
   return new Promise((resolve) => {
     chrome.storage.sync.get(keys, resolve);
   });
-}
-
-function normalizeHostname(value) {
-  const text = (value || "").trim().toLowerCase();
-  if (!text) return "";
-
-  try {
-    const withProtocol = text.includes("://") ? text : `https://${text}`;
-    return new URL(withProtocol).hostname;
-  } catch {
-    return "";
-  }
 }
 
 function normalizeLicenseKey(value) {
