@@ -244,6 +244,18 @@
     }
   }
 
+  // Briefly relabels a control to its Pro-gated state, then restores it.
+  // Used where the gated control (e.g. collapsing Appearance) otherwise
+  // fails silently for free users.
+  function flashProOnly(button, label) {
+    if (!button) return;
+    const original = button.textContent;
+    button.textContent = label;
+    setTimeout(() => {
+      if (button.textContent === label) button.textContent = original;
+    }, 1600);
+  }
+
   function extensionDetailsUrl() {
     if (core?.extensionDetailsUrl) return core.extensionDetailsUrl(chrome.runtime.id);
     return "chrome://extensions/";
@@ -270,7 +282,9 @@
       optionsBtn.addEventListener("click", () => {
         if (state.optionsOpen && !state.isPro) {
           // Collapsing the options is a Pro privilege; opening is free.
-          if (proNote) proNote.classList.remove("hidden");
+          // The proNote is already visible to free users, so the refusal
+          // must say so on the button itself, briefly.
+          flashProOnly(optionsBtn, "🔒 Pro to hide");
           return;
         }
         setOptionsOpen(!state.optionsOpen);
