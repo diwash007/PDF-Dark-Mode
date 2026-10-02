@@ -48,6 +48,8 @@ revalidateStoredLicenseIfNeeded();
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   if (changeInfo.status !== "complete" || !tab?.url || !tabId) return;
 
+  updateFileAccessBadge(tabId, tab.url);
+
   chrome.storage.sync.get(["active", "siteRules", "billing"], ({ active, siteRules, billing }) => {
     if (active === false) return;
 
@@ -61,6 +63,60 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
     injectContentScript(tabId);
   });
 });
+
+chrome.tabs.onActivated.addListener(({ tabId } = {}) => {
+  if (typeof tabId !== "number") return;
+  chrome.tabs.get(tabId, (tab) => {
+    if (chrome.runtime.lastError || !tab?.url) return;
+    updateFileAccessBadge(tabId, tab.url);
+  });
+});
+
+/*
+ * Content scripts never run on file:// pages without file access (Chrome
+ * refuses injection), so no on-page banner can warn about it. The toolbar
+ * badge is the only in-browser signal: "!" while a file:// tab lacks
+ * access, cleared otherwise. Best-effort — never throws, never blocks.
+ */
+function updateFileAccessBadge(tabId, url) {
+  const clear = () => {
+    try {
+      chrome.action.setBadgeText({ text: "", tabId });
+    } catch {
+      /* badge unsupported — ignore */
+    }
+  };
+
+  if (!/^file:\/\//i.test(url || "")) {
+    clear();
+    return;
+  }
+
+  let isAllowed = null;
+  try {
+    isAllowed = chrome.extension?.isAllowedFileSchemeAccess;
+  } catch {
+    isAllowed = null;
+  }
+  if (typeof isAllowed !== "function") return;
+
+  try {
+    isAllowed((allowed) => {
+      try {
+        if (allowed) {
+          chrome.action.setBadgeText({ text: "", tabId });
+          return;
+        }
+        chrome.action.setBadgeBackgroundColor({ color: "#b45309", tabId });
+        chrome.action.setBadgeText({ text: "!", tabId });
+      } catch {
+        /* badge unsupported — ignore */
+      }
+    });
+  } catch {
+    /* ignore */
+  }
+}
 
 chrome.runtime.onInstalled.addListener((details) => {
   ensureDefaults();
@@ -124,6 +180,19 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     chrome.tabs.create({ url: chrome.runtime.getURL("popup/popup.html") }, () => {
       if (chrome.runtime.lastError) {
         sendResponse({ ok: false, error: chrome.runtime.lastError.message || "Failed to open popup tab." });
+        return;
+      }
+      sendResponse({ ok: true });
+    });
+    return true;
+  }
+
+  if (message?.type === "open-extension-settings") {
+    // One-click path to the file-access toggle for surfaces that cannot use
+    // window.open (content scripts) or already failed it (shield blockers).
+    chrome.tabs.create({ url: core.extensionDetailsUrl(chrome.runtime.id) }, () => {
+      if (chrome.runtime.lastError) {
+        sendResponse({ ok: false, error: chrome.runtime.lastError.message || "Failed to open settings." });
         return;
       }
       sendResponse({ ok: true });

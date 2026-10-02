@@ -162,4 +162,13 @@ check("hostname extraction is defensive", () => {
   assert.equal(core.getHostnameFromUrl(undefined), "");
 });
 
+check("extension details URL targets this extension", () => {
+  assert.equal(
+    core.extensionDetailsUrl("abcdefghijklmnop"),
+    "chrome://extensions/?id=abcdefghijklmnop"
+  );
+  assert.equal(core.extensionDetailsUrl(""), "chrome://extensions/");
+  assert.equal(core.extensionDetailsUrl(undefined), "chrome://extensions/");
+});
+
 console.log(`policy: ${passed} assertions passed`);

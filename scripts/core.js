@@ -48,6 +48,20 @@
     }
   }
 
+  /*
+   * Details page for this extension in Chrome, Brave and Edge (the
+   * chrome:// scheme is aliased in all of them). Single source of truth for
+   * every "open extension settings" entry point. NOTE: appending a #fragment
+   * for the file-access toggle was tried and does nothing — chrome:// pages
+   * are closed WebUI that ignore unknown fragments and forbid content
+   * scripts — so this stays a plain details URL and our copy names the
+   * "Allow access to file URLs" toggle explicitly instead.
+   */
+  function extensionDetailsUrl(extensionId) {
+    if (!extensionId) return "chrome://extensions/";
+    return `chrome://extensions/?id=${extensionId}`;
+  }
+
   function defaultBilling() {
     return {
       plan: "free",
@@ -363,6 +377,7 @@
     CONTRAST_MAX,
     clamp,
     getHostnameFromUrl,
+    extensionDetailsUrl,
     defaultBilling,
     getEntitlement,
     isViewerUrl,

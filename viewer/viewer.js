@@ -197,8 +197,7 @@
     if (docTitle) docTitle.textContent = fileNameOf(state.pdfUrl);
     if (openFileAccessBtn) {
       openFileAccessBtn.addEventListener("click", () => {
-        const url = core ? `chrome://extensions/?id=${chrome.runtime.id}` : "chrome://extensions/";
-        chrome.tabs.create({ url });
+        chrome.tabs.create({ url: extensionDetailsUrl() });
       });
     }
     if (proBtn) {
@@ -227,6 +226,11 @@
       optionsBtn.textContent = open ? "Appearance ▴" : "Appearance ▾";
       optionsBtn.title = open ? "Hide appearance options" : "Show appearance options";
     }
+  }
+
+  function extensionDetailsUrl() {
+    if (core?.extensionDetailsUrl) return core.extensionDetailsUrl(chrome.runtime.id);
+    return "chrome://extensions/";
   }
 
   function fileNameOf(url) {

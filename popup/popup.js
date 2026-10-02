@@ -11,7 +11,7 @@ const clamp = core.clamp;
 const PRICING_URL = "https://pdf-dark.com/#pricing";
 const SUPPORT_URL = "https://pdf-dark.com/help.html";
 const ENABLE_DEBUG_BILLING_TOOLS = false;
-const EXTENSION_DETAILS_URL = `chrome://extensions/?id=${chrome.runtime.id}`;
+const EXTENSION_DETAILS_URL = core.extensionDetailsUrl(chrome.runtime.id);
 
 const slider = document.getElementById("slider");
 const toggle = document.getElementById("toggle");

@@ -15,13 +15,15 @@ const root = path.join(__dirname, "..");
 const coreSrc = fs.readFileSync(path.join(root, "scripts/core.js"), "utf8");
 const workerSrc = fs.readFileSync(path.join(root, "worker.js"), "utf8");
 
-function boot({ syncState = {} } = {}) {
+function boot({ syncState = {}, fileAccess = null } = {}) {
   const calls = {
     executeScript: [],
     syncWrites: [],
     localWrites: [],
     tabsCreated: [],
     tabsQueried: 0,
+    badgeTexts: [],
+    badgeColors: [],
     alarmsCreated: [],
     fetches: [],
   };
@@ -37,6 +39,7 @@ function boot({ syncState = {} } = {}) {
 
   const chromeStub = {
     runtime: {
+      id: "test-id",
       lastError: null,
       getManifest: () => ({ version: "2.2.0" }),
       getURL: (pagePath) => `chrome-extension://test-id/${pagePath}`,
@@ -45,12 +48,35 @@ function boot({ syncState = {} } = {}) {
       onStartup: register("onStartup"),
       onMessage: register("onMessage"),
     },
+    extension:
+      fileAccess === null
+        ? undefined
+        : { isAllowedFileSchemeAccess: (cb) => cb(fileAccess) },
+    action: {
+      openPopup: () => Promise.resolve(),
+      setBadgeText: (opts) => {
+        calls.badgeTexts.push(opts);
+        return Promise.resolve();
+      },
+      setBadgeBackgroundColor: (opts) => {
+        calls.badgeColors.push(opts);
+        return Promise.resolve();
+      },
+    },
     tabs: {
       onUpdated: register("onUpdated"),
+      onActivated: register("onActivated"),
       create: (opts, cb) => {
         calls.tabsCreated.push(opts);
         if (typeof cb === "function") cb();
         return Promise.resolve({});
+      },
+      get: (tabId, cb) => {
+        const tab = tabId === 21
+          ? { id: 21, url: "file:///Users/me/reading/thesis.pdf" }
+          : { id: tabId, url: "https://example.com/" };
+        if (typeof cb === "function") return cb(tab);
+        return Promise.resolve(tab);
       },
       query: () => {
         calls.tabsQueried += 1;
@@ -106,7 +132,6 @@ function boot({ syncState = {} } = {}) {
       onAlarm: register("onAlarm"),
     },
     commands: { onCommand: register("onCommand") },
-    action: { openPopup: () => Promise.resolve() },
   };
 
   const context = {
@@ -160,7 +185,7 @@ async function main() {
   {
     const { listeners, context } = boot();
     assert.ok(context.PDFDarkModeCore, "worker must importScripts core.js");
-    ["onUpdated", "onInstalled", "onStartup", "onMessage", "onAlarm", "onCommand", "onChanged"].forEach(
+    ["onUpdated", "onActivated", "onInstalled", "onStartup", "onMessage", "onAlarm", "onCommand", "onChanged"].forEach(
       (name) => assert.ok(listeners[name]?.length, `missing listener: ${name}`)
     );
   }
@@ -298,6 +323,76 @@ async function main() {
       calls.tabsCreated[0].url,
       "chrome-extension://test-id/popup/popup.html",
       "popup tab must point at the popup page"
+    );
+  }
+
+  {
+    const { calls, fire } = boot({ syncState: {} });
+    let response = null;
+    await fire("onMessage", { type: "open-extension-settings" }, {}, (r) => {
+      response = r;
+    });
+    await settle();
+
+    assert.equal(response?.ok, true, "open-extension-settings must succeed");
+    assert.equal(
+      calls.tabsCreated[0]?.url,
+      "chrome://extensions/?id=test-id",
+      "settings tab must point at this extension's details page"
+    );
+  }
+
+  /* ------------------------------------------------- file access badge */
+
+  {
+    // file:// tab without access: badge warns. Content scripts never run
+    // there, so the badge is the only in-browser signal (plus the popup).
+    const { calls, fire } = boot({ syncState: {}, fileAccess: false });
+    await fire("onUpdated", 21, { status: "complete" }, { url: "file:///Users/me/reading/thesis.pdf" });
+    await settle();
+
+    assert.ok(
+      calls.badgeTexts.some((b) => b.text === "!" && b.tabId === 21),
+      "file tab without access must show the ! badge"
+    );
+  }
+
+  {
+    const { calls, fire } = boot({ syncState: {}, fileAccess: true });
+    await fire("onUpdated", 21, { status: "complete" }, { url: "file:///Users/me/reading/thesis.pdf" });
+    await settle();
+
+    assert.ok(
+      calls.badgeTexts.every((b) => b.text !== "!"),
+      "file tab with access must never show the ! badge"
+    );
+  }
+
+  {
+    // Ordinary pages never touch the badge; missing file-access API never throws.
+    const { calls, fire } = boot({ syncState: {} });
+    await fire("onUpdated", 5, { status: "complete" }, { url: "https://arxiv.org/pdf/a.pdf" });
+    await settle();
+    assert.ok(
+      calls.badgeTexts.every((b) => b.text !== "!"),
+      "non-file tabs must never show the ! badge"
+    );
+
+    const noApi = boot({ syncState: {}, fileAccess: null });
+    await noApi.fire("onUpdated", 21, { status: "complete" }, { url: "file:///x.pdf" });
+    await settle();
+    assert.equal(noApi.calls.badgeTexts.filter((b) => b.text === "!").length, 0);
+  }
+
+  {
+    // Switching to an already-open file:// tab re-evaluates the badge.
+    const { calls, fire } = boot({ syncState: {}, fileAccess: false });
+    await fire("onActivated", { tabId: 21 });
+    await settle();
+
+    assert.ok(
+      calls.badgeTexts.some((b) => b.text === "!" && b.tabId === 21),
+      "activating a file tab without access must show the ! badge"
     );
   }
 
