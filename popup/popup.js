@@ -249,6 +249,7 @@ activateLicenseBtn.addEventListener("click", async () => {
   const response = await sendRuntimeMessage({
     type: "license-activate",
     licenseKey,
+    browser: (await detectBrowserTag()) || undefined,
   });
   setBillingBusyState(false);
 
@@ -669,6 +670,50 @@ function getSyncState(keys) {
 
 function normalizeLicenseKey(value) {
   return (value || "").trim().toUpperCase();
+}
+
+/*
+ * Coarse browser + OS tag ("family-os") for the license instance label, so
+ * Pro usage can be split by browser in the Lemon dashboard. Best-effort and
+ * time-boxed: a hung isBrave() must never wedge the Activate button (the
+ * worker falls back to "unknown-unknown" anyway). Silent — disclosed in the
+ * privacy policy instead of in-UI.
+ */
+function detectBrowserTag() {
+  return new Promise((resolve) => {
+    let done = false;
+    const finish = (isBrave) => {
+      if (done) return;
+      done = true;
+      try {
+        let brands = [];
+        try {
+          brands = globalThis.navigator?.userAgentData?.brands || [];
+        } catch {
+          brands = [];
+        }
+        const userAgent = globalThis.navigator?.userAgent || "";
+        resolve(core.detectBrowser({ brands, userAgent, isBrave }).tag);
+      } catch {
+        resolve("unknown-unknown");
+      }
+    };
+
+    setTimeout(() => finish(false), 1000);
+    try {
+      const brave = globalThis.navigator?.brave;
+      if (brave && typeof brave.isBrave === "function") {
+        Promise.resolve()
+          .then(() => brave.isBrave())
+          .then((result) => finish(result === true))
+          .catch(() => finish(false));
+        return;
+      }
+    } catch {
+      /* fall through to finish(false) */
+    }
+    finish(false);
+  });
 }
 
 function enforceAllowedMode(mode) {

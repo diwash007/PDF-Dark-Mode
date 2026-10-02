@@ -86,6 +86,107 @@
     return { isPro, planName, billing };
   }
 
+  /* --------------------------------------------------------------- browser */
+
+  const BROWSER_FAMILIES = [
+    "chrome",
+    "edge",
+    "brave",
+    "opera",
+    "vivaldi",
+    "firefox",
+    "safari",
+    "chromium",
+    "unknown",
+  ];
+
+  const BROWSER_OSES = [
+    "windows",
+    "macos",
+    "linux",
+    "android",
+    "ios",
+    "chromeos",
+    "unknown",
+  ];
+
+  /*
+   * Coarse browser + OS detection for license instance labels (so Pro usage
+   * can be split by browser in the Lemon dashboard). Deliberately family +
+   * OS only — never versions or raw UA strings. Pure and total: unknown
+   * input yields "unknown-unknown", and only allowlisted tokens ever come
+   * out, so the result is safe to embed in an instance name.
+   *
+   * @param {object} input { brands: [{brand}], userAgent: string, isBrave: boolean }
+   * @returns {{family: string, os: string, tag: string}} tag is "family-os".
+   */
+  function detectBrowser(input) {
+    const opts = input || {};
+    const brands = Array.isArray(opts.brands) ? opts.brands : [];
+    const userAgent = String(opts.userAgent || "");
+    const brandNames = brands
+      .map((entry) => String((entry && entry.brand) || "").toLowerCase())
+      .filter(Boolean);
+
+    let family = "";
+    if (opts.isBrave === true || brandNames.includes("brave")) {
+      family = "brave";
+    } else if (brandNames.includes("microsoft edge") || brandNames.includes("edge")) {
+      family = "edge";
+    } else if (brandNames.includes("opera") || brandNames.includes("opr")) {
+      family = "opera";
+    } else if (brandNames.includes("vivaldi")) {
+      family = "vivaldi";
+    } else if (brandNames.length) {
+      family = "chrome";
+    } else if (/firefox\/|fxios\//i.test(userAgent)) {
+      family = "firefox";
+    } else if (/edg\//i.test(userAgent)) {
+      family = "edge";
+    } else if (/\bopr\/|opera/i.test(userAgent)) {
+      family = "opera";
+    } else if (/vivaldi\//i.test(userAgent)) {
+      family = "vivaldi";
+    } else if (/chrome\/|chromium\/|crios\//i.test(userAgent)) {
+      family = "chrome";
+    } else if (/version\/.*safari\//i.test(userAgent)) {
+      family = "safari";
+    } else if (/safari\//i.test(userAgent) && !/chrome/i.test(userAgent)) {
+      family = "safari";
+    }
+
+    let os = "";
+    if (/android/i.test(userAgent)) {
+      os = "android";
+    } else if (/iphone|ipad|ipod/i.test(userAgent)) {
+      os = "ios";
+    } else if (/windows|win32|win64/i.test(userAgent)) {
+      os = "windows";
+    } else if (/macintosh|mac os/i.test(userAgent)) {
+      os = "macos";
+    } else if (/cros/i.test(userAgent)) {
+      os = "chromeos";
+    } else if (/linux/i.test(userAgent)) {
+      os = "linux";
+    }
+
+    if (!BROWSER_FAMILIES.includes(family)) family = "unknown";
+    if (!BROWSER_OSES.includes(os)) os = "unknown";
+    return { family, os, tag: `${family}-${os}` };
+  }
+
+  /*
+   * Allowlisted browser tag ("family-os") or "" — the single gate before
+   * anything browser-derived reaches the network or storage.
+   */
+  function sanitizeBrowserTag(value) {
+    const tag = String(value || "").toLowerCase();
+    if (!/^[a-z]+\-[a-z]+$/.test(tag)) return "";
+    const [family, os] = tag.split("-");
+    if (!BROWSER_FAMILIES.includes(family) || !BROWSER_OSES.includes(os)) return "";
+    return tag;
+  }
+
   /* ---------------------------------------------------------------- policy */
 
   function pathnameLooksLikePdf(pathname) {
@@ -378,6 +479,8 @@
     clamp,
     getHostnameFromUrl,
     extensionDetailsUrl,
+    detectBrowser,
+    sanitizeBrowserTag,
     defaultBilling,
     getEntitlement,
     isViewerUrl,

@@ -87,6 +87,7 @@ function makeElement(id) {
 
 function buildContext(billing) {
   const elements = new Map();
+  const sentMessages = [];
   const getById = (id) => {
     if (!IDS.has(id)) return null; // mirrors Chrome exactly
     if (!elements.has(id)) elements.set(id, makeElement(id));
@@ -110,7 +111,10 @@ function buildContext(billing) {
       id: "abcdefghijklmnopabcdefghijklmnop",
       lastError: null,
       getManifest: () => ({ version: "2.2.0" }),
-      sendMessage: (_msg, cb) => { if (typeof cb === "function") cb({ ok: true }); },
+      sendMessage: (msg, cb) => {
+        sentMessages.push(msg);
+        if (typeof cb === "function") cb({ ok: true });
+      },
     },
     storage: {
       sync: {
@@ -164,11 +168,11 @@ function buildContext(billing) {
   context.globalThis = context;
   context.window.document = documentStub;
 
-  return { context, getById, windowListeners };
+  return { context, getById, windowListeners, sentMessages };
 }
 
 async function run(billing, label) {
-  const { context, getById, windowListeners } = buildContext(billing);
+  const { context, getById, windowListeners, sentMessages } = buildContext(billing);
   vm.createContext(context);
 
   new vm.Script(coreSrc, { filename: "scripts/core.js" }).runInContext(context);
@@ -183,7 +187,7 @@ async function run(billing, label) {
   // DOMContentLoaded handler must not blow up either.
   (windowListeners.DOMContentLoaded || []).forEach((fn) => fn());
 
-  return { context, getById };
+  return { context, getById, sentMessages };
 }
 
 async function main() {
@@ -255,6 +259,25 @@ async function main() {
     const referenced = [...popupSrc.matchAll(/getElementById\("([^"]+)"\)/g)].map((m) => m[1]);
     const missing = referenced.filter((id) => !IDS.has(id));
     assert.deepEqual(missing, [], `popup.js references ids absent from popup.html: ${missing}`);
+  }
+
+  /* --------------------------------------- activation tags the browser */
+
+  {
+    // The stub has no navigator, so detection degrades to unknown-unknown —
+    // the assertion is the format contract, not the value.
+    const { getById, sentMessages } = await run(null, "free-activate");
+    getById("licenseKeyInput").value = "AAAA-BBBB-CCCC-DDDD";
+    await getById("activateLicenseBtn").dispatch("click");
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    const activation = sentMessages.find((m) => m?.type === "license-activate");
+    assert.ok(activation, "activate must send a license-activate message");
+    assert.match(
+      activation.browser || "",
+      /^[a-z]+-[a-z]+$/,
+      "activation must carry a family-os browser tag"
+    );
   }
 
   console.log("popup-smoke: popup.js initialises cleanly for free and Pro, all ids resolve");

@@ -15,7 +15,7 @@ const root = path.join(__dirname, "..");
 const coreSrc = fs.readFileSync(path.join(root, "scripts/core.js"), "utf8");
 const workerSrc = fs.readFileSync(path.join(root, "worker.js"), "utf8");
 
-function boot({ syncState = {}, fileAccess = null } = {}) {
+function boot({ syncState = {}, fileAccess = null, licenseResponse = null } = {}) {
   const calls = {
     executeScript: [],
     syncWrites: [],
@@ -156,10 +156,11 @@ function boot({ syncState = {}, fileAccess = null } = {}) {
     AbortSignal: { timeout: () => ({}) },
     fetch: (url, init) => {
       calls.fetches.push({ url, init });
+      const body = licenseResponse !== null ? licenseResponse : { valid: true };
       return Promise.resolve({
         ok: true,
         status: 200,
-        text: () => Promise.resolve(JSON.stringify({ valid: true })),
+        text: () => Promise.resolve(JSON.stringify(body)),
       });
     },
     importScripts: () => {
@@ -394,6 +395,63 @@ async function main() {
       calls.badgeTexts.some((b) => b.text === "!" && b.tabId === 21),
       "activating a file tab without access must show the ! badge"
     );
+  }
+
+  /* --------------------------------------- license browser tagging */
+
+  {
+    // The popup's detected browser rides into the Lemon instance name, so
+    // Pro usage splits by browser in the dashboard.
+    const { calls, fire, store } = boot({
+      syncState: {},
+      licenseResponse: { instance_id: "inst-1", valid: true },
+    });
+    let response = null;
+    await fire(
+      "onMessage",
+      { type: "license-activate", licenseKey: "test-key-1234", browser: "brave-macos" },
+      {},
+      (r) => {
+        response = r;
+      }
+    );
+    await settle();
+    await settle();
+
+    assert.equal(response?.ok, true, "activation must succeed");
+    const activateCall = calls.fetches.find((f) => /\/activate$/.test(f.url));
+    const sentName = JSON.parse(activateCall.init.body).instance_name;
+    assert.match(
+      sentName,
+      /^pdf-dark-mode-brave-macos-[a-z0-9]+$/,
+      "instance name must carry the browser tag"
+    );
+    assert.equal(store.billing.browser, "brave-macos", "browser must persist on billing");
+    assert.equal(store.billing.instanceName, sentName, "stored name must match the sent name");
+  }
+
+  {
+    // Hostile or missing browser tags never reach the network or storage
+    // unfiltered — they fall back to unknown-unknown.
+    for (const hostile of ["../../etc/x", "CHROME-WINDOWS", "", null, undefined, "x".repeat(500)]) {
+      const { store, fire } = boot({
+        syncState: {},
+        licenseResponse: { instance_id: "inst-1", valid: true },
+      });
+      let response = null;
+      await fire("onMessage", { type: "license-activate", licenseKey: "k", browser: hostile }, {}, (r) => {
+        response = r;
+      });
+      await settle();
+      await settle();
+
+      assert.equal(response?.ok, true, `activation must survive browser=${JSON.stringify(hostile)}`);
+      assert.match(
+        store.billing.instanceName || "",
+        hostile === "CHROME-WINDOWS" ? /^pdf-dark-mode-chrome-windows-/ : /^pdf-dark-mode-unknown-unknown-/,
+        "case-normalized tags pass, everything else falls back"
+      );
+    }
   }
 
   /* --------------------------------------------------- live tab syncing */

@@ -224,7 +224,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   }
 
   if (message?.type === "license-activate") {
-    activateLicenseFlow(message.licenseKey)
+    activateLicenseFlow(message.licenseKey, message.browser)
       .then(sendResponse)
       .catch((error) =>
         sendResponse({ ok: false, error: error?.message || "Failed to activate license." })
@@ -275,14 +275,19 @@ async function refreshOpenTabs() {
 
 /* ------------------------------------------------------------------ licence */
 
-async function activateLicenseFlow(inputKey) {
+async function activateLicenseFlow(inputKey, browserTag) {
   const licenseKey = normalizeLicenseKey(inputKey);
   if (!licenseKey) {
     return { ok: false, error: "Please enter a valid license key." };
   }
 
+  // Browser family + OS for the Lemon instance label (Pro-by-browser
+  // reporting). Re-validated here — never trust the sender — and falling
+  // back to unknown-unknown keeps activation working when detection failed.
+  const browser = core.sanitizeBrowserTag(browserTag) || "unknown-unknown";
+
   const billing = { ...core.defaultBilling(), ...((await getSyncValue("billing")) || {}) };
-  const instanceName = billing.instanceName || generateInstanceName();
+  const instanceName = billing.instanceName || generateInstanceName(browser);
 
   const activation = extractActivationData(
     await postLemonLicenseRequest("activate", {
@@ -299,6 +304,7 @@ async function activateLicenseFlow(inputKey) {
       status: "inactive",
       licenseKey,
       instanceName,
+      browser,
       licenseStatus: "activation_failed",
       errorMessage: activation.error,
       lastValidatedAt: new Date().toISOString(),
@@ -331,6 +337,7 @@ async function activateLicenseFlow(inputKey) {
       licenseKey,
       instanceId,
       instanceName,
+      browser,
       licenseStatus: "invalid",
       errorMessage: validation.error,
       lastValidatedAt: new Date().toISOString(),
@@ -348,6 +355,7 @@ async function activateLicenseFlow(inputKey) {
     licenseKey,
     instanceId,
     instanceName,
+    browser,
     licenseStatus: "valid",
     errorMessage: "",
     lastValidatedAt: now,
@@ -563,8 +571,9 @@ function normalizeLicenseKey(value) {
   return (value || "").trim().toUpperCase();
 }
 
-function generateInstanceName() {
-  return `pdf-dark-mode-${crypto.randomUUID().split("-")[0]}`;
+function generateInstanceName(browserTag) {
+  const browser = core.sanitizeBrowserTag(browserTag) || "unknown-unknown";
+  return `pdf-dark-mode-${browser}-${crypto.randomUUID().split("-")[0]}`;
 }
 
 /* ---------------------------------------------------------------- storage */

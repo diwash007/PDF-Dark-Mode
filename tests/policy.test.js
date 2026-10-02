@@ -162,6 +162,62 @@ check("hostname extraction is defensive", () => {
   assert.equal(core.getHostnameFromUrl(undefined), "");
 });
 
+/* ------------------------------------------------------- browser tag */
+
+const CHROME_UA =
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
+const BRAVE_BRANDS = [{ brand: "Chromium" }, { brand: "Brave" }, { brand: "Not-A.Brand" }];
+const EDGE_BRANDS = [{ brand: "Chromium" }, { brand: "Microsoft Edge" }];
+
+check("browser detection prefers client hints, then UA", () => {
+  assert.deepEqual(
+    core.detectBrowser({ brands: BRAVE_BRANDS, userAgent: CHROME_UA, isBrave: false }),
+    { family: "brave", os: "windows", tag: "brave-windows" }
+  );
+  assert.deepEqual(
+    core.detectBrowser({ brands: [], userAgent: CHROME_UA, isBrave: true }).family,
+    "brave",
+    "isBrave() disambiguates Brave's Chrome-identical UA"
+  );
+  assert.deepEqual(
+    core.detectBrowser({ brands: EDGE_BRANDS, userAgent: CHROME_UA }).tag,
+    "edge-windows"
+  );
+  assert.deepEqual(
+    core.detectBrowser({ brands: [], userAgent: CHROME_UA }).tag,
+    "chrome-windows"
+  );
+  assert.deepEqual(
+    core.detectBrowser({
+      brands: [],
+      userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Safari/605.1.15",
+    }).tag,
+    "safari-macos"
+  );
+  assert.deepEqual(
+    core.detectBrowser({
+      brands: [],
+      userAgent: "Mozilla/5.0 (X11; Linux x86_64; rv:125.0) Gecko/20100101 Firefox/125.0",
+    }).tag,
+    "firefox-linux"
+  );
+});
+
+check("browser detection degrades to unknown-unknown, never raw input", () => {
+  for (const input of [null, undefined, {}, { brands: "x" }, { userAgent: 42 }]) {
+    assert.deepEqual(core.detectBrowser(input), {
+      family: "unknown",
+      os: "unknown",
+      tag: "unknown-unknown",
+    });
+  }
+  assert.equal(core.sanitizeBrowserTag("brave-macos"), "brave-macos");
+  assert.equal(core.sanitizeBrowserTag("BRAVE-MACOS"), "brave-macos", "case normalizes");
+  for (const hostile of ["", "../../etc", "chrome", "a-b-c", "x".repeat(200), null, undefined, 42]) {
+    assert.equal(core.sanitizeBrowserTag(hostile), "", `rejects ${JSON.stringify(hostile)}`);
+  }
+});
+
 check("extension details URL targets this extension", () => {
   assert.equal(
     core.extensionDetailsUrl("abcdefghijklmnop"),
