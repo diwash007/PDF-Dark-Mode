@@ -260,6 +260,7 @@
     }
     .pill-free { background: rgba(255, 255, 255, 0.07); color: var(--muted); }
     .pill-pro { background: rgba(124, 196, 143, 0.15); color: var(--accent-bright); }
+    .pill-beta { background: rgba(251, 191, 36, 0.15); color: #fbbf24; }
 
     /* ---------- hero ---------- */
 
@@ -977,7 +978,9 @@
           { "@type": "Question", "name": "Is $9.99 really the only payment?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. No renewal, no expiry, no upgrade tier. Future Pro features are included." } },
           { "@type": "Question", "name": "Do I need an account?", "acceptedAnswer": { "@type": "Answer", "text": "No. Checkout gives you a licence key; paste it into the extension." } },
           { "@type": "Question", "name": "Does it work on PDFs saved on my computer?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. Enable Allow access to file URLs for the extension, or use the free web reader." } },
-          { "@type": "Question", "name": "What does the extension do with my documents?", "acceptedAnswer": { "@type": "Answer", "text": "Nothing leaves your machine. The overlay is drawn locally." } }
+          { "@type": "Question", "name": "What does the extension do with my documents?", "acceptedAnswer": { "@type": "Answer", "text": "Nothing leaves your machine. The overlay is drawn locally." } },
+          { "@type": "Question", "name": "What is the experimental viewer?", "acceptedAnswer": { "@type": "Answer", "text": "A beta reader that re-renders PDFs as genuinely dark pages where the overlay cannot reach. Free, with Sepia and AMOLED themes on Pro." } },
+          { "@type": "Question", "name": "What does activating Pro share about my browser?", "acceptedAnswer": { "@type": "Answer", "text": "Only browser family and operating system, used as the licence label. No versions, history, or page contents." } }
         ]
       }
     ]
@@ -1286,6 +1289,12 @@
             <div class="card-head"><h3>Overlay area control</h3><span class="pill pill-pro">Pro</span></div>
             <p>Trim the overlay away from toolbars and sidebars — and save that layout per site so it sticks.</p>
           </div>
+
+          <div class="card">
+            <div class="card-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" stroke-linecap="round"/></svg></div>
+            <div class="card-head"><h3>Full dark viewer</h3><span class="pill pill-free">Free</span> <span class="pill pill-beta">Beta</span></div>
+            <p>An experimental reader that renders pages truly dark — for PDFs the overlay can't reach. Open it from the popup or the floating button; Sepia and AMOLED themes are Pro.</p>
+          </div>
         </div>
       </div>
     </section>
@@ -1453,6 +1462,27 @@
               <a href="https://github.com/diwash007/PDF-Dark-Mode" target="_blank" rel="noopener noreferrer">on GitHub</a>
               — you're welcome to build it yourself. Paying for a licence is how the maintained,
               store-published version keeps getting worked on.
+            </p>
+          </details>
+
+          <details>
+            <summary>What is the experimental viewer?</summary>
+            <p>
+              The overlay can't reach pixels inside Chrome's built-in PDF viewer, so some documents
+              stay bright. The experimental full-dark viewer re-renders those PDFs as genuinely dark
+              pages — open it from the popup or the floating button. It's labelled beta while
+              features land; feedback via the <a href="#contact">contact section</a> shapes what
+              gets built next.
+            </p>
+          </details>
+
+          <details>
+            <summary>What does activating Pro share about my browser?</summary>
+            <p>
+              Only a coarse tag — browser family and operating system, like <code>chrome-windows</code>.
+              It becomes the label of your licence in our system so usage can be understood by browser.
+              No versions, history, or page contents. Details are in the
+              <a href="privacy.html">privacy policy</a>.
             </p>
           </details>
 

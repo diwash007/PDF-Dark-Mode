@@ -115,7 +115,7 @@
   <div class="container">
     <div class="card">
       <h1>Privacy Policy</h1>
-      <p class="updated">Last updated: May 15, 2026</p>
+      <p class="updated">Last updated: October 2, 2026</p>
 
       <p>
         PDF Dark Mode is committed to protecting your privacy. This Privacy Policy explains what information the extension collects, how it is used, and your rights regarding your data.
@@ -124,11 +124,23 @@
       <h2>Information Collection</h2>
 
       <p>
-        PDF Dark Mode does not collect, store, transmit, or sell personal information.
+        PDF Dark Mode does not collect, store, transmit, or sell your browsing history, PDF content, keystrokes, or precise identifiers.
       </p>
 
       <p>
-        The extension operates locally within your browser and processes PDF rendering settings directly on your device.
+        The extension operates locally within your browser and processes PDF rendering settings directly on your device. The only data that ever leaves your device is the Pro license information described below.
+      </p>
+
+      <h2>Pro Licenses</h2>
+
+      <p>
+        Activating a Pro license sends your license key plus a coarse browser tag (browser family and operating system only, e.g. <code>chrome-windows</code> — never versions, history, or page contents) to Lemon Squeezy for activation. The tag becomes the label of that license instance in our Lemon Squeezy dashboard so Pro usage can be understood by browser. No notice is shown in the extension itself; this policy is the disclosure.
+      </p>
+
+      <h2>License Validation</h2>
+
+      <p>
+        To keep Pro status accurate, the extension re-validates a stored license with Lemon Squeezy (at <code>api.lemonsqueezy.com</code>) roughly every 24 hours while the browser runs. Each check sends only the license key, its instance ID, and the instance label. If the network is unreachable, validation is skipped and Pro features stay enabled — a failed connection never revokes a paid license.
       </p>
 
       <h2>Web Reader</h2>
@@ -148,11 +160,12 @@
         <li>Contrast and filter preferences</li>
         <li>Selected reading modes</li>
         <li>Per-site allow/block rules</li>
-        <li>Temporary entitlement or Pro status flags</li>
+        <li>Full-dark viewer preferences (background theme and options-panel state)</li>
+        <li>License and entitlement record (license key, instance ID, browser tag, validation timestamps)</li>
       </ul>
 
       <p>
-        This information is stored locally using browser storage APIs and is not transmitted to external servers.
+        This information is stored locally using browser storage APIs. Only the license record described above is ever transmitted, and only to Lemon Squeezy for activation and validation.
       </p>
 
       <h2>Analytics</h2>
@@ -168,11 +181,13 @@
       <h2>Payments</h2>
 
       <p>
-        If Pro features are offered, payments may be processed through third-party payment providers such as Lemon Squeezy, Paddle, Dodo Payments, Stripe, or similar services.
+        Pro payments are processed by Lemon Squeezy as the merchant of record.
       </p>
 
       <p>
-        Payment information is handled directly by the payment provider and is subject to their respective privacy policies. PDF Dark Mode does not store credit card or banking information.
+        Payment information is handled directly by Lemon Squeezy and is subject to the
+        <a href="https://www.lemonsqueezy.com/privacy" target="_blank" rel="noopener">Lemon Squeezy Privacy Policy</a>.
+        PDF Dark Mode does not store credit card or banking information.
       </p>
 
       <h2>Permissions</h2>
@@ -194,7 +209,7 @@
       <h2>Third-Party Services</h2>
 
       <p>
-        PDF Dark Mode may link to external websites such as GitHub, browser extension stores, or payment providers. These services operate independently and have their own privacy policies.
+        PDF Dark Mode relies on Lemon Squeezy for payments and license management (see above), and may link to external websites such as GitHub or browser extension stores. These services operate independently and have their own privacy policies.
       </p>
 
       <h2>Children's Privacy</h2>
