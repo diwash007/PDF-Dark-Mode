@@ -20,6 +20,7 @@ function boot({ syncState = {} } = {}) {
     executeScript: [],
     syncWrites: [],
     localWrites: [],
+    tabsCreated: [],
     tabsQueried: 0,
     alarmsCreated: [],
     fetches: [],
@@ -38,6 +39,7 @@ function boot({ syncState = {} } = {}) {
     runtime: {
       lastError: null,
       getManifest: () => ({ version: "2.2.0" }),
+      getURL: (pagePath) => `chrome-extension://test-id/${pagePath}`,
       OnInstalledReason: { INSTALL: "install", UPDATE: "update" },
       onInstalled: register("onInstalled"),
       onStartup: register("onStartup"),
@@ -45,7 +47,11 @@ function boot({ syncState = {} } = {}) {
     },
     tabs: {
       onUpdated: register("onUpdated"),
-      create: () => {},
+      create: (opts, cb) => {
+        calls.tabsCreated.push(opts);
+        if (typeof cb === "function") cb();
+        return Promise.resolve({});
+      },
       query: () => {
         calls.tabsQueried += 1;
         return Promise.resolve([
@@ -239,6 +245,60 @@ async function main() {
     await fire("onCommand", "run-dark-mode");
     await settle();
     assert.equal(store.active, false, "first press on a fresh profile must switch off");
+  }
+
+  /* ------------------------------------------------- viewer tab opening */
+
+  {
+    // The on-page dock has no chrome.tabs and window.open trips shield/popup
+    // blockers (Brave: ERR_BLOCKED_BY_CLIENT), so it asks the worker to open
+    // the viewer tab — the same chrome.tabs.create path the popup uses.
+    const { calls, fire } = boot({ syncState: {} });
+    let response = null;
+    await fire("onMessage", { type: "open-viewer", pdfUrl: "https://arxiv.org/pdf/a.pdf" }, {}, (r) => {
+      response = r;
+    });
+    await settle();
+
+    assert.equal(response?.ok, true, "open-viewer must succeed for a PDF URL");
+    assert.equal(calls.tabsCreated.length, 1, "open-viewer must open exactly one tab");
+    assert.equal(
+      calls.tabsCreated[0].url,
+      "chrome-extension://test-id/viewer/viewer.html?pdf=" +
+        encodeURIComponent("https://arxiv.org/pdf/a.pdf"),
+      "viewer tab must carry the encoded PDF URL"
+    );
+  }
+
+  {
+    const { calls, fire } = boot({ syncState: {} });
+    let response = null;
+    await fire("onMessage", { type: "open-viewer", pdfUrl: "javascript:alert(1)" }, {}, (r) => {
+      response = r;
+    });
+    await settle();
+
+    assert.equal(response?.ok, false, "open-viewer must refuse non-pdf schemes");
+    assert.equal(calls.tabsCreated.length, 0, "refused URLs must not open a tab");
+  }
+
+  {
+    // Popup fallback when chrome.action.openPopup fails: the popup page
+    // opens in a tab instead of window.open (shield-blocked in Brave).
+    const { calls, fire } = boot({ syncState: {} });
+    let response = null;
+    await fire("onMessage", { type: "open-popup-tab" }, {}, (r) => {
+      response = r;
+    });
+    await settle();
+
+    assert.equal(response?.ok, true, "open-popup-tab must succeed");
+    assert.equal(calls.tabsCreated.length, 1, "open-popup-tab must open exactly one tab");
+    assert.equal(
+      calls.tabsCreated[0].url,
+      "chrome-extension://test-id/popup/popup.html",
+      "popup tab must point at the popup page"
+    );
   }
 
   /* --------------------------------------------------- live tab syncing */

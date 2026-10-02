@@ -29,6 +29,7 @@ const blockCurrentSiteBtn = document.getElementById("blockCurrentSiteBtn");
 const clearCurrentSiteBtn = document.getElementById("clearCurrentSiteBtn");
 const planLabel = document.getElementById("planLabel");
 const subscribeBtn = document.getElementById("subscribeBtn");
+const fullDarkBtn = document.getElementById("fullDarkBtn");
 const haveLicenseToggleBtn = document.getElementById("haveLicenseToggleBtn");
 const licenseActivationPanel = document.getElementById("licenseActivationPanel");
 const activateLicenseBtn = document.getElementById("activateLicenseBtn");
@@ -206,6 +207,26 @@ subscribeBtn.addEventListener("click", () => {
   chrome.tabs.create({ url: PRICING_URL });
 });
 
+if (fullDarkBtn) {
+  fullDarkBtn.addEventListener("click", async () => {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    const pdf = (tab && tab.url) || (currentTab && currentTab.url) || "";
+    if (!pdf) return;
+    // Via the worker so Back can return to this tab; direct tabs.create is
+    // the fallback if the worker is unreachable.
+    const openDirectly = () => {
+      chrome.tabs.create({
+        url: chrome.runtime.getURL("viewer/viewer.html?pdf=" + encodeURIComponent(pdf)),
+      });
+    };
+    const response = await sendRuntimeMessage({
+      type: "open-viewer",
+      pdfUrl: pdf,
+    });
+    if (!response?.ok) openDirectly();
+  });
+}
+
 openFileAccessSettingsBtn.addEventListener("click", () => {
   chrome.tabs.create({ url: EXTENSION_DETAILS_URL });
 });
@@ -379,6 +400,7 @@ async function initializePopup() {
   renderEntitlementUI();
   updateAreaUI();
   await refreshSiteRuleLabels();
+  updateFullDarkButton();
   renderLicenseActivationPanel();
   renderDebugBillingTools();
 
@@ -523,6 +545,16 @@ async function refreshSiteRuleLabels() {
   const siteRules = (await getSyncState(["siteRules"])).siteRules || {};
   const rule = siteRules[currentHost] || "default";
   currentRuleLabel.textContent = `Rule: ${rule}`;
+}
+
+async function updateFullDarkButton() {
+  if (!fullDarkBtn) return;
+  const siteRules = (await getSyncState(["siteRules"])).siteRules || {};
+  const policy = core.buildPolicy(currentTab?.url || "", siteRules, entitlement);
+  fullDarkBtn.disabled = !policy.shouldInject;
+  fullDarkBtn.title = policy.shouldInject
+    ? "Open this PDF in the full dark viewer"
+    : "Open a PDF tab to use the full dark viewer";
 }
 
 function renderLicenseStatus(message, type) {

@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Full dark viewer — PDF Dark Mode</title>
+  <link
+    rel="shortcut icon"
+    href="../images/PDM 128x128.png"
+    type="image/x-icon"
+  />
+  <link rel="stylesheet" href="viewer.css" />
+</head>
+<body>
+  <div class="viewer-shell">
+    <header class="viewer-toolbar" aria-label="PDF controls">
+      <div class="toolbar-tier toolbar-tier-basics">
+        <span id="docTitle" class="doc-title">No PDF selected.</span>
+        <div class="toolbar-center">
+          <div class="toolbar-group">
+            <button id="prevPageBtn" type="button" title="Previous page">‹</button>
+            <span id="pageIndicator" class="page-indicator" aria-live="polite">– / –</span>
+            <button id="nextPageBtn" type="button" title="Next page">›</button>
+          </div>
+          <div class="toolbar-group">
+            <button id="zoomOutBtn" type="button" title="Zoom out">−</button>
+            <span id="zoomLabel" class="zoom-label">100%</span>
+            <button id="zoomInBtn" type="button" title="Zoom in">+</button>
+            <button id="fitWidthBtn" type="button" title="Fit to width">Fit</button>
+          </div>
+        </div>
+        <div class="toolbar-group">
+          <button id="optionsBtn" type="button" aria-expanded="true" aria-controls="optionsTier" title="Hide appearance options">Appearance ▴</button>
+          <button id="proBtn" type="button" class="hidden" title="Get PDF Dark Mode Pro">✨ Get Pro</button>
+        </div>
+      </div>
+      <div id="optionsTier" class="toolbar-tier toolbar-tier-options" aria-label="Appearance options">
+        <button id="darkToggleBtn" type="button" aria-pressed="true" title="Toggle full dark rendering">Dark: On</button>
+        <label class="inline-field" for="modeSelect">
+          <span class="label">Mode</span>
+          <select id="modeSelect">
+            <option value="dark">Dark</option>
+            <option value="sepia">Sepia (Pro)</option>
+            <option value="amoled">AMOLED (Pro)</option>
+          </select>
+        </label>
+        <label class="inline-field" for="strengthSlider">
+          <span class="label">Strength</span>
+          <input id="strengthSlider" type="range" min="200" value="255" max="255" />
+        </label>
+        <label class="inline-field" for="contrastSlider">
+          <span class="label">Contrast</span>
+          <input id="contrastSlider" type="range" min="50" value="100" max="130" />
+        </label>
+        <div class="inline-field themes-field">
+          <span class="label">Theme</span>
+          <div id="themeSwatches" class="theme-swatches" role="group" aria-label="Background theme"></div>
+        </div>
+        <div id="proNote" class="pro-note hidden">
+          Sepia, AMOLED and extra themes are Pro.
+          <a id="proLink" href="https://pdf-dark.com/#pricing" target="_blank" rel="noopener noreferrer">Get Pro</a>
+        </div>
+      </div>
+    </header>
+
+    <div id="statusBar" class="status-bar hidden" role="status" aria-live="polite"></div>
+
+    <div id="errorBox" class="error-box hidden" role="alert">
+      <div id="errorText" class="error-text"></div>
+      <div id="fileAccessHint" class="file-access-hint hidden">
+        This looks like a local file. Turn on <strong>Allow access to file URLs</strong>
+        for this extension, then try again.
+        <button id="openFileAccessBtn" type="button">Open extension settings</button>
+      </div>
+    </div>
+
+    <main id="pages" class="pages" aria-label="PDF pages"></main>
+
+    <button id="floatingProBtn" type="button" class="floating-pro-btn hidden" title="Get PDF Dark Mode Pro">✨ Get Pro</button>
+  </div>
+  <script src="../scripts/core.js"></script>
+  <script src="viewer.js"></script>
+</body>
+</html>

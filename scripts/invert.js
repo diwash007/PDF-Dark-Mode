@@ -16,12 +16,16 @@
   const ACTION_DOCK_ID = "pdfDarkModeDock";
   const TOGGLE_BUTTON_ID = "pdfDarkModeToggle";
   const INFO_BUTTON_ID = "pdfDarkModeInfo";
+  const VIEWER_BUTTON_ID = "pdfDarkModeViewer";
 
   /* How long to keep watching for a PDF to appear on an ambiguous HTML page. */
   const EMBED_WATCH_MS = 10000;
   const EMBED_DEBOUNCE_MS = 120;
 
   const href = window.location.href;
+
+  // The full-dark viewer renders its own dark pages — never overlay or dock it.
+  if (core.isViewerUrl && core.isViewerUrl(href)) return;
 
   const SETTINGS_KEYS = [
     "active",
@@ -188,6 +192,29 @@
     );
     infoButton.addEventListener("click", openPopupFromPage);
 
+    const viewerButton = document.createElement("button");
+    viewerButton.id = VIEWER_BUTTON_ID;
+    viewerButton.type = "button";
+    viewerButton.title = "Open this PDF in the full dark viewer";
+    viewerButton.setAttribute("aria-label", "Open this PDF in the full dark viewer (new)");
+    viewerButton.textContent = "Full dark ";
+    const newBadge = document.createElement("span");
+    newBadge.textContent = "NEW";
+    newBadge.setAttribute(
+      "style",
+      "display:inline-block;margin-left:2px;padding:1px 6px;border-radius:999px;" +
+        "background:#2a903b;color:#fff;font-size:10px;font-weight:800;line-height:1.4;" +
+        "vertical-align:1px;"
+    );
+    viewerButton.appendChild(newBadge);
+    viewerButton.setAttribute(
+      "style",
+      buttonStyle +
+        "padding:8px 12px;font-size:12px;font-weight:600;line-height:1.2;" +
+        "border-color:rgba(42,144,59,0.8);box-shadow:0 6px 18px rgba(0,0,0,0.18),0 0 0 1px rgba(42,144,59,0.45);"
+    );
+    viewerButton.addEventListener("click", openFullDarkViewer);
+
     const toggleButton = document.createElement("button");
     toggleButton.id = TOGGLE_BUTTON_ID;
     toggleButton.type = "button";
@@ -209,6 +236,7 @@
     });
 
     dock.appendChild(infoButton);
+    dock.appendChild(viewerButton);
     dock.appendChild(toggleButton);
     document.body.appendChild(dock);
   }
@@ -221,19 +249,56 @@
   }
 
   function openPopupFromPage() {
-    const fallback = () => {
+    // chrome.action.openPopup can fail (e.g. no active window); opening the
+    // popup page in a tab via the worker is the fallback. window.open is only
+    // the last resort — shield/popup blockers eat it (Brave:
+    // ERR_BLOCKED_BY_CLIENT).
+    const openTabFallback = () => {
+      if (!globalThis.chrome?.runtime?.sendMessage) {
+        windowFallback();
+        return;
+      }
+      chrome.runtime.sendMessage({ type: "open-popup-tab" }, (response) => {
+        if (chrome.runtime.lastError || !response?.ok) windowFallback();
+      });
+    };
+    const windowFallback = () => {
       if (globalThis.chrome?.runtime?.getURL) {
         window.open(chrome.runtime.getURL("popup/popup.html"), "_blank", "noopener,noreferrer");
       }
     };
 
     if (!globalThis.chrome?.runtime?.sendMessage) {
-      fallback();
+      windowFallback();
       return;
     }
 
     chrome.runtime.sendMessage({ type: "open-popup" }, (response) => {
-      if (chrome.runtime.lastError || !response?.ok) fallback();
+      if (chrome.runtime.lastError || !response?.ok) openTabFallback();
     });
+  }
+
+  function openFullDarkViewer() {
+    // window.open from the page is eaten by popup/shield blockers (Brave
+    // shows ERR_BLOCKED_BY_CLIENT), so the service worker opens the tab via
+    // chrome.tabs.create — the same path the popup button uses.
+    if (!globalThis.chrome?.runtime?.getURL) return;
+    const viewerUrl = chrome.runtime.getURL(
+      "viewer/viewer.html?pdf=" + encodeURIComponent(window.location.href)
+    );
+
+    if (!globalThis.chrome?.runtime?.sendMessage) {
+      window.open(viewerUrl, "_blank", "noopener,noreferrer");
+      return;
+    }
+
+    chrome.runtime.sendMessage(
+      { type: "open-viewer", pdfUrl: window.location.href },
+      (response) => {
+        if (chrome.runtime.lastError || !response?.ok) {
+          window.open(viewerUrl, "_blank", "noopener,noreferrer");
+        }
+      }
+    );
   }
 })();

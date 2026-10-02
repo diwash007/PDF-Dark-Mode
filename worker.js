@@ -119,6 +119,41 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     return true;
   }
 
+  if (message?.type === "open-popup-tab") {
+    // Fallback when openPopup fails: the popup page works fine as a tab.
+    chrome.tabs.create({ url: chrome.runtime.getURL("popup/popup.html") }, () => {
+      if (chrome.runtime.lastError) {
+        sendResponse({ ok: false, error: chrome.runtime.lastError.message || "Failed to open popup tab." });
+        return;
+      }
+      sendResponse({ ok: true });
+    });
+    return true;
+  }
+
+  if (message?.type === "open-viewer") {
+    // The on-page dock cannot open tabs itself (content scripts have no
+    // chrome.tabs, and window.open trips shield/popup blockers), so it asks
+    // here. The viewer validates the bytes and shows an error state for
+    // non-PDF URLs, so this only sanity-checks the scheme.
+    const pdfUrl = typeof message.pdfUrl === "string" ? message.pdfUrl : "";
+    if (!/^(https?|file):\/\//i.test(pdfUrl)) {
+      sendResponse({ ok: false, error: "Not a PDF URL." });
+      return false;
+    }
+    chrome.tabs.create(
+      { url: chrome.runtime.getURL("viewer/viewer.html?pdf=" + encodeURIComponent(pdfUrl)) },
+      () => {
+        if (chrome.runtime.lastError) {
+          sendResponse({ ok: false, error: chrome.runtime.lastError.message || "Failed to open viewer." });
+          return;
+        }
+        sendResponse({ ok: true });
+      }
+    );
+    return true;
+  }
+
   if (message?.type === "license-activate") {
     activateLicenseFlow(message.licenseKey)
       .then(sendResponse)

@@ -167,14 +167,23 @@
   /**
    * The single injection/darkening decision, shared by worker, popup and content script.
    *
+   * Our own full-dark viewer (viewer/viewer.html) renders already-dark pages,
+   * so it is never an injection target — otherwise the overlay would stack on
+   * top of the viewer.
+   *
    * @returns {{shouldInject: boolean, requiresPdfEmbed: boolean}}
    *   requiresPdfEmbed — inject the script, but only paint if the page really
    *   contains a PDF embed. Keeps dynamic PDF endpoints working without darkening
    *   every page whose URL happens to contain ".pdf".
    */
+  function isViewerUrl(url) {
+    return /\/viewer\/viewer\.html/i.test(url || "");
+  }
+
   function buildPolicy(url, siteRules, entitlement) {
     const deny = { shouldInject: false, requiresPdfEmbed: false };
     if (!url) return deny;
+    if (isViewerUrl(url)) return deny;
 
     const isPro = !!(entitlement && entitlement.isPro);
     const hostname = getHostnameFromUrl(url);
@@ -356,6 +365,7 @@
     getHostnameFromUrl,
     defaultBilling,
     getEntitlement,
+    isViewerUrl,
     isDefinitePdfUrl,
     isAmbiguousPdfUrl,
     buildPolicy,

@@ -73,11 +73,35 @@ check("core is loaded everywhere it is used", () => {
     popupHtml.indexOf("../scripts/core.js") < popupHtml.indexOf("popup.js"),
     "core must be loaded before popup.js"
   );
+
+  const viewerHtml = read("viewer/viewer.html");
+  assert.match(viewerHtml, /src="\.\.\/scripts\/core\.js"/, "viewer must load core");
+  assert.ok(
+    viewerHtml.indexOf("../scripts/core.js") < viewerHtml.indexOf("viewer.js"),
+    "core must be loaded before viewer.js"
+  );
+});
+
+check("the full-dark viewer ships its vendored renderer", () => {
+  ["viewer/viewer.html", "viewer/viewer.css", "viewer/viewer.js",
+    "vendor/pdfjs/pdf.min.mjs", "vendor/pdfjs/pdf.worker.min.mjs",
+  ].forEach((file) => assert.ok(exists(file), `viewer file missing: ${file}`));
+});
+
+check("every id viewer.js reaches for exists in viewer.html", () => {
+  const html = read("viewer/viewer.html");
+  const ids = new Set([...html.matchAll(/\bid="([^"]+)"/g)].map((m) => m[1]));
+  const referenced = [...read("viewer/viewer.js").matchAll(/getElementById\("([^"]+)"\)/g)].map(
+    (m) => m[1]
+  );
+  assert.ok(referenced.length > 5, "expected viewer.js to reference several ids");
+  const missing = referenced.filter((id) => !ids.has(id));
+  assert.deepEqual(missing, [], `viewer.js references ids absent from viewer.html: ${missing}`);
 });
 
 /* ------------------------------------------------------------- parsing */
 
-const jsFiles = ["worker.js", "scripts/core.js", "scripts/invert.js", "popup/popup.js", "instruction/index.js"];
+const jsFiles = ["worker.js", "scripts/core.js", "scripts/invert.js", "popup/popup.js", "instruction/index.js", "viewer/viewer.js"];
 
 check("all extension scripts parse", () => {
   jsFiles.forEach((file) => {
@@ -97,6 +121,8 @@ check("no third-party CDNs or webfonts", () => {
     "instruction/index.html",
     "instruction/update.html",
     "instruction/style.css",
+    "viewer/viewer.html",
+    "viewer/viewer.css",
   ];
 
   const banned = /(cdnjs\.cloudflare\.com|fonts\.googleapis\.com|fonts\.gstatic\.com|unpkg\.com|jsdelivr\.net)/i;
