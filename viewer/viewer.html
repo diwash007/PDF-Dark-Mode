@@ -31,7 +31,6 @@
         </div>
         <div class="toolbar-group">
           <button id="optionsBtn" type="button" aria-expanded="true" aria-controls="optionsTier" title="Hide appearance options">Appearance ▴</button>
-          <button id="proBtn" type="button" class="hidden" title="Get PDF Dark Mode Pro">✨ Get Pro</button>
         </div>
       </div>
       <div id="optionsTier" class="toolbar-tier toolbar-tier-options" aria-label="Appearance options">
@@ -57,13 +56,26 @@
           <div id="themeSwatches" class="theme-swatches" role="group" aria-label="Background theme"></div>
         </div>
         <div id="proNote" class="pro-note hidden">
-          Sepia, AMOLED and extra themes are Pro.
+          ✨ <strong>Pro keeps this tool maintained and updated</strong> — Sepia, AMOLED
+          and extra themes included.
           <a id="proLink" href="https://pdf-dark.com/#pricing" target="_blank" rel="noopener noreferrer">Get Pro</a>
         </div>
       </div>
     </header>
 
-    <div id="statusBar" class="status-bar hidden" role="status" aria-live="polite"></div>
+    <div id="betaCluster" class="beta-cluster">
+      <div id="betaNotice" class="beta-notice" role="status">
+        <div class="beta-body">
+          <div class="beta-eyebrow">Experimental</div>
+          <div class="beta-text">Expect missing features.
+            <a id="betaFeedbackLink" href="https://pdf-dark.com/#contact" target="_blank" rel="noopener noreferrer">Give feedback</a>
+          </div>
+        </div>
+        <button id="betaDismissBtn" type="button" title="Minimize this notice" aria-label="Minimize beta notice">✕</button>
+      </div>
+      <button id="betaPill" type="button" class="beta-pill hidden" title="About this beta viewer">Beta</button>
+      <div id="statusBar" class="status-bar hidden" role="status" aria-live="polite"></div>
+    </div>
 
     <div id="errorBox" class="error-box hidden" role="alert">
       <div id="errorText" class="error-text"></div>

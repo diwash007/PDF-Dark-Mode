@@ -144,6 +144,7 @@
 
   const core = globalThis.PDFDarkModeCore || null;
   const PRICING_URL = "https://pdf-dark.com/#pricing";
+  const FEEDBACK_URL = "https://pdf-dark.com/#contact";
 
   const shellEl = document.querySelector(".viewer-shell");
   const pagesEl = document.getElementById("pages");
@@ -155,7 +156,10 @@
   const fileAccessHint = document.getElementById("fileAccessHint");
   const openFileAccessBtn = document.getElementById("openFileAccessBtn");
   const docTitle = document.getElementById("docTitle");
-  const proBtn = document.getElementById("proBtn");
+  const betaNotice = document.getElementById("betaNotice");
+  const betaDismissBtn = document.getElementById("betaDismissBtn");
+  const betaPill = document.getElementById("betaPill");
+  const betaFeedbackLink = document.getElementById("betaFeedbackLink");
   const prevPageBtn = document.getElementById("prevPageBtn");
   const nextPageBtn = document.getElementById("nextPageBtn");
   const zoomInBtn = document.getElementById("zoomInBtn");
@@ -178,6 +182,7 @@
     visiblePage: 1,
     scale: DEFAULT_SCALE,
     optionsOpen: true,
+    betaDismissed: false,
     darkEnabled: true,
     mode: "dark",
     strength: 255,
@@ -200,12 +205,23 @@
         chrome.tabs.create({ url: extensionDetailsUrl() });
       });
     }
-    if (proBtn) {
-      proBtn.addEventListener("click", () => {
-        chrome.tabs.create({ url: PRICING_URL });
+    if (proLink) proLink.href = PRICING_URL;
+    if (betaFeedbackLink) betaFeedbackLink.href = FEEDBACK_URL;
+    if (betaDismissBtn) {
+      betaDismissBtn.addEventListener("click", () => {
+        state.betaDismissed = true;
+        persistSyncValue("viewerBetaDismissed", true);
+        applyBetaNotice();
       });
     }
-    if (proLink) proLink.href = PRICING_URL;
+    if (betaPill) {
+      betaPill.addEventListener("click", () => {
+        // Session-only reopen: the persisted dismissal stands, so reloads
+        // land minimized instead of nagging again.
+        state.betaDismissed = false;
+        applyBetaNotice();
+      });
+    }
     if (floatingProBtn) {
       floatingProBtn.addEventListener("click", () => {
         chrome.tabs.create({ url: PRICING_URL });
@@ -352,6 +368,10 @@
           applyTheme();
           syncControls();
         }
+        if (typeof changes.viewerBetaDismissed !== "undefined") {
+          state.betaDismissed = changes.viewerBetaDismissed.newValue === true;
+          applyBetaNotice();
+        }
       });
     }
   }
@@ -391,15 +411,18 @@
         "mode",
         "billing",
         "viewerTheme",
+        "viewerBetaDismissed",
       ]);
       state.isPro = core ? !!core.getEntitlement(stored.billing).isPro : false;
       state.mode = enforceAllowedMode(stored.mode);
       state.strength = clampNumber(stored.strength, 200, 255, 255);
       state.contrast = clampNumber(stored.contrast, 50, 130, 100);
       state.themeId = resolveViewerTheme(stored.viewerTheme, state.isPro).id;
+      state.betaDismissed = stored.viewerBetaDismissed === true;
       state.filter = baseFilter();
       renderGating();
       applyTheme();
+      applyBetaNotice();
       syncControls();
     } catch {
       state.filter = buildViewerFilter({ darkEnabled: state.darkEnabled });
@@ -449,7 +472,6 @@
         option.disabled = option.value !== "dark" && locked;
       });
     }
-    if (proBtn) proBtn.classList.toggle("hidden", !locked);
     if (floatingProBtn) floatingProBtn.classList.toggle("hidden", !locked);
     if (themeSwatches) {
       Array.from(themeSwatches.children).forEach((button) => {
@@ -498,6 +520,11 @@
       shellEl.style.setProperty("--viewer-bg", theme.bg);
       shellEl.style.setProperty("--viewer-chrome", theme.chrome);
     }
+  }
+
+  function applyBetaNotice() {
+    if (betaNotice) betaNotice.classList.toggle("hidden", state.betaDismissed);
+    if (betaPill) betaPill.classList.toggle("hidden", !state.betaDismissed);
   }
 
   function syncControls() {

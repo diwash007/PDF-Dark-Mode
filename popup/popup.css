@@ -278,6 +278,19 @@ input[type="range"] {
   margin-bottom: 3px;
 }
 
+.plan-caption {
+  margin-top: 6px;
+  text-align: center;
+  font-size: 10px;
+  color: #9ca3af;
+}
+
+.inputs .checkbox-row {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
 .plan-note {
   margin-top: 5px;
   text-align: center;

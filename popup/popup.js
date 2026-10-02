@@ -29,6 +29,7 @@ const blockCurrentSiteBtn = document.getElementById("blockCurrentSiteBtn");
 const clearCurrentSiteBtn = document.getElementById("clearCurrentSiteBtn");
 const planLabel = document.getElementById("planLabel");
 const subscribeBtn = document.getElementById("subscribeBtn");
+const sustainNote = document.getElementById("sustainNote");
 const fullDarkBtn = document.getElementById("fullDarkBtn");
 const haveLicenseToggleBtn = document.getElementById("haveLicenseToggleBtn");
 const licenseActivationPanel = document.getElementById("licenseActivationPanel");
@@ -524,6 +525,9 @@ function renderEntitlementUI() {
   });
 
   subscribeBtn.classList.toggle("hidden", entitlement.isPro);
+  // No "Free" label: free users see the button, Pro users see their plan.
+  planLabel.classList.toggle("hidden", !entitlement.isPro);
+  if (sustainNote) sustainNote.classList.toggle("hidden", entitlement.isPro);
 
   siteRuleBox.classList.toggle("locked", !entitlement.isPro);
 }
