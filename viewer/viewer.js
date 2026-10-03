@@ -182,7 +182,7 @@
     visiblePage: 1,
     scale: DEFAULT_SCALE,
     optionsOpen: true,
-    betaDismissed: false,
+    betaMinimized: false,
     darkEnabled: true,
     mode: "dark",
     strength: 255,
@@ -209,16 +209,14 @@
     if (betaFeedbackLink) betaFeedbackLink.href = FEEDBACK_URL;
     if (betaDismissBtn) {
       betaDismissBtn.addEventListener("click", () => {
-        state.betaDismissed = true;
-        persistSyncValue("viewerBetaDismissed", true);
+        // Session-only: every load (including reload) starts expanded.
+        state.betaMinimized = true;
         applyBetaNotice();
       });
     }
     if (betaPill) {
       betaPill.addEventListener("click", () => {
-        // Session-only reopen: the persisted dismissal stands, so reloads
-        // land minimized instead of nagging again.
-        state.betaDismissed = false;
+        state.betaMinimized = false;
         applyBetaNotice();
       });
     }
@@ -382,10 +380,6 @@
           applyTheme();
           syncControls();
         }
-        if (typeof changes.viewerBetaDismissed !== "undefined") {
-          state.betaDismissed = changes.viewerBetaDismissed.newValue === true;
-          applyBetaNotice();
-        }
       });
     }
   }
@@ -425,14 +419,12 @@
         "mode",
         "billing",
         "viewerTheme",
-        "viewerBetaDismissed",
       ]);
       state.isPro = core ? !!core.getEntitlement(stored.billing).isPro : false;
       state.mode = enforceAllowedMode(stored.mode);
       state.strength = clampNumber(stored.strength, 200, 255, 255);
       state.contrast = clampNumber(stored.contrast, 50, 130, 100);
       state.themeId = resolveViewerTheme(stored.viewerTheme, state.isPro).id;
-      state.betaDismissed = stored.viewerBetaDismissed === true;
       state.filter = baseFilter();
       renderGating();
       applyTheme();
@@ -537,8 +529,8 @@
   }
 
   function applyBetaNotice() {
-    if (betaNotice) betaNotice.classList.toggle("hidden", state.betaDismissed);
-    if (betaPill) betaPill.classList.toggle("hidden", !state.betaDismissed);
+    if (betaNotice) betaNotice.classList.toggle("hidden", state.betaMinimized);
+    if (betaPill) betaPill.classList.toggle("hidden", !state.betaMinimized);
   }
 
   function syncControls() {
