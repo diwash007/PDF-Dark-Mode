@@ -1,0 +1,34 @@
+# PDF Dark Mode
+
+> Dark mode for every PDF you read. Browser extension for Chrome and Edge + free web reader.
+
+- Homepage: https://pdf-dark.com/
+- Web reader (free, files stay on-device): https://pdf-dark.com/reader.html
+- Help: https://pdf-dark.com/help.html
+- About: https://pdf-dark.com/about.html
+- Changelog: https://pdf-dark.com/changelog.html
+- Privacy: https://pdf-dark.com/privacy.html
+- Terms: https://pdf-dark.com/terms.html
+
+## What it is
+
+- Overlay dark mode for online PDFs and local file:// PDFs.
+- Darkness + contrast sliders; Sepia and AMOLED modes (Pro).
+- Per-site allow/block rules and saved overlay areas (Pro).
+- Experimental full-dark pdf.js viewer (beta) for PDFs the overlay cannot reach.
+- Pro is a one-time $9.99 payment via Lemon Squeezy. No subscription, no account.
+
+## Guides
+
+- Chrome: https://pdf-dark.com/pdf-dark-mode-chrome.html
+- Edge: https://pdf-dark.com/pdf-dark-mode-edge.html
+- arXiv night reading: https://pdf-dark.com/arxiv-pdf-night-mode.html
+- Scanned PDFs: https://pdf-dark.com/scanned-pdf-dark-mode.html
+
+## Source and support
+
+- Source (GPL-3.0): https://github.com/diwash007/PDF-Dark-Mode
+- Chrome Web Store: https://chromewebstore.google.com/detail/pdf-dark-mode/clabimobhdkbfpkdeloigeneocldkmdc
+- Edge Add-ons: https://microsoftedge.microsoft.com/addons/detail/pdf-dark-mode/nghkmkbjhpgdibgopgekgjnbocfmnjdo
+- Email: contact@pdf-dark.com
+- Discord: https://discord.gg/WDd4wbJ6qU

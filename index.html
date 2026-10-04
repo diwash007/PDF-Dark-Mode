@@ -36,12 +36,8 @@
   <link rel="icon" type="image/png" href="./assets/logo.png" />
   <link rel="apple-touch-icon" href="./assets/logo.png" />
 
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link
-    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
-    rel="stylesheet"
-  />
+  <!-- No webfonts by design: system stack keeps pages private and fast. -->
+  <link rel="preconnect" href="https://assets.lemonsqueezy.com" />
 
   <script src="https://assets.lemonsqueezy.com/lemon.js" defer></script>
 
@@ -70,7 +66,7 @@
     html { scroll-behavior: smooth; scroll-padding-top: 88px; }
 
     body {
-      font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       background: var(--bg);
       color: var(--text);
       line-height: 1.6;
@@ -973,6 +969,17 @@
       },
       { "@type": "WebSite", "name": "PDF Dark Mode", "url": "https://pdf-dark.com/" },
       {
+        "@type": "Organization",
+        "name": "PDF Dark Mode",
+        "url": "https://pdf-dark.com/",
+        "logo": "https://pdf-dark.com/assets/logo.png",
+        "sameAs": [
+          "https://github.com/diwash007/PDF-Dark-Mode",
+          "https://chromewebstore.google.com/detail/pdf-dark-mode/clabimobhdkbfpkdeloigeneocldkmdc",
+          "https://microsoftedge.microsoft.com/addons/detail/pdf-dark-mode/nghkmkbjhpgdibgopgekgjnbocfmnjdo"
+        ]
+      },
+      {
         "@type": "FAQPage",
         "mainEntity": [
           { "@type": "Question", "name": "Is $9.99 really the only payment?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. No renewal, no expiry, no upgrade tier. Future Pro features are included." } },
@@ -1069,7 +1076,7 @@
         <p class="hero-note">Free to install. Pro unlocks with a one-time $9.99 licence.</p>
 
         <div class="trust-row">
-          <div class="trust-item"><strong>30k+</strong>weekly active readers</div>
+          <div class="trust-item"><strong>Chrome &amp; Edge</strong>store-published extension</div>
           <div class="trust-item"><strong>GPL-3.0</strong>fully open source</div>
           <div class="trust-item"><strong>No account</strong>nothing to sign up for</div>
         </div>
@@ -1544,6 +1551,8 @@
             <li><a href="./reader.html">Web reader</a></li>
             <li><a href="#pricing">Pricing</a></li>
             <li><a href="#activate">Activation</a></li>
+            <li><a href="about.html">About</a></li>
+            <li><a href="changelog.html">Changelog</a></li>
           </ul>
         </div>
 
@@ -1560,6 +1569,10 @@
           <h4>Support</h4>
           <ul>
             <li><a href="help.html">Help</a></li>
+            <li><a href="pdf-dark-mode-chrome.html">Chrome guide</a></li>
+            <li><a href="pdf-dark-mode-edge.html">Edge guide</a></li>
+            <li><a href="arxiv-pdf-night-mode.html">arXiv night reading</a></li>
+            <li><a href="scanned-pdf-dark-mode.html">Scanned PDFs</a></li>
             <li><a href="#faq">FAQ</a></li>
             <li><a href="privacy.html">Privacy policy</a></li>
             <li><a href="terms.html">Terms &amp; conditions</a></li>

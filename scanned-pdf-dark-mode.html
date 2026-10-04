@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#07090c" />
+  <meta name="robots" content="index, follow, max-image-preview:large" />
+  <link rel="canonical" href="https://pdf-dark.com/scanned-pdf-dark-mode.html" />
+  <title>Dark Mode for Scanned PDFs — Settings That Work | PDF Dark Mode</title>
+  <meta name="description" content="Scanned PDFs need softer settings: lower Darkness to 225-240, raise Contrast to 105-115%, and try Sepia for long sessions. Works in Chrome, Edge, and the free web reader." />
+  <meta property="og:type" content="article" />
+  <meta property="og:site_name" content="PDF Dark Mode" />
+  <meta property="og:title" content="Dark Mode for Scanned PDFs — Settings That Work" />
+  <meta property="og:description" content="Softer darkness, slightly higher contrast, and Sepia for scanned pages." />
+  <meta property="og:url" content="https://pdf-dark.com/scanned-pdf-dark-mode.html" />
+  <meta property="og:image" content="https://pdf-dark.com/assets/og-image.png" />
+  <link rel="icon" type="image/png" href="./assets/logo.png" />
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      { "@type": "WebPage", "name": "Dark Mode for Scanned PDFs", "url": "https://pdf-dark.com/scanned-pdf-dark-mode.html" },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          { "@type": "Question", "name": "Why do scanned PDFs look washed out in dark mode?", "acceptedAnswer": { "@type": "Answer", "text": "Scans are photos of pages with gray backgrounds. Full-strength inversion over-inverts that gray. Lower Darkness to 225-240 and raise Contrast to 105-115%." } },
+          { "@type": "Question", "name": "What if a scanned PDF still looks bad?", "acceptedAnswer": { "@type": "Answer", "text": "Try Sepia mode for warmth, or open the file in the experimental full-dark viewer (beta) from the extension popup, which re-renders pages instead of overlaying them." } }
+        ]
+      }
+    ]
+  }
+  </script>
+  <style>
+    :root { --bg:#0b0f14; --card:#111827; --text:#f8fafc; --muted:#94a3b8; --accent:#508b5e; --border:rgba(255,255,255,0.08); }
+    * { box-sizing:border-box; margin:0; padding:0; }
+    body { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background:var(--bg); color:var(--text); line-height:1.7; padding:24px 20px 40px; }
+    .container { width:min(940px,100%); margin:0 auto; }
+    .topbar { width:min(940px,100%); margin:0 auto 16px; }
+    .brand-link { display:inline-flex; align-items:center; gap:10px; font-weight:700; font-size:18px; color:var(--text); text-decoration:none; }
+    .card { background:var(--card); border:1px solid var(--border); border-radius:24px; padding:40px; }
+    h1 { font-size:40px; margin-bottom:10px; letter-spacing:-0.02em; line-height:1.15; }
+    .subtitle { color:var(--muted); margin-bottom:28px; }
+    h2 { margin-top:34px; margin-bottom:12px; font-size:24px; }
+    p, li { color:#dbe4ee; margin-bottom:14px; }
+    ol, ul { padding-left:22px; }
+    a { color:var(--accent); }
+    .cta { margin-top:24px; padding:18px; border:1px solid rgba(80,139,94,0.5); border-radius:14px; background:rgba(80,139,94,0.12); }
+    footer { margin-top:40px; color:var(--muted); text-align:center; font-size:14px; }
+    @media (max-width:640px){ .card{padding:28px;} h1{font-size:30px;} }
+  </style>
+</head>
+<body>
+  <div class="topbar"><a class="brand-link" href="./">PDF Dark Mode</a></div>
+  <div class="container">
+    <div class="card">
+      <h1>Dark mode for scanned PDFs</h1>
+      <p class="subtitle">Scans are photos, not text — so they need softer settings than born-digital PDFs.</p>
+
+      <h2>Recommended settings</h2>
+      <ol>
+        <li>Set <strong>Darkness to 225–240</strong> (not max 255).</li>
+        <li>Set <strong>Contrast to 105–115%</strong> until glyph edges sharpen without harsh backgrounds.</li>
+        <li>For evening sessions, switch to <strong>Sepia (Pro)</strong> — warmer and more forgiving on gray scan backgrounds.</li>
+      </ol>
+
+      <h2>When the overlay is not enough</h2>
+      <p>Chrome's built-in viewer renders some PDFs where the overlay cannot reach. Open those from the extension popup in the <strong>experimental full-dark viewer (beta)</strong>, which re-renders pages genuinely dark instead of overlaying them.</p>
+
+      <h2>Quick checklist</h2>
+      <ul>
+        <li>Faint text: raise Contrast 5% at a time.</li>
+        <li>Blotchy background: lower Darkness 5–10 points.</li>
+        <li>One bad host: save a per-site exclusion (Pro) instead of disabling everything.</li>
+      </ul>
+
+      <div class="cta">
+        <p><strong>Try it:</strong> open your scan in the <a href="reader.html">free web reader</a> (files stay on-device) or install the <a href="https://chromewebstore.google.com/detail/pdf-dark-mode/clabimobhdkbfpkdeloigeneocldkmdc" target="_blank" rel="noopener noreferrer">Chrome</a> / <a href="https://microsoftedge.microsoft.com/addons/detail/pdf-dark-mode/nghkmkbjhpgdibgopgekgjnbocfmnjdo" target="_blank" rel="noopener noreferrer">Edge</a> extension. Also: <a href="pdf-dark-mode-chrome.html">Chrome guide</a>, <a href="arxiv-pdf-night-mode.html">arXiv workflow</a>.</p>
+      </div>
+    </div>
+    <footer>PDF Dark Mode © 2026 · <a href="./">Home</a> · <a href="about.html">About</a> · <a href="help.html">Help</a></footer>
+  </div>
+</body>
+</html>

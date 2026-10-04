@@ -34,12 +34,7 @@
   <link rel="icon" type="image/png" href="./assets/logo.png" />
   <link rel="apple-touch-icon" href="./assets/logo.png" />
 
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link
-    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
-    rel="stylesheet"
-  />
+  <!-- No webfonts by design: system stack keeps pages private and fast. -->
 
   <script type="application/ld+json">
   {
@@ -116,7 +111,7 @@
     * { box-sizing: border-box; margin: 0; padding: 0; }
     html { scroll-behavior: smooth; }
     body {
-      font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       background: var(--bg);
       color: var(--text);
       line-height: 1.6;

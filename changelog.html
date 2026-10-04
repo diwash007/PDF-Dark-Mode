@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#07090c" />
+  <meta name="robots" content="index, follow, max-image-preview:large" />
+  <link rel="canonical" href="https://pdf-dark.com/changelog.html" />
+  <title>Changelog — PDF Dark Mode</title>
+  <meta name="description" content="Release history for PDF Dark Mode: dark mode overlay, darkness/contrast controls, Sepia and AMOLED modes, per-site rules, and the experimental full-dark viewer." />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="PDF Dark Mode" />
+  <meta property="og:title" content="Changelog — PDF Dark Mode" />
+  <meta property="og:description" content="What shipped in PDF Dark Mode, newest first." />
+  <meta property="og:url" content="https://pdf-dark.com/changelog.html" />
+  <meta property="og:image" content="https://pdf-dark.com/assets/og-image.png" />
+  <link rel="icon" type="image/png" href="./assets/logo.png" />
+  <style>
+    :root { --bg:#0b0f14; --card:#111827; --text:#f8fafc; --muted:#94a3b8; --accent:#508b5e; --border:rgba(255,255,255,0.08); }
+    * { box-sizing:border-box; margin:0; padding:0; }
+    body { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background:var(--bg); color:var(--text); line-height:1.7; padding:24px 20px 40px; }
+    .container { width:min(940px,100%); margin:0 auto; }
+    .topbar { width:min(940px,100%); margin:0 auto 16px; }
+    .brand-link { display:inline-flex; align-items:center; gap:10px; font-weight:700; font-size:18px; color:var(--text); text-decoration:none; }
+    .card { background:var(--card); border:1px solid var(--border); border-radius:24px; padding:40px; }
+    h1 { font-size:42px; margin-bottom:10px; letter-spacing:-0.02em; }
+    .subtitle { color:var(--muted); margin-bottom:28px; }
+    h2 { margin-top:30px; margin-bottom:10px; font-size:22px; }
+    p, li { color:#dbe4ee; margin-bottom:10px; }
+    ul { padding-left:22px; }
+    a { color:var(--accent); text-decoration:none; }
+    .tag { display:inline-block; font-size:12px; font-weight:700; letter-spacing:0.05em; text-transform:uppercase; padding:2px 8px; border-radius:6px; background:rgba(80,139,94,0.15); color:#b7e3c0; margin-left:8px; }
+    footer { margin-top:40px; color:var(--muted); text-align:center; font-size:14px; }
+    @media (max-width:640px){ .card{padding:28px;} h1{font-size:32px;} }
+  </style>
+</head>
+<body>
+  <div class="topbar"><a class="brand-link" href="./">PDF Dark Mode</a></div>
+  <div class="container">
+    <div class="card">
+      <h1>Changelog</h1>
+      <p class="subtitle">Newest first. Full history with binaries on <a href="https://github.com/diwash007/PDF-Dark-Mode/releases" target="_blank" rel="noopener noreferrer">GitHub Releases</a>.</p>
+
+      <h2>v2.3.x — Full-dark viewer (beta)<span class="tag">Current</span></h2>
+      <ul>
+        <li>Experimental pdf.js viewer that re-renders pages genuinely dark where the overlay cannot reach.</li>
+        <li>Pro-gated Sepia and AMOLED themes in the viewer; free dark reading for everyone.</li>
+        <li>File-access signal via toolbar badge and shared settings link.</li>
+      </ul>
+
+      <h2>v2.2.x — Pro rules and overlay areas</h2>
+      <ul>
+        <li>Per-site allow and block rules (Pro).</li>
+        <li>Saved overlay area per site (Pro).</li>
+        <li>Sepia and AMOLED reading modes (Pro).</li>
+      </ul>
+
+      <h2>v2.1.x and earlier — Core reader</h2>
+      <ul>
+        <li>One-key dark mode toggle, darkness and contrast sliders.</li>
+        <li>Online and offline (<code>file://</code>) PDF support with keyboard shortcut.</li>
+        <li>Lemon Squeezy license activation with 24-hour background revalidation.</li>
+      </ul>
+
+      <p>Report bugs or request features: <a href="mailto:contact@pdf-dark.com">contact@pdf-dark.com</a> or <a href="https://discord.gg/WDd4wbJ6qU" target="_blank" rel="noopener noreferrer">Discord</a>.</p>
+    </div>
+    <footer>PDF Dark Mode © 2026 · <a href="./">Home</a> · <a href="about.html">About</a> · <a href="help.html">Help</a></footer>
+  </div>
+</body>
+</html>

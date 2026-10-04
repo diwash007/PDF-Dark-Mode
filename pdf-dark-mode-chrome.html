@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#07090c" />
+  <meta name="robots" content="index, follow, max-image-preview:large" />
+  <link rel="canonical" href="https://pdf-dark.com/pdf-dark-mode-chrome.html" />
+  <title>PDF Dark Mode for Chrome — Read PDFs at Night | PDF Dark Mode</title>
+  <meta name="description" content="How to read PDFs in dark mode in Chrome: install PDF Dark Mode, toggle with Ctrl+Shift+1, adjust darkness and contrast, and enable file:// support for local PDFs." />
+  <meta property="og:type" content="article" />
+  <meta property="og:site_name" content="PDF Dark Mode" />
+  <meta property="og:title" content="PDF Dark Mode for Chrome — Read PDFs at Night" />
+  <meta property="og:description" content="Install, toggle, and tune dark mode for PDFs in Chrome. Includes local-file setup and troubleshooting." />
+  <meta property="og:url" content="https://pdf-dark.com/pdf-dark-mode-chrome.html" />
+  <meta property="og:image" content="https://pdf-dark.com/assets/og-image.png" />
+  <link rel="icon" type="image/png" href="./assets/logo.png" />
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      { "@type": "WebPage", "name": "PDF Dark Mode for Chrome", "url": "https://pdf-dark.com/pdf-dark-mode-chrome.html" },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          { "@type": "Question", "name": "How do I toggle dark mode on a PDF in Chrome?", "acceptedAnswer": { "@type": "Answer", "text": "Open the PDF, then press Ctrl+Shift+1 (Cmd+Shift+1 on Mac) or click the PDF Dark Mode toolbar button." } },
+          { "@type": "Question", "name": "Why don't local PDFs turn dark?", "acceptedAnswer": { "@type": "Answer", "text": "Chrome blocks extensions from file:// URLs by default. Enable Allow access to file URLs on the extension Details page, then refresh the PDF tab." } },
+          { "@type": "Question", "name": "Can I soften the inversion for scanned pages?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. Lower the Darkness slider and raise Contrast slightly until text stays legible without harsh backgrounds." } }
+        ]
+      }
+    ]
+  }
+  </script>
+  <style>
+    :root { --bg:#0b0f14; --card:#111827; --text:#f8fafc; --muted:#94a3b8; --accent:#508b5e; --border:rgba(255,255,255,0.08); }
+    * { box-sizing:border-box; margin:0; padding:0; }
+    body { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background:var(--bg); color:var(--text); line-height:1.7; padding:24px 20px 40px; }
+    .container { width:min(940px,100%); margin:0 auto; }
+    .topbar { width:min(940px,100%); margin:0 auto 16px; }
+    .brand-link { display:inline-flex; align-items:center; gap:10px; font-weight:700; font-size:18px; color:var(--text); text-decoration:none; }
+    .card { background:var(--card); border:1px solid var(--border); border-radius:24px; padding:40px; }
+    h1 { font-size:40px; margin-bottom:10px; letter-spacing:-0.02em; line-height:1.15; }
+    .subtitle { color:var(--muted); margin-bottom:28px; }
+    h2 { margin-top:34px; margin-bottom:12px; font-size:24px; }
+    p, li { color:#dbe4ee; margin-bottom:14px; }
+    ol, ul { padding-left:22px; }
+    a { color:var(--accent); }
+    .cta { margin-top:24px; padding:18px; border:1px solid rgba(80,139,94,0.5); border-radius:14px; background:rgba(80,139,94,0.12); }
+    footer { margin-top:40px; color:var(--muted); text-align:center; font-size:14px; }
+    @media (max-width:640px){ .card{padding:28px;} h1{font-size:30px;} }
+  </style>
+</head>
+<body>
+  <div class="topbar"><a class="brand-link" href="./">PDF Dark Mode</a></div>
+  <div class="container">
+    <div class="card">
+      <h1>PDF dark mode for Chrome</h1>
+      <p class="subtitle">Install once, toggle with one key, tune darkness and contrast per document.</p>
+
+      <h2>Setup (2 minutes)</h2>
+      <ol>
+        <li>Install from the <a href="https://chromewebstore.google.com/detail/pdf-dark-mode/clabimobhdkbfpkdeloigeneocldkmdc" target="_blank" rel="noopener noreferrer">Chrome Web Store</a>.</li>
+        <li>Open any online PDF.</li>
+        <li>Press <strong>Ctrl+Shift+1</strong> (Mac: <strong>Cmd+Shift+1</strong>) or click the toolbar button.</li>
+        <li>Drag <strong>Darkness</strong> down for scanned pages, push <strong>Contrast</strong> up for faint text.</li>
+      </ol>
+
+      <h2>Enable local files</h2>
+      <p>Chrome blocks extensions from <code>file://</code> URLs by default. Open <code>chrome://extensions</code>, open PDF Dark Mode <strong>Details</strong>, turn on <strong>Allow access to file URLs</strong>, then refresh the PDF tab. Full steps with screenshots: <a href="help.html">help page</a>.</p>
+
+      <h2>Scanned or gray-background PDFs</h2>
+      <p>Lower Darkness to ~225–240 instead of max 255, then nudge Contrast to 105–115%. For multi-hour sessions try Sepia (Pro) instead of pure dark — it reads warmer without losing glyph sharpness.</p>
+
+      <h2>Troubleshooting</h2>
+      <ul>
+        <li>Shortcut does nothing: check <code>chrome://extensions/shortcuts</code> for conflicts.</li>
+        <li>Some PDFs stay bright: these render inside Chrome's built-in viewer where the overlay cannot reach — open them from the popup in the experimental <strong>full-dark viewer (beta)</strong>.</li>
+        <li>No install option: use the free <a href="reader.html">web reader</a> — files stay on-device.</li>
+      </ul>
+
+      <div class="cta">
+        <p><strong>Try it now:</strong> install from the <a href="https://chromewebstore.google.com/detail/pdf-dark-mode/clabimobhdkbfpkdeloigeneocldkmdc" target="_blank" rel="noopener noreferrer">Chrome Web Store</a>, or open the <a href="reader.html">free web reader</a>. Pro ($9.99 once) adds Sepia, AMOLED, and per-site rules. See also: <a href="pdf-dark-mode-edge.html">Edge guide</a>, <a href="arxiv-pdf-night-mode.html">arXiv night reading</a>.</p>
+      </div>
+    </div>
+    <footer>PDF Dark Mode © 2026 · <a href="./">Home</a> · <a href="about.html">About</a> · <a href="help.html">Help</a></footer>
+  </div>
+</body>
+</html>

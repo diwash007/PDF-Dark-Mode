@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#07090c" />
+  <meta name="robots" content="index, follow, max-image-preview:large" />
+  <link rel="canonical" href="https://pdf-dark.com/about.html" />
+  <title>About — PDF Dark Mode</title>
+  <meta
+    name="description"
+    content="PDF Dark Mode is an open-source browser extension for reading PDFs in dark, sepia, or AMOLED mode. Built for students and researchers who read for hours. No account, files stay on-device."
+  />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="PDF Dark Mode" />
+  <meta property="og:title" content="About — PDF Dark Mode" />
+  <meta property="og:description" content="Open-source dark mode for PDFs. No account, files stay on-device, pay once for Pro." />
+  <meta property="og:url" content="https://pdf-dark.com/about.html" />
+  <meta property="og:image" content="https://pdf-dark.com/assets/og-image.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="About — PDF Dark Mode" />
+  <meta name="twitter:description" content="Open-source dark mode for PDFs. No account, files stay on-device." />
+  <meta name="twitter:image" content="https://pdf-dark.com/assets/og-image.png" />
+  <link rel="icon" type="image/png" href="./assets/logo.png" />
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "AboutPage",
+    "name": "About PDF Dark Mode",
+    "url": "https://pdf-dark.com/about.html",
+    "about": {
+      "@type": "SoftwareApplication",
+      "name": "PDF Dark Mode",
+      "applicationCategory": "UtilitiesApplication",
+      "operatingSystem": "Chrome, Edge",
+      "url": "https://pdf-dark.com/"
+    }
+  }
+  </script>
+  <style>
+    :root { --bg:#0b0f14; --card:#111827; --text:#f8fafc; --muted:#94a3b8; --accent:#508b5e; --border:rgba(255,255,255,0.08); }
+    * { box-sizing:border-box; margin:0; padding:0; }
+    body { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background:var(--bg); color:var(--text); line-height:1.7; padding:24px 20px 40px; }
+    .container { width:min(940px,100%); margin:0 auto; }
+    .topbar { width:min(940px,100%); margin:0 auto 16px; }
+    .brand-link { display:inline-flex; align-items:center; gap:10px; font-weight:700; font-size:18px; color:var(--text); text-decoration:none; }
+    .card { background:var(--card); border:1px solid var(--border); border-radius:24px; padding:40px; }
+    h1 { font-size:42px; margin-bottom:10px; letter-spacing:-0.02em; }
+    .subtitle { color:var(--muted); margin-bottom:28px; }
+    h2 { margin-top:34px; margin-bottom:12px; font-size:24px; }
+    p, li { color:#dbe4ee; margin-bottom:14px; }
+    ul, ol { padding-left:22px; }
+    a { color:var(--accent); text-decoration:none; }
+    .links { display:flex; flex-wrap:wrap; gap:14px; margin-top:16px; }
+    .link-pill { display:inline-flex; align-items:center; justify-content:center; padding:10px 14px; border:1px solid var(--border); border-radius:12px; color:var(--text); text-decoration:none; font-weight:600; }
+    .link-pill:hover { border-color:rgba(80,139,94,0.8); color:#b7e3c0; }
+    footer { margin-top:40px; color:var(--muted); text-align:center; font-size:14px; }
+    @media (max-width:640px){ .card{padding:28px;} h1{font-size:32px;} }
+  </style>
+</head>
+<body>
+  <div class="topbar"><a class="brand-link" href="./">PDF Dark Mode</a></div>
+  <div class="container">
+    <div class="card">
+      <h1>About</h1>
+      <p class="subtitle">An open-source extension for reading PDFs after dark.</p>
+
+      <h2>Why it exists</h2>
+      <p>PDF Dark Mode was built for exam-season night reading: black text on a white backlit page causes real eye strain, and existing extensions offered only a single on/off switch. This tool adds adjustable darkness and contrast, plus Sepia and AMOLED modes, so long papers, docs, and textbooks stay readable.</p>
+
+      <h2>What it does</h2>
+      <ul>
+        <li>Dark mode overlay for online PDFs and local <code>file://</code> PDFs in Chrome and Edge.</li>
+        <li>Darkness + contrast sliders, keyboard shortcut, per-site rules and overlay-area presets (Pro).</li>
+        <li>Free web reader at <a href="reader.html">pdf-dark.com/reader.html</a> — files render locally, never uploaded.</li>
+        <li>Experimental full-dark viewer (beta) for PDFs the overlay cannot reach.</li>
+      </ul>
+
+      <h2>Open source and private</h2>
+      <p>Licensed GPL-3.0. Source and issue tracker: <a href="https://github.com/diwash007/PDF-Dark-Mode" target="_blank" rel="noopener noreferrer">github.com/diwash007/PDF-Dark-Mode</a>. The extension draws locally over pages you already have open; the only network request is Lemon Squeezy license activation/validation. No accounts, no tracking, no document uploads. Details in the <a href="privacy.html">privacy policy</a>.</p>
+
+      <h2>Pricing</h2>
+      <p>Free forever for the core reader. Pro ($9.99, one-time) unlocks Sepia, AMOLED, per-site rules, and saved overlay areas — including all future Pro features. See <a href="./#pricing">pricing</a> and <a href="terms.html">terms</a>.</p>
+
+      <h2>Contact</h2>
+      <div class="links">
+        <a class="link-pill" href="mailto:contact@pdf-dark.com">Email Support</a>
+        <a class="link-pill" href="https://discord.gg/WDd4wbJ6qU" target="_blank" rel="noopener noreferrer">Discord Community</a>
+        <a class="link-pill" href="https://github.com/diwash007/PDF-Dark-Mode" target="_blank" rel="noopener noreferrer">GitHub Repository</a>
+      </div>
+    </div>
+    <footer>PDF Dark Mode © 2026 · <a href="./">Home</a> · <a href="help.html">Help</a> · <a href="changelog.html">Changelog</a></footer>
+  </div>
+</body>
+</html>
