@@ -86,13 +86,26 @@
     }
   }
 
+  let baseExtensionUrl = "";
+  try {
+    baseExtensionUrl = (chrome.runtime?.getURL && chrome.runtime.getURL("")) || "";
+  } catch {
+    baseExtensionUrl = "";
+  }
+
   function safeGetURL(path) {
-    if (!isContextAlive() || !chrome.runtime?.getURL) return "";
     try {
-      return chrome.runtime.getURL(path);
+      if (chrome.runtime?.getURL) {
+        const u = chrome.runtime.getURL(path);
+        if (u) return u;
+      }
     } catch {
-      return "";
+      /* ignore */
     }
+    if (baseExtensionUrl) {
+      return baseExtensionUrl + (path.startsWith("/") ? path.slice(1) : path);
+    }
+    return "";
   }
 
   safeStorageGet(SETTINGS_KEYS, (state) => {
@@ -255,11 +268,9 @@
       return;
     }
 
-    // Already present: just resync the label so a re-injection cannot leave it lying.
     const existing = document.getElementById(ACTION_DOCK_ID);
     if (existing) {
-      syncToggleLabel(existing.querySelector(`#${TOGGLE_BUTTON_ID}`));
-      return;
+      existing.remove();
     }
 
     if (!document.body) return;
@@ -327,9 +338,13 @@
       setPageEnabled(!isPageEnabled());
       syncToggleLabel(toggleButton);
       safeSendMessage({ type: "analytics-event", event: "pageToggle" });
-      safeStorageGet(SETTINGS_KEYS, (state) => {
-        render(state);
-      });
+      if (isContextAlive()) {
+        safeStorageGet(SETTINGS_KEYS, (state) => {
+          render(state);
+        });
+      } else {
+        render(currentSettings);
+      }
     });
 
     dock.appendChild(infoButton);
@@ -375,6 +390,12 @@
     const viewerUrl = safeGetURL(
       "viewer/viewer.html?pdf=" + encodeURIComponent(window.location.href)
     );
+    if (!viewerUrl) return;
+
+    if (!isContextAlive()) {
+      window.open(viewerUrl, "_blank", "noopener,noreferrer");
+      return;
+    }
 
     const executeOpen = (replaceTab) => {
       if (!isContextAlive() || !globalThis.chrome?.runtime?.sendMessage) {

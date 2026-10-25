@@ -431,16 +431,23 @@ check("extension context invalidation during background reload does not throw un
     r.triggerEvent("visibilitychange");
   });
 
-  // Dock buttons click when context is dead must not throw
+  // Dock buttons click when context is dead must not throw AND must toggle the overlay
   const toggleBtn = r.dock().find("pdfDarkModeToggle");
   assert.doesNotThrow(() => {
     toggleBtn.click();
   });
+  assert.equal(r.overlay(), null, "toggling dark mode when context is dead must still toggle overlay off");
+
+  assert.doesNotThrow(() => {
+    toggleBtn.click();
+  });
+  assert.ok(r.overlay(), "clicking again must toggle overlay back on");
 
   const viewerBtn = r.dock().find("pdfDarkModeViewer");
   assert.doesNotThrow(() => {
     viewerBtn.click();
   });
+  assert.equal(r.openedWindows.length, 1, "viewer button must open fallback window when context is dead");
 });
 
 console.log(`content-smoke: ${passed} scenarios passed`);
