@@ -46,6 +46,10 @@ revalidateStoredLicenseIfNeeded();
 /* ------------------------------------------------------------------ events */
 
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  if (changeInfo.url && !core.isViewerUrl?.(changeInfo.url)) {
+    cleanViewerSession(tabId);
+  }
+
   if (changeInfo.status !== "complete" || !tab?.url || !tabId) return;
 
   updateFileAccessBadge(tabId, tab.url);
@@ -71,6 +75,12 @@ chrome.tabs.onActivated.addListener(({ tabId } = {}) => {
     updateFileAccessBadge(tabId, tab.url);
   });
 });
+
+if (chrome.tabs.onRemoved?.addListener) {
+  chrome.tabs.onRemoved.addListener((tabId) => {
+    cleanViewerSession(tabId);
+  });
+}
 
 /*
  * Content scripts never run on file:// pages without file access (Chrome
@@ -124,6 +134,11 @@ chrome.runtime.onInstalled.addListener((details) => {
 
   if (details.reason === chrome.runtime.OnInstalledReason.INSTALL) {
     chrome.tabs.create({ url: "./instruction/index.html" });
+    return;
+  }
+
+  if (details.reason === chrome.runtime.OnInstalledReason.UPDATE) {
+    restoreActiveViewerSessions();
   }
 });
 
@@ -230,19 +245,23 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           // Send response immediately so port disconnect on tab navigation does not
           // cause an unhandled message port closed error in the caller.
           sendResponse({ ok: true });
+          recordViewerSession(targetTabId, pdfUrl);
           chrome.tabs.update(targetTabId, { url: viewerUrl }, () => {
             if (chrome.runtime.lastError) {
-              chrome.tabs.create({ url: viewerUrl });
+              chrome.tabs.create({ url: viewerUrl }, (newTab) => {
+                if (newTab?.id) recordViewerSession(newTab.id, pdfUrl);
+              });
             }
           });
           return;
         }
 
-        chrome.tabs.create({ url: viewerUrl }, () => {
+        chrome.tabs.create({ url: viewerUrl }, (newTab) => {
           if (chrome.runtime.lastError) {
             sendResponse({ ok: false, error: chrome.runtime.lastError.message || "Failed to open viewer." });
             return;
           }
+          if (newTab?.id) recordViewerSession(newTab.id, pdfUrl);
           sendResponse({ ok: true });
         });
       } catch (err) {
@@ -300,6 +319,61 @@ async function refreshOpenTabs() {
     if (!core.buildPolicy(tab.url, siteRules || {}, entitlement).shouldInject) return;
     injectContentScript(tab.id);
   });
+}
+
+/* ----------------------------------------------------------- viewer sessions */
+
+function recordViewerSession(tabId, pdfUrl, page = 1) {
+  if (!chrome.storage?.local || !tabId || !pdfUrl) return;
+  const key = String(tabId);
+  chrome.storage.local.get(["activeViewerSessions"], (res) => {
+    const sessions = { ...(res?.activeViewerSessions || {}) };
+    sessions[key] = {
+      pdfUrl,
+      page,
+      updatedAt: Date.now(),
+    };
+    chrome.storage.local.set({ activeViewerSessions: sessions });
+  });
+}
+
+function cleanViewerSession(tabId) {
+  if (!chrome.storage?.local || !tabId) return;
+  const key = String(tabId);
+  chrome.storage.local.get(["activeViewerSessions"], (res) => {
+    if (res?.activeViewerSessions && res.activeViewerSessions[key]) {
+      const next = { ...res.activeViewerSessions };
+      delete next[key];
+      chrome.storage.local.set({ activeViewerSessions: next });
+    }
+  });
+}
+
+async function restoreActiveViewerSessions() {
+  if (!chrome.storage?.local || !chrome.tabs?.create) return;
+  try {
+    const { activeViewerSessions } = await chrome.storage.local.get(["activeViewerSessions"]);
+    if (!activeViewerSessions || typeof activeViewerSessions !== "object") return;
+
+    const sessions = Object.values(activeViewerSessions).filter(
+      (s) => s && typeof s.pdfUrl === "string" && s.pdfUrl.length > 0
+    );
+
+    for (const session of sessions) {
+      if (session.updatedAt && Date.now() - session.updatedAt > 24 * 60 * 60 * 1000) {
+        continue;
+      }
+      const pageHash = session.page && session.page > 1 ? `#page=${session.page}` : "";
+      const viewerUrl = chrome.runtime.getURL(
+        "viewer/viewer.html?pdf=" + encodeURIComponent(session.pdfUrl) + pageHash
+      );
+      chrome.tabs.create({ url: viewerUrl });
+    }
+
+    chrome.storage.local.set({ activeViewerSessions: {} });
+  } catch (err) {
+    console.error("PDF Dark Mode: failed to restore viewer sessions", err);
+  }
 }
 
 /* ------------------------------------------------------------------ licence */

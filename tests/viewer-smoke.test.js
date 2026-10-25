@@ -39,6 +39,12 @@ assert.equal(viewer.parsePdfParam("?pdf=https%3A%2F%2Fx.com%2Fa.pdf"), "https://
 assert.equal(viewer.parsePdfParam(""), "");
 assert.equal(viewer.parsePdfParam("?other=1"), "");
 
+assert.equal(viewer.parsePageParam("#page=42"), 42);
+assert.equal(viewer.parsePageParam("?page=7"), 7);
+assert.equal(viewer.parsePageParam("?pdf=foo.pdf#page=12"), 12);
+assert.equal(viewer.parsePageParam(""), 1);
+assert.equal(viewer.parsePageParam("#invalid"), 1);
+
 assert.equal(
   viewer.viewerUrlFor("https://x.com/a.pdf"),
   "viewer/viewer.html?pdf=" + encodeURIComponent("https://x.com/a.pdf")
