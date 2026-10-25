@@ -36,6 +36,20 @@
     }
   }
 
+  function parsePageParam(locationSearchOrHash) {
+    if (!locationSearchOrHash || typeof locationSearchOrHash !== "string") return 1;
+    try {
+      const match = locationSearchOrHash.match(/[#?&]page=(\d+)/i);
+      if (match) {
+        const p = parseInt(match[1], 10);
+        return p > 0 ? p : 1;
+      }
+    } catch {
+      /* ignore */
+    }
+    return 1;
+  }
+
   function viewerUrlFor(pdfUrl) {
     return "viewer/viewer.html?pdf=" + encodeURIComponent(pdfUrl || "");
   }
@@ -142,6 +156,7 @@
     DEFAULT_VIEWER_THEME,
     BACKGROUND_THEMES,
     parsePdfParam,
+    parsePageParam,
     viewerUrlFor,
     isPdfMagic,
     buildViewerFilter,
@@ -218,6 +233,9 @@
     rendering: false,
     renderQueued: false,
     pdfUrl: parsePdfParam(window.location.search),
+    initialPage: parsePageParam(
+      typeof window !== "undefined" ? (window.location.hash || window.location.search) : ""
+    ),
   };
 
   boot();
@@ -427,6 +445,10 @@
       state.visiblePage = 1;
       await refreshSettings();
       await renderAllPages();
+      if (state.initialPage > 1 && state.initialPage <= state.pageCount) {
+        scrollToPage(state.initialPage);
+      }
+      persistViewerSession();
     } catch (error) {
       fail(describeError(error), isFileUrl(state.pdfUrl));
     }
@@ -669,6 +691,7 @@
     if (current !== state.visiblePage) {
       state.visiblePage = current;
       syncChrome();
+      persistViewerSession();
     }
   }
 
@@ -679,6 +702,7 @@
       pagesEl.scrollTop = target.offsetTop - 12;
       state.visiblePage = clamped;
       syncChrome();
+      persistViewerSession();
     }
   }
 
@@ -747,5 +771,35 @@
     } catch (error) {
       console.error("PDF Dark Mode: failed to save viewer setting", error);
     }
+  }
+
+  let persistTimer = null;
+  function persistViewerSession() {
+    if (persistTimer) clearTimeout(persistTimer);
+    persistTimer = setTimeout(async () => {
+      persistTimer = null;
+      if (!state.pdfUrl || typeof chrome === "undefined" || !chrome.storage?.local) return;
+      try {
+        const tab = await new Promise((resolve) => {
+          if (chrome.tabs?.getCurrent) {
+            chrome.tabs.getCurrent(resolve);
+          } else {
+            resolve(null);
+          }
+        });
+        const tabId = tab?.id ? String(tab.id) : "default";
+        chrome.storage.local.get(["activeViewerSessions"], (res) => {
+          const sessions = { ...(res?.activeViewerSessions || {}) };
+          sessions[tabId] = {
+            pdfUrl: state.pdfUrl,
+            page: state.visiblePage || 1,
+            updatedAt: Date.now(),
+          };
+          chrome.storage.local.set({ activeViewerSessions: sessions });
+        });
+      } catch (_e) {
+        /* ignore */
+      }
+    }, 250);
   }
 })();

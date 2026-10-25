@@ -15,7 +15,12 @@ const root = path.join(__dirname, "..");
 const coreSrc = fs.readFileSync(path.join(root, "scripts/core.js"), "utf8");
 const workerSrc = fs.readFileSync(path.join(root, "worker.js"), "utf8");
 
-function boot({ syncState = {}, fileAccess = null, licenseResponse = null } = {}) {
+function boot({
+  syncState = {},
+  fileAccess = null,
+  licenseResponse = null,
+  localState = {},
+} = {}) {
   const calls = {
     executeScript: [],
     syncWrites: [],
@@ -37,6 +42,7 @@ function boot({ syncState = {}, fileAccess = null, licenseResponse = null } = {}
   });
 
   const store = { ...syncState };
+  const localStore = { analytics: { events: {}, pdfAppliesByDay: {} }, ...localState };
 
   const chromeStub = {
     runtime: {
@@ -67,6 +73,7 @@ function boot({ syncState = {}, fileAccess = null, licenseResponse = null } = {}
     tabs: {
       onUpdated: register("onUpdated"),
       onActivated: register("onActivated"),
+      onRemoved: register("onRemoved"),
       create: (opts, cb) => {
         calls.tabsCreated.push(opts);
         if (typeof cb === "function") cb();
@@ -113,12 +120,17 @@ function boot({ syncState = {}, fileAccess = null, licenseResponse = null } = {}
         },
       },
       local: {
-        get: (_k, cb) => {
-          const out = { analytics: { events: {}, pdfAppliesByDay: {} } };
+        get: (keys, cb) => {
+          const out = {};
+          const list = Array.isArray(keys) ? keys : [keys];
+          list.forEach((k) => {
+            if (k in localStore) out[k] = localStore[k];
+          });
           if (typeof cb === "function") return cb(out);
           return Promise.resolve(out);
         },
         set: (items, cb) => {
+          Object.assign(localStore, items);
           calls.localWrites.push(items);
           if (typeof cb === "function") return cb();
           return Promise.resolve();
@@ -192,7 +204,7 @@ async function main() {
   {
     const { listeners, context } = boot();
     assert.ok(context.PDFDarkModeCore, "worker must importScripts core.js");
-    ["onUpdated", "onActivated", "onInstalled", "onStartup", "onMessage", "onAlarm", "onCommand", "onChanged"].forEach(
+    ["onUpdated", "onActivated", "onRemoved", "onInstalled", "onStartup", "onMessage", "onAlarm", "onCommand", "onChanged"].forEach(
       (name) => assert.ok(listeners[name]?.length, `missing listener: ${name}`)
     );
   }
@@ -599,6 +611,57 @@ async function main() {
       0,
       "existing settings must never be overwritten by defaults"
     );
+  }
+
+  /* ------------------------------------- viewer session auto-restore on update */
+
+  {
+    const { calls, fire } = boot({
+      syncState: {},
+      localState: {
+        activeViewerSessions: {
+          "101": {
+            pdfUrl: "file:///Users/diwash/Downloads/Green%20Book.pdf",
+            page: 211,
+            updatedAt: Date.now(),
+          },
+        },
+      },
+    });
+
+    await fire("onInstalled", { reason: "update" });
+    await settle();
+
+    assert.equal(calls.tabsCreated.length, 1, "update must restore active viewer tab");
+    assert.equal(
+      calls.tabsCreated[0].url,
+      "chrome-extension://test-id/viewer/viewer.html?pdf=" +
+        encodeURIComponent("file:///Users/diwash/Downloads/Green%20Book.pdf") +
+        "#page=211"
+    );
+  }
+
+  {
+    // Closing a viewer tab cleans up its stored session
+    const { calls, fire } = boot({
+      syncState: {},
+      localState: {
+        activeViewerSessions: {
+          "101": {
+            pdfUrl: "https://arxiv.org/pdf/a.pdf",
+            page: 5,
+            updatedAt: Date.now(),
+          },
+        },
+      },
+    });
+
+    await fire("onRemoved", 101);
+    await settle();
+
+    const write = calls.localWrites.find((w) => "activeViewerSessions" in w);
+    assert.ok(write, "removing tab must update activeViewerSessions in local storage");
+    assert.equal(write.activeViewerSessions["101"], undefined, "closed tab session must be removed");
   }
 
   console.log("worker-smoke: injection, shortcut toggle, fan-out and defaults all behave");
