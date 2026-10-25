@@ -196,4 +196,13 @@ assert.equal(viewer.resolveViewerTheme("amoled", true).id, "amoled", "pro unlock
 assert.equal(viewer.resolveViewerTheme("nope", true).id, "charcoal", "unknown themes fall back");
 assert.equal(viewer.resolveViewerTheme(undefined, false).id, "charcoal", "missing pref falls back");
 
+/* ------------------------------------------------- render order */
+
+assert.deepEqual(JSON.stringify(viewer.buildRenderOrder(1, 1)), JSON.stringify([1]));
+assert.deepEqual(JSON.stringify(viewer.buildRenderOrder(1, 5)), JSON.stringify([1, 2, 3, 4, 5]));
+assert.deepEqual(JSON.stringify(viewer.buildRenderOrder(5, 5)), JSON.stringify([5, 4, 3, 2, 1]));
+assert.deepEqual(JSON.stringify(viewer.buildRenderOrder(3, 5)), JSON.stringify([3, 4, 2, 5, 1]));
+assert.deepEqual(JSON.stringify(viewer.buildRenderOrder(10, 5)), JSON.stringify([5, 4, 3, 2, 1]), "out-of-range center clamps to totalPages");
+assert.deepEqual(JSON.stringify(viewer.buildRenderOrder(-1, 5)), JSON.stringify([1, 2, 3, 4, 5]), "negative center clamps to 1");
+
 console.log("viewer-smoke: helpers, self-exclusion and dark filter all behave");

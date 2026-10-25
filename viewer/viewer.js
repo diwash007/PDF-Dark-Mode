@@ -68,6 +68,31 @@
   }
 
   /*
+   * Priority render ordering: renders the user's current/target page first,
+   * then radiates outward (page + 1, page - 1, page + 2, page - 2, ...).
+   * This ensures that on initial jump or reload of a long PDF, the visible
+   * page appears immediately rather than waiting for preceding pages.
+   */
+  function buildRenderOrder(centerPage, totalPages) {
+    if (!Number.isFinite(totalPages) || totalPages < 1) return [];
+    const center = clampNumber(centerPage, 1, totalPages, 1);
+    const order = [];
+    const seen = new Set();
+    const add = (p) => {
+      if (p >= 1 && p <= totalPages && !seen.has(p)) {
+        seen.add(p);
+        order.push(p);
+      }
+    };
+    add(center);
+    for (let offset = 1; order.length < totalPages; offset += 1) {
+      add(center + offset);
+      add(center - offset);
+    }
+    return order;
+  }
+
+  /*
    * HiDPI canvas sizing (official pdf.js recipe): the backing store renders
    * at device pixels while CSS size stays at viewport pixels, so the browser
    * never upscales the bitmap — that upscale was the viewer's blurriness.
@@ -166,6 +191,7 @@
     isViewerUrl,
     fileNameOf,
     formatViewerTitle,
+    buildRenderOrder,
   };
 
   globalThis.PDFDarkModeViewer = api;
@@ -440,14 +466,13 @@
       state.pdf = await pdfjs.getDocument({
         data: bytes,
         wasmUrl: chrome.runtime.getURL("vendor/pdfjs/wasm/"),
+        verbosity: pdfjs.VerbosityLevel ? pdfjs.VerbosityLevel.ERRORS : 0,
       }).promise;
       state.pageCount = state.pdf.numPages;
       state.visiblePage = 1;
+      persistViewerSession();
       await refreshSettings();
       await renderAllPages();
-      if (state.initialPage > 1 && state.initialPage <= state.pageCount) {
-        scrollToPage(state.initialPage);
-      }
       persistViewerSession();
     } catch (error) {
       fail(describeError(error), isFileUrl(state.pdfUrl));
@@ -610,35 +635,72 @@
       prevScrollHeight > 0
         ? (pagesEl.scrollTop + pagesEl.clientHeight / 2) / prevScrollHeight
         : 0;
+
+    const targetPage =
+      state.initialPage > 1 && state.initialPage <= state.pageCount
+        ? state.initialPage
+        : state.visiblePage || 1;
+
     try {
       clearPages();
+      const samplePageNum = clampNumber(targetPage, 1, state.pageCount, 1);
+      const samplePage = await state.pdf.getPage(samplePageNum);
+      const dpr = (typeof window !== "undefined" && window.devicePixelRatio) || 1;
+      const sampleViewport = samplePage.getViewport({ scale: state.scale });
+      const baseSizing = canvasSizeForViewport(sampleViewport, dpr);
+
+      // Create placeholder canvas elements upfront for all pages so the
+      // scroll container immediately reflects the full document height.
       for (let pageNum = 1; pageNum <= state.pageCount; pageNum += 1) {
-        setStatus(`Rendering page ${pageNum} of ${state.pageCount}…`);
-        const page = await state.pdf.getPage(pageNum);
-        const viewport = page.getViewport({ scale: state.scale });
-        const sizing = canvasSizeForViewport(
-          viewport,
-          (typeof window !== "undefined" && window.devicePixelRatio) || 1
-        );
         const canvas = document.createElement("canvas");
         canvas.className = "page";
         canvas.dataset.page = String(pageNum);
-        canvas.width = sizing.width;
-        canvas.height = sizing.height;
-        canvas.style.width = sizing.styleWidth;
-        canvas.style.height = sizing.styleHeight;
-        pagesEl.appendChild(canvas);
-        await page.render({
-          canvasContext: canvas.getContext("2d"),
-          viewport,
-          transform: sizing.transform,
-        }).promise;
+        canvas.width = baseSizing.width;
+        canvas.height = baseSizing.height;
+        canvas.style.width = baseSizing.styleWidth;
+        canvas.style.height = baseSizing.styleHeight;
         canvas.style.filter = state.filter || baseFilter();
+        pagesEl.appendChild(canvas);
       }
-      applyFilter();
-      if (hadPages && pagesEl.scrollHeight > 0 && prevScrollHeight > 0) {
+
+      // Immediately jump to the requested page or restore scroll position,
+      // without waiting for pages to render.
+      if (state.initialPage > 1 && state.initialPage <= state.pageCount) {
+        scrollToPage(state.initialPage);
+        state.initialPage = 0;
+      } else if (hadPages && pagesEl.scrollHeight > 0 && prevScrollHeight > 0) {
         pagesEl.scrollTop = prevCenter * pagesEl.scrollHeight - pagesEl.clientHeight / 2;
       }
+      updateVisiblePage();
+      syncChrome();
+
+      // Render pages radiating outward from the visible page.
+      const renderOrder = buildRenderOrder(state.visiblePage, state.pageCount);
+      let renderedCount = 0;
+      for (const pageNum of renderOrder) {
+        if (state.renderQueued) break;
+        renderedCount += 1;
+        setStatus(`Rendering page ${renderedCount} of ${state.pageCount}…`);
+        const page = pageNum === samplePageNum ? samplePage : await state.pdf.getPage(pageNum);
+        const viewport = page.getViewport({ scale: state.scale });
+        const sizing = canvasSizeForViewport(viewport, dpr);
+        const canvas = pagesEl.querySelector(`canvas.page[data-page="${pageNum}"]`);
+        if (canvas) {
+          if (canvas.width !== sizing.width || canvas.height !== sizing.height) {
+            canvas.width = sizing.width;
+            canvas.height = sizing.height;
+            canvas.style.width = sizing.styleWidth;
+            canvas.style.height = sizing.styleHeight;
+          }
+          await page.render({
+            canvasContext: canvas.getContext("2d"),
+            viewport,
+            transform: sizing.transform,
+          }).promise;
+          canvas.style.filter = state.filter || baseFilter();
+        }
+      }
+      applyFilter();
       updateVisiblePage();
       syncChrome();
       setStatus("");
@@ -791,8 +853,12 @@
         chrome.storage.local.get(["activeViewerSessions"], (res) => {
           const sessions = { ...(res?.activeViewerSessions || {}) };
           sessions[tabId] = {
+            tabId: tab?.id,
             pdfUrl: state.pdfUrl,
             page: state.visiblePage || 1,
+            windowId: tab?.windowId,
+            index: tab?.index,
+            active: tab?.active,
             updatedAt: Date.now(),
           };
           chrome.storage.local.set({ activeViewerSessions: sessions });
