@@ -111,6 +111,29 @@
     return /\/viewer\/viewer\.html/i.test(url || "");
   }
 
+  function fileNameOf(url) {
+    if (!url) return "No PDF selected.";
+    try {
+      const pathname = new URL(url).pathname;
+      const base = decodeURIComponent(pathname.split("/").pop() || "");
+      return base || url;
+    } catch {
+      return url;
+    }
+  }
+
+  function formatViewerTitle(fileName, baseTitle) {
+    const fallback = "Full dark viewer — PDF Dark Mode";
+    const base = (typeof baseTitle === "string" && baseTitle.trim()) || fallback;
+    if (!fileName || fileName === "No PDF selected.") {
+      return base;
+    }
+    if (base.startsWith(`${fileName} - `)) {
+      return base;
+    }
+    return `${fileName} - ${base}`;
+  }
+
   const api = {
     MAX_PDF_BYTES,
     ZOOM_MIN,
@@ -126,6 +149,8 @@
     resolveViewerTheme,
     isFileUrl,
     isViewerUrl,
+    fileNameOf,
+    formatViewerTitle,
   };
 
   globalThis.PDFDarkModeViewer = api;
@@ -199,7 +224,11 @@
 
   function boot() {
     wireControls();
-    if (docTitle) docTitle.textContent = fileNameOf(state.pdfUrl);
+    const fileName = fileNameOf(state.pdfUrl);
+    if (docTitle) docTitle.textContent = fileName;
+    if (typeof document !== "undefined") {
+      document.title = formatViewerTitle(fileName, document.title);
+    }
     if (openFileAccessBtn) {
       openFileAccessBtn.addEventListener("click", () => {
         chrome.tabs.create({ url: extensionDetailsUrl() });
@@ -257,17 +286,6 @@
   function extensionDetailsUrl() {
     if (core?.extensionDetailsUrl) return core.extensionDetailsUrl(chrome.runtime.id);
     return "chrome://extensions/";
-  }
-
-  function fileNameOf(url) {
-    if (!url) return "No PDF selected.";
-    try {
-      const pathname = new URL(url).pathname;
-      const base = decodeURIComponent(pathname.split("/").pop() || "");
-      return base || url;
-    } catch {
-      return url;
-    }
   }
 
   function wireControls() {
