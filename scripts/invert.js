@@ -176,10 +176,15 @@
 
   function handleVisibilityOrFocus() {
     if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
-    chrome.storage.sync.get(SETTINGS_KEYS, (fresh) => {
-      if (chrome.runtime.lastError) return;
-      render(fresh);
-    });
+    try {
+      if (!globalThis.chrome?.storage?.sync?.get) return;
+      chrome.storage.sync.get(SETTINGS_KEYS, (fresh) => {
+        if (chrome.runtime?.lastError) return;
+        render(fresh);
+      });
+    } catch {
+      /* Context invalidated during extension auto-update */
+    }
   }
 
   if (!window.__pdfDarkModeVisibilityBound) {
@@ -336,29 +341,43 @@
     );
 
     const executeOpen = (replaceTab) => {
-      if (!globalThis.chrome?.runtime?.sendMessage) {
+      try {
+        if (!globalThis.chrome?.runtime?.sendMessage) {
+          if (!replaceTab) {
+            window.open(viewerUrl, "_blank", "noopener,noreferrer");
+          }
+          return;
+        }
+
+        chrome.runtime.sendMessage(
+          { type: "open-viewer", pdfUrl: window.location.href, replaceTab },
+          (response) => {
+            if (!replaceTab && (chrome.runtime?.lastError || !response?.ok)) {
+              window.open(viewerUrl, "_blank", "noopener,noreferrer");
+            }
+          }
+        );
+      } catch {
         if (!replaceTab) {
           window.open(viewerUrl, "_blank", "noopener,noreferrer");
         }
-        return;
       }
-
-      chrome.runtime.sendMessage(
-        { type: "open-viewer", pdfUrl: window.location.href, replaceTab },
-        (response) => {
-          if (!replaceTab && (chrome.runtime.lastError || !response?.ok)) {
-            window.open(viewerUrl, "_blank", "noopener,noreferrer");
-          }
-        }
-      );
     };
 
     if (typeof currentSettings?.replaceOriginalTab === "boolean") {
       executeOpen(currentSettings.replaceOriginalTab);
     } else {
-      chrome.storage.sync.get(["replaceOriginalTab"], (res) => {
-        executeOpen(Boolean(res?.replaceOriginalTab));
-      });
+      try {
+        if (globalThis.chrome?.storage?.sync?.get) {
+          chrome.storage.sync.get(["replaceOriginalTab"], (res) => {
+            executeOpen(Boolean(res?.replaceOriginalTab));
+          });
+        } else {
+          executeOpen(false);
+        }
+      } catch {
+        executeOpen(false);
+      }
     }
   }
 })();

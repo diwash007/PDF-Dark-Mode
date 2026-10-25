@@ -74,6 +74,10 @@ chrome.tabs.onActivated.addListener(({ tabId } = {}) => {
     if (chrome.runtime.lastError || !tab?.url) return;
     updateFileAccessBadge(tabId, tab.url);
 
+    // If the tab is still loading (e.g. recovering from a Memory Saver discard),
+    // onUpdated will handle script injection once the DOM is fully loaded.
+    if (tab.status === "loading") return;
+
     chrome.storage.sync.get(["active", "siteRules", "billing"], ({ active, siteRules, billing }) => {
       if (active === false) return;
 
