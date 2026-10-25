@@ -21,6 +21,7 @@ function boot({ syncState = {}, fileAccess = null, licenseResponse = null } = {}
     syncWrites: [],
     localWrites: [],
     tabsCreated: [],
+    tabsUpdated: [],
     tabsQueried: 0,
     badgeTexts: [],
     badgeColors: [],
@@ -68,6 +69,11 @@ function boot({ syncState = {}, fileAccess = null, licenseResponse = null } = {}
       onActivated: register("onActivated"),
       create: (opts, cb) => {
         calls.tabsCreated.push(opts);
+        if (typeof cb === "function") cb();
+        return Promise.resolve({});
+      },
+      update: (tabId, opts, cb) => {
+        calls.tabsUpdated.push({ tabId, opts });
         if (typeof cb === "function") cb();
         return Promise.resolve({});
       },
@@ -306,6 +312,64 @@ async function main() {
 
     assert.equal(response?.ok, false, "open-viewer must refuse non-pdf schemes");
     assert.equal(calls.tabsCreated.length, 0, "refused URLs must not open a tab");
+  }
+
+  {
+    // When replaceOriginalTab is enabled, open-viewer replaces the existing tab
+    const { calls, fire } = boot({ syncState: { replaceOriginalTab: true } });
+    let response = null;
+    await fire(
+      "onMessage",
+      { type: "open-viewer", pdfUrl: "https://arxiv.org/pdf/a.pdf", tabId: 42 },
+      {},
+      (r) => { response = r; }
+    );
+    await settle();
+
+    assert.equal(response?.ok, true, "open-viewer must succeed in replace mode");
+    assert.equal(calls.tabsCreated.length, 0, "must not create a new tab when replaceOriginalTab is on");
+    assert.equal(calls.tabsUpdated.length, 1, "must update the existing tab");
+    assert.equal(calls.tabsUpdated[0].tabId, 42);
+    assert.equal(
+      calls.tabsUpdated[0].opts.url,
+      "chrome-extension://test-id/viewer/viewer.html?pdf=" +
+        encodeURIComponent("https://arxiv.org/pdf/a.pdf")
+    );
+  }
+
+  {
+    // When replaceOriginalTab is enabled and tabId comes from sender tab
+    const { calls, fire } = boot({ syncState: { replaceOriginalTab: true } });
+    let response = null;
+    await fire(
+      "onMessage",
+      { type: "open-viewer", pdfUrl: "https://arxiv.org/pdf/a.pdf" },
+      { tab: { id: 77 } },
+      (r) => { response = r; }
+    );
+    await settle();
+
+    assert.equal(response?.ok, true);
+    assert.equal(calls.tabsCreated.length, 0);
+    assert.equal(calls.tabsUpdated.length, 1);
+    assert.equal(calls.tabsUpdated[0].tabId, 77);
+  }
+
+  {
+    // When replaceOriginalTab is false, create tab is used even with tabId
+    const { calls, fire } = boot({ syncState: { replaceOriginalTab: false } });
+    let response = null;
+    await fire(
+      "onMessage",
+      { type: "open-viewer", pdfUrl: "https://arxiv.org/pdf/a.pdf", tabId: 42 },
+      {},
+      (r) => { response = r; }
+    );
+    await settle();
+
+    assert.equal(response?.ok, true);
+    assert.equal(calls.tabsCreated.length, 1, "must create tab when replaceOriginalTab is false");
+    assert.equal(calls.tabsUpdated.length, 0);
   }
 
   {

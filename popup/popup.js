@@ -18,6 +18,7 @@ const toggle = document.getElementById("toggle");
 const toggleStateLabel = document.getElementById("toggleStateLabel");
 const shortcutHint = document.getElementById("shortcutHint");
 const showDockToggle = document.getElementById("showDockToggle");
+const replaceTabToggle = document.getElementById("replaceTabToggle");
 const fileAccessBanner = document.getElementById("fileAccessBanner");
 const openFileAccessSettingsBtn = document.getElementById("openFileAccessSettingsBtn");
 const contrastSlider = document.getElementById("contrastSlider");
@@ -176,6 +177,12 @@ showDockToggle.addEventListener("change", () => {
   persistSyncValue("showDock", showDockToggle.checked);
 });
 
+if (replaceTabToggle) {
+  replaceTabToggle.addEventListener("change", () => {
+    persistSyncValue("replaceOriginalTab", replaceTabToggle.checked);
+  });
+}
+
 modeSelect.addEventListener("change", () => {
   const nextMode = enforceAllowedMode(modeSelect.value);
   modeSelect.value = nextMode;
@@ -213,16 +220,26 @@ if (fullDarkBtn) {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     const pdf = (tab && tab.url) || (currentTab && currentTab.url) || "";
     if (!pdf) return;
-    // Via the worker so Back can return to this tab; direct tabs.create is
+    const tabId = tab?.id || currentTab?.id;
+    const shouldReplace = Boolean(
+      replaceTabToggle
+        ? replaceTabToggle.checked
+        : (await getSyncState(["replaceOriginalTab"])).replaceOriginalTab
+    );
+    const viewerUrl = chrome.runtime.getURL("viewer/viewer.html?pdf=" + encodeURIComponent(pdf));
+    // Via the worker so Back can return to this tab; direct tabs.create/update is
     // the fallback if the worker is unreachable.
     const openDirectly = () => {
-      chrome.tabs.create({
-        url: chrome.runtime.getURL("viewer/viewer.html?pdf=" + encodeURIComponent(pdf)),
-      });
+      if (shouldReplace && tabId) {
+        chrome.tabs.update(tabId, { url: viewerUrl });
+      } else {
+        chrome.tabs.create({ url: viewerUrl });
+      }
     };
     const response = await sendRuntimeMessage({
       type: "open-viewer",
       pdfUrl: pdf,
+      tabId,
     });
     if (!response?.ok) openDirectly();
   });
@@ -380,6 +397,7 @@ async function initializePopup() {
     "overlayAreaSettings",
     "siteOverlayAreas",
     "showDock",
+    "replaceOriginalTab",
   ]);
 
   entitlement = getEntitlement(syncState.billing);
@@ -389,6 +407,7 @@ async function initializePopup() {
   modeSelect.value = enforceAllowedMode(syncState.mode || "dark");
   activeState = syncState.active !== false;
   showDockToggle.checked = syncState.showDock !== false;
+  if (replaceTabToggle) replaceTabToggle.checked = Boolean(syncState.replaceOriginalTab);
   renderToggleState();
 
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });

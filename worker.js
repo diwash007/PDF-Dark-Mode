@@ -158,7 +158,7 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
   refreshOpenTabs();
 });
 
-chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message?.type === "analytics-event" && message?.event) {
     recordAnalyticsEvent(message.event);
     sendResponse({ ok: true });
@@ -210,16 +210,35 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       sendResponse({ ok: false, error: "Not a PDF URL." });
       return false;
     }
-    chrome.tabs.create(
-      { url: chrome.runtime.getURL("viewer/viewer.html?pdf=" + encodeURIComponent(pdfUrl)) },
-      () => {
+    const viewerUrl = chrome.runtime.getURL("viewer/viewer.html?pdf=" + encodeURIComponent(pdfUrl));
+    const targetTabId = (typeof message.tabId === "number" ? message.tabId : null) ?? sender?.tab?.id;
+
+    chrome.storage.sync.get(["replaceOriginalTab"], ({ replaceOriginalTab }) => {
+      if (replaceOriginalTab && targetTabId) {
+        chrome.tabs.update(targetTabId, { url: viewerUrl }, () => {
+          if (chrome.runtime.lastError) {
+            chrome.tabs.create({ url: viewerUrl }, () => {
+              if (chrome.runtime.lastError) {
+                sendResponse({ ok: false, error: chrome.runtime.lastError.message || "Failed to open viewer." });
+                return;
+              }
+              sendResponse({ ok: true });
+            });
+            return;
+          }
+          sendResponse({ ok: true });
+        });
+        return;
+      }
+
+      chrome.tabs.create({ url: viewerUrl }, () => {
         if (chrome.runtime.lastError) {
           sendResponse({ ok: false, error: chrome.runtime.lastError.message || "Failed to open viewer." });
           return;
         }
         sendResponse({ ok: true });
-      }
-    );
+      });
+    });
     return true;
   }
 
