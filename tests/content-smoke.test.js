@@ -69,6 +69,7 @@ function makeDom({ embeds = [], contentType = "text/html" } = {}) {
   const body = makeNode("body");
   const documentElement = makeNode("html");
 
+  const docListeners = {};
   const document = {
     body,
     documentElement,
@@ -76,6 +77,11 @@ function makeDom({ embeds = [], contentType = "text/html" } = {}) {
     createElement: (tag) => makeNode(tag),
     getElementById: (id) => byId.get(id) || null,
     querySelector: (sel) => body.querySelector(sel) || documentElement.querySelector(sel),
+    addEventListener: (t, fn) => { (docListeners[t] = docListeners[t] || []).push(fn); },
+    dispatchEvent: (e) => {
+      const type = typeof e === "string" ? e : e?.type;
+      (docListeners[type] || []).forEach((fn) => fn(e));
+    },
   };
 
   return { document, body };
@@ -107,11 +113,25 @@ function legacyUserState(overrides = {}) {
   };
 }
 
-function inject({ href, state, embeds = [], contentType = "text/html", preloadedCore = false }) {
+function inject({
+  href,
+  state,
+  embeds = [],
+  contentType = "text/html",
+  preloadedCore = false,
+  sessionStorage = null,
+}) {
   const { document, body } = makeDom({ embeds, contentType });
   const messages = [];
   const errors = [];
   const openedWindows = [];
+
+  const sessionStore = sessionStorage || {
+    _data: {},
+    getItem(k) { return this._data[k] ?? null; },
+    setItem(k, v) { this._data[k] = String(v); },
+    removeItem(k) { delete this._data[k]; },
+  };
 
   const context = {
     document,
@@ -120,7 +140,10 @@ function inject({ href, state, embeds = [], contentType = "text/html", preloaded
       open: (url, target, features) => {
         openedWindows.push({ url, target, features });
       },
+      addEventListener: (t, fn) => { document.addEventListener(t, fn); },
+      sessionStorage: sessionStore,
     },
+    sessionStorage: sessionStore,
     console: { error: (...a) => errors.push(a.join(" ")), log: () => {}, warn: () => {} },
     chrome: {
       runtime: {
@@ -169,6 +192,7 @@ function inject({ href, state, embeds = [], contentType = "text/html", preloaded
     errors,
     messages,
     openedWindows,
+    triggerEvent: (type) => document.dispatchEvent(type),
     overlay: () => document.getElementById("darkDiv"),
     tint: () => document.getElementById("tintDiv"),
     dock: () => document.getElementById("pdfDarkModeDock"),
@@ -340,6 +364,46 @@ check("the dock full dark button sends open-viewer with replaceTab setting", () 
   assert.equal(rNewTab.messages[0].type, "open-viewer");
   assert.equal(rNewTab.messages[0].pdfUrl, "https://arxiv.org/pdf/a.pdf");
   assert.equal(rNewTab.messages[0].replaceTab, false);
+});
+
+check("the dock toggle persists page state to sessionStorage across tab reloads", () => {
+  const sharedSession = {
+    _data: {},
+    getItem(k) { return this._data[k] ?? null; },
+    setItem(k, v) { this._data[k] = String(v); },
+  };
+  const r1 = inject({
+    href: "https://arxiv.org/pdf/a.pdf",
+    state: legacyUserState(),
+    sessionStorage: sharedSession,
+  });
+  const btn = r1.dock().find("pdfDarkModeToggle");
+  btn.click();
+  assert.equal(r1.overlay(), null, "toggled off");
+  assert.equal(sharedSession.getItem("__pdm_page_enabled"), "false");
+
+  // Simulates reload/restoration where window in-memory state was wiped but sessionStorage survived
+  const r2 = inject({
+    href: "https://arxiv.org/pdf/a.pdf",
+    state: legacyUserState(),
+    sessionStorage: sharedSession,
+  });
+  assert.equal(r2.overlay(), null, "restored tab must respect persisted off state");
+});
+
+check("visibilitychange event re-renders the overlay if missing", () => {
+  const r = inject({
+    href: "https://arxiv.org/pdf/a.pdf",
+    state: legacyUserState(),
+  });
+  assert.ok(r.overlay(), "initially dark");
+  // Simulate native PDF plugin tearing down or clearing overlay while tab was hidden
+  r.overlay().remove();
+  assert.equal(r.overlay(), null, "removed while in background");
+  // Tab becomes visible again
+  r.context.document.visibilityState = "visible";
+  r.triggerEvent("visibilitychange");
+  assert.ok(r.overlay(), "overlay restored on visibilitychange");
 });
 
 console.log(`content-smoke: ${passed} scenarios passed`);

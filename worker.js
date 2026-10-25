@@ -73,6 +73,15 @@ chrome.tabs.onActivated.addListener(({ tabId } = {}) => {
   chrome.tabs.get(tabId, (tab) => {
     if (chrome.runtime.lastError || !tab?.url) return;
     updateFileAccessBadge(tabId, tab.url);
+
+    chrome.storage.sync.get(["active", "siteRules", "billing"], ({ active, siteRules, billing }) => {
+      if (active === false) return;
+
+      const policy = core.buildPolicy(tab.url, siteRules || {}, core.getEntitlement(billing));
+      if (!policy.shouldInject) return;
+
+      injectContentScript(tabId);
+    });
   });
 });
 

@@ -727,6 +727,34 @@ async function main() {
     assert.equal(write.activeViewerSessions["101"], undefined, "closed tab session must be removed");
   }
 
+  {
+    // Switching to an already-open PDF tab ensures content script is injected
+    const { calls, fire } = boot({
+      syncState: { active: true },
+      tabPropsById: {
+        42: { id: 42, url: "https://arxiv.org/pdf/paper.pdf" },
+        43: { id: 43, url: "https://example.com/not-a-pdf" },
+      },
+    });
+
+    await fire("onActivated", { tabId: 42 });
+    await settle();
+
+    assert.ok(
+      calls.executeScript.some((c) => c.target?.tabId === 42),
+      "activating a PDF tab must ensure content script is injected"
+    );
+
+    // Non-PDF tab does not inject on activation
+    await fire("onActivated", { tabId: 43 });
+    await settle();
+
+    assert.ok(
+      !calls.executeScript.some((c) => c.target?.tabId === 43),
+      "activating a non-PDF tab must not inject content script"
+    );
+  }
+
   console.log("worker-smoke: injection, shortcut toggle, fan-out and defaults all behave");
 }
 
