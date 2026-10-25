@@ -255,9 +255,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           // cause an unhandled message port closed error in the caller.
           sendResponse({ ok: true });
           recordViewerSession(targetTabId, pdfUrl);
-          chrome.tabs.update(targetTabId, { url: viewerUrl }, () => {
+          chrome.tabs.update(targetTabId, { url: viewerUrl, active: true }, () => {
             if (chrome.runtime.lastError) {
-              chrome.tabs.create({ url: viewerUrl }, (newTab) => {
+              chrome.tabs.create({ url: viewerUrl, active: true }, (newTab) => {
                 if (newTab?.id) recordViewerSession(newTab.id, pdfUrl);
               });
             }
@@ -265,7 +265,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           return;
         }
 
-        const createOpts = { url: viewerUrl };
+        const createOpts = { url: viewerUrl, active: true };
         if (targetTabId && chrome.tabs?.get) {
           try {
             const targetTab = await new Promise((resolve) => {
@@ -285,13 +285,22 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
         chrome.tabs.create(createOpts, (newTab) => {
           if (chrome.runtime.lastError) {
-            chrome.tabs.create({ url: viewerUrl }, (fallbackTab) => {
+            chrome.tabs.create({ url: viewerUrl, active: true }, (fallbackTab) => {
               if (fallbackTab?.id) recordViewerSession(fallbackTab.id, pdfUrl);
             });
             sendResponse({ ok: true });
             return;
           }
-          if (newTab?.id) recordViewerSession(newTab.id, pdfUrl);
+          if (newTab?.id) {
+            recordViewerSession(newTab.id, pdfUrl);
+            if (typeof newTab.windowId === "number" && chrome.windows?.update) {
+              try {
+                chrome.windows.update(newTab.windowId, { focused: true });
+              } catch {
+                /* ignore */
+              }
+            }
+          }
           sendResponse({ ok: true });
         });
       } catch (err) {

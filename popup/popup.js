@@ -230,7 +230,7 @@ if (fullDarkBtn) {
 
     if (shouldReplace && tabId && chrome.tabs?.update) {
       try {
-        await chrome.tabs.update(tabId, { url: viewerUrl });
+        await chrome.tabs.update(tabId, { url: viewerUrl, active: true });
         if (typeof window !== "undefined" && typeof window.close === "function") {
           window.close();
         }
@@ -242,12 +242,20 @@ if (fullDarkBtn) {
 
     const openDirectly = () => {
       if (shouldReplace && tabId && chrome.tabs?.update) {
-        chrome.tabs.update(tabId, { url: viewerUrl });
+        chrome.tabs.update(tabId, { url: viewerUrl, active: true });
         if (typeof window !== "undefined" && typeof window.close === "function") {
           window.close();
         }
       } else {
-        chrome.tabs.create({ url: viewerUrl });
+        chrome.tabs.create({ url: viewerUrl, active: true }, (newTab) => {
+          if (newTab?.id && chrome.tabs?.update) {
+            try {
+              chrome.tabs.update(newTab.id, { active: true });
+            } catch {
+              /* ignore */
+            }
+          }
+        });
       }
     };
     const response = await sendRuntimeMessage({
