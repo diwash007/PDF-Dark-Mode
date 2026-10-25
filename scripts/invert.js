@@ -17,6 +17,7 @@
   const TOGGLE_BUTTON_ID = "pdfDarkModeToggle";
   const INFO_BUTTON_ID = "pdfDarkModeInfo";
   const VIEWER_BUTTON_ID = "pdfDarkModeViewer";
+  const PAGE_ENABLED_KEY = "__pdm_page_enabled";
 
   /* How long to keep watching for a PDF to appear on an ambiguous HTML page. */
   const EMBED_WATCH_MS = 10000;
@@ -140,11 +141,55 @@
   /* ------------------------------------------------------------ page state */
 
   function isPageEnabled() {
-    return window.__pdfDarkModePageEnabled !== false;
+    if (window.__pdfDarkModePageEnabled !== undefined) {
+      return window.__pdfDarkModePageEnabled !== false;
+    }
+    try {
+      const storage =
+        (typeof window !== "undefined" && window.sessionStorage) ||
+        (typeof sessionStorage !== "undefined" ? sessionStorage : null);
+      if (storage?.getItem) {
+        const stored = storage.getItem(PAGE_ENABLED_KEY);
+        if (stored !== null) return stored === "true";
+      }
+    } catch {
+      /* ignore */
+    }
+    return true;
   }
 
   function setPageEnabled(enabled) {
     window.__pdfDarkModePageEnabled = !!enabled;
+    try {
+      const storage =
+        (typeof window !== "undefined" && window.sessionStorage) ||
+        (typeof sessionStorage !== "undefined" ? sessionStorage : null);
+      if (storage?.setItem) {
+        storage.setItem(PAGE_ENABLED_KEY, String(!!enabled));
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+
+  /* ------------------------------------------------------- tab lifecycle */
+
+  function handleVisibilityOrFocus() {
+    if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
+    chrome.storage.sync.get(SETTINGS_KEYS, (fresh) => {
+      if (chrome.runtime.lastError) return;
+      render(fresh);
+    });
+  }
+
+  if (!window.__pdfDarkModeVisibilityBound) {
+    window.__pdfDarkModeVisibilityBound = true;
+    if (typeof document !== "undefined" && typeof document.addEventListener === "function") {
+      document.addEventListener("visibilitychange", handleVisibilityOrFocus);
+    }
+    if (typeof window !== "undefined" && typeof window.addEventListener === "function") {
+      window.addEventListener("focus", handleVisibilityOrFocus);
+    }
   }
 
   /* ------------------------------------------------------------- floating dock */

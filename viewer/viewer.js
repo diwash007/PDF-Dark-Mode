@@ -530,6 +530,13 @@
     if (darkToggleBtn) {
       darkToggleBtn.addEventListener("click", () => {
         state.darkEnabled = !state.darkEnabled;
+        try {
+          if (typeof sessionStorage !== "undefined" && sessionStorage?.setItem) {
+            sessionStorage.setItem("__pdm_viewer_dark", String(state.darkEnabled));
+          }
+        } catch {
+          /* ignore */
+        }
         applyFilter();
         syncChrome();
         syncControls();
@@ -633,6 +640,19 @@
       chrome.storage.onChanged.addListener((changes, areaName) => {
         if (areaName !== "sync") return;
         if (changes.billing) refreshEntitlement();
+        if (changes.active) {
+          state.darkEnabled = changes.active.newValue !== false;
+          try {
+            if (typeof sessionStorage !== "undefined" && sessionStorage?.setItem) {
+              sessionStorage.setItem("__pdm_viewer_dark", String(state.darkEnabled));
+            }
+          } catch {
+            /* ignore */
+          }
+          applyFilter();
+          syncChrome();
+          syncControls();
+        }
         if (changes.mode) {
           state.mode = enforceAllowedMode(changes.mode.newValue);
           refreshFilter();
@@ -694,12 +714,26 @@
   async function refreshSettings() {
     try {
       const stored = await getSyncState([
+        "active",
         "strength",
         "contrast",
         "mode",
         "billing",
         "viewerTheme",
       ]);
+      let savedDark = null;
+      try {
+        if (typeof sessionStorage !== "undefined" && sessionStorage?.getItem) {
+          savedDark = sessionStorage.getItem("__pdm_viewer_dark");
+        }
+      } catch {
+        /* ignore */
+      }
+      if (savedDark !== null) {
+        state.darkEnabled = savedDark === "true";
+      } else if (stored.active !== undefined) {
+        state.darkEnabled = stored.active !== false;
+      }
       state.isPro = core ? !!core.getEntitlement(stored.billing).isPro : false;
       state.mode = enforceAllowedMode(stored.mode);
       state.strength = clampNumber(stored.strength, 200, 255, 255);
