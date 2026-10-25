@@ -93,6 +93,108 @@
   }
 
   /*
+   * Merges fragmented client rects on the same line into continuous line rects.
+   * Eliminates awkward gaps between adjacent word spans.
+   */
+  function mergeLineRects(clientRects) {
+    if (!Array.isArray(clientRects) || !clientRects.length) return [];
+    const rects = clientRects
+      .filter((r) => r && r.width > 0 && r.height > 0)
+      .map((r) => ({
+        left: r.left,
+        top: r.top,
+        right: r.right,
+        bottom: r.bottom,
+        width: r.width,
+        height: r.height,
+      }));
+    if (rects.length <= 1) return rects;
+
+    rects.sort((a, b) => (Math.abs(a.top - b.top) > 4 ? a.top - b.top : a.left - b.left));
+
+    const merged = [];
+    let current = { ...rects[0] };
+
+    for (let i = 1; i < rects.length; i++) {
+      const next = rects[i];
+      const sameLine =
+        Math.abs(current.top - next.top) <= Math.max(current.height, next.height) * 0.5 &&
+        Math.abs(current.bottom - next.bottom) <= Math.max(current.height, next.height) * 0.5;
+
+      const maxGap = Math.max(current.height, next.height) * 1.2;
+      const horizontallyClose =
+        next.left >= current.left && next.left - current.right <= maxGap;
+
+      if (sameLine && horizontallyClose) {
+        current.right = Math.max(current.right, next.right);
+        current.top = Math.min(current.top, next.top);
+        current.bottom = Math.max(current.bottom, next.bottom);
+        current.left = Math.min(current.left, next.left);
+        current.width = current.right - current.left;
+        current.height = current.bottom - current.top;
+      } else {
+        merged.push(current);
+        current = { ...next };
+      }
+    }
+    merged.push(current);
+    return merged;
+  }
+
+  /*
+   * Converts client selection rects into a standard PDF Highlight annotation
+   * with quadPoints, outlines, and bounding rect in PDF point space.
+   */
+  function buildHighlightAnnotation(clientRects, pageRect, viewport, pageIndex = 0, color = [1, 0.9, 0]) {
+    if (!Array.isArray(clientRects) || !clientRects.length || !viewport || !pageRect) return null;
+
+    const mergedRects = mergeLineRects(clientRects);
+    if (!mergedRects.length) return null;
+
+    const quadPoints = [];
+    const outlines = [];
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+
+    mergedRects.forEach((rect) => {
+      if (rect.width < 1 || rect.height < 1) return;
+      const vx1 = rect.left - pageRect.left;
+      const vy1 = rect.top - pageRect.top;
+      const vx2 = rect.right - pageRect.left;
+      const vy2 = rect.bottom - pageRect.top;
+
+      const [p1x, p1y] = viewport.convertToPdfPoint(vx1, vy1);
+      const [p2x, p2y] = viewport.convertToPdfPoint(vx2, vy2);
+
+      const left = Math.min(p1x, p2x);
+      const right = Math.max(p1x, p2x);
+      const bottom = Math.min(p1y, p2y);
+      const top = Math.max(p1y, p2y);
+
+      minX = Math.min(minX, left);
+      minY = Math.min(minY, bottom);
+      maxX = Math.max(maxX, right);
+      maxY = Math.max(maxY, top);
+
+      quadPoints.push(left, top, right, top, left, bottom, right, bottom);
+      outlines.push([left, top, right, top, right, bottom, left, bottom]);
+    });
+
+    if (!quadPoints.length) return null;
+
+    return {
+      annotationType: 9, // HIGHLIGHT
+      color,
+      opacity: 0.5,
+      quadPoints,
+      outlines,
+      rect: [minX, minY, maxX, maxY],
+      pageIndex,
+      rotation: 0,
+      date: new Date(),
+    };
+  }
+
+  /*
    * HiDPI canvas sizing (official pdf.js recipe): the backing store renders
    * at device pixels while CSS size stays at viewport pixels, so the browser
    * never upscales the bitmap — that upscale was the viewer's blurriness.
@@ -173,6 +275,53 @@
     return `${fileName} - ${base}`;
   }
 
+  /*
+   * Manages an undo/redo stack for highlight annotations.
+   */
+  function createAnnotationHistory() {
+    const undoStack = [];
+    const redoStack = [];
+
+    return {
+      get canUndo() {
+        return undoStack.length > 0;
+      },
+      get canRedo() {
+        return redoStack.length > 0;
+      },
+      undoStack,
+      redoStack,
+      recordAdd(record) {
+        undoStack.push({ type: "add", ...record });
+        redoStack.length = 0;
+      },
+      recordDelete(record) {
+        undoStack.push({ type: "delete", ...record });
+        redoStack.length = 0;
+      },
+      recordClear(items) {
+        undoStack.push({ type: "clearAll", items: [...items] });
+        redoStack.length = 0;
+      },
+      popUndo() {
+        return undoStack.length ? undoStack.pop() : null;
+      },
+      pushRedo(action) {
+        redoStack.push(action);
+      },
+      popRedo() {
+        return redoStack.length ? redoStack.pop() : null;
+      },
+      pushUndo(action) {
+        undoStack.push(action);
+      },
+      clear() {
+        undoStack.length = 0;
+        redoStack.length = 0;
+      },
+    };
+  }
+
   const api = {
     MAX_PDF_BYTES,
     ZOOM_MIN,
@@ -192,6 +341,9 @@
     fileNameOf,
     formatViewerTitle,
     buildRenderOrder,
+    mergeLineRects,
+    buildHighlightAnnotation,
+    createAnnotationHistory,
   };
 
   globalThis.PDFDarkModeViewer = api;
@@ -231,6 +383,11 @@
   const zoomInBtn = document.getElementById("zoomInBtn");
   const zoomOutBtn = document.getElementById("zoomOutBtn");
   const fitWidthBtn = document.getElementById("fitWidthBtn");
+  const highlightBtn = document.getElementById("highlightBtn");
+  const undoBtn = document.getElementById("undoBtn");
+  const redoBtn = document.getElementById("redoBtn");
+  const clearHighlightsBtn = document.getElementById("clearHighlightsBtn");
+  const saveBtn = document.getElementById("saveBtn");
   const optionsBtn = document.getElementById("optionsBtn");
   const optionsTier = document.getElementById("optionsTier");
   const darkToggleBtn = document.getElementById("darkToggleBtn");
@@ -242,6 +399,8 @@
   const proLink = document.getElementById("proLink");
   const floatingProBtn = document.getElementById("floatingProBtn");
 
+  let pdfjsLibRef = null;
+
   const state = {
     pdf: null,
     pageCount: 0,
@@ -250,6 +409,10 @@
     optionsOpen: true,
     betaMinimized: false,
     darkEnabled: true,
+    highlightMode: false,
+    nextAnnotationId: 1,
+    annotations: new Map(),
+    history: createAnnotationHistory(),
     mode: "dark",
     strength: 255,
     contrast: 100,
@@ -338,6 +501,20 @@
     if (zoomInBtn) zoomInBtn.addEventListener("click", () => stepZoom(1.2));
     if (zoomOutBtn) zoomOutBtn.addEventListener("click", () => stepZoom(1 / 1.2));
     if (fitWidthBtn) fitWidthBtn.addEventListener("click", fitWidth);
+    if (highlightBtn) {
+      highlightBtn.addEventListener("click", () => {
+        state.highlightMode = !state.highlightMode;
+        highlightBtn.setAttribute("aria-pressed", String(state.highlightMode));
+        highlightBtn.classList.toggle("active", state.highlightMode);
+        setStatus(state.highlightMode ? "Highlight mode on: select text to highlight" : "");
+      });
+    }
+    if (undoBtn) undoBtn.addEventListener("click", () => undo());
+    if (redoBtn) redoBtn.addEventListener("click", () => redo());
+    if (clearHighlightsBtn) clearHighlightsBtn.addEventListener("click", () => clearAllHighlights());
+    if (saveBtn) {
+      saveBtn.addEventListener("click", saveDocument);
+    }
     if (optionsBtn && optionsTier) {
       optionsBtn.addEventListener("click", () => {
         if (state.optionsOpen && !state.isPro) {
@@ -393,6 +570,40 @@
           spyTimer = null;
           updateVisiblePage();
         }, 120);
+      });
+      pagesEl.addEventListener("mouseup", () => {
+        if (state.highlightMode) {
+          highlightSelection();
+        }
+      });
+      pagesEl.addEventListener("click", (event) => {
+        const target = event.target;
+        if (target && target.classList && target.classList.contains("highlight-annotation")) {
+          const annotId = target.dataset.annotationId;
+          if (annotId) {
+            event.stopPropagation();
+            deleteHighlight(annotId);
+          }
+        }
+      });
+      window.addEventListener("keydown", (event) => {
+        const isMac = typeof navigator !== "undefined" && /mac/i.test(navigator.platform || navigator.userAgent);
+        const mod = isMac ? event.metaKey : event.ctrlKey;
+        if (mod && !event.altKey) {
+          const key = event.key ? event.key.toLowerCase() : "";
+          if (key === "z") {
+            if (event.shiftKey) {
+              event.preventDefault();
+              redo();
+            } else {
+              event.preventDefault();
+              undo();
+            }
+          } else if (key === "y" && !isMac) {
+            event.preventDefault();
+            redo();
+          }
+        }
       });
       // Trackpad pinch fires wheel + ctrlKey: zoom the document instead of
       // scrolling. Debounced so a single gesture re-renders once.
@@ -462,6 +673,7 @@
         throw new Error("This URL did not return a PDF document.");
       }
       const pdfjs = await import(chrome.runtime.getURL("vendor/pdfjs/pdf.min.mjs"));
+      pdfjsLibRef = pdfjs;
       pdfjs.GlobalWorkerOptions.workerSrc = chrome.runtime.getURL("vendor/pdfjs/pdf.worker.min.mjs");
       state.pdf = await pdfjs.getDocument({
         data: bytes,
@@ -649,9 +861,18 @@
       const sampleViewport = samplePage.getViewport({ scale: state.scale });
       const baseSizing = canvasSizeForViewport(sampleViewport, dpr);
 
-      // Create placeholder canvas elements upfront for all pages so the
+      // Create placeholder elements upfront for all pages so the
       // scroll container immediately reflects the full document height.
       for (let pageNum = 1; pageNum <= state.pageCount; pageNum += 1) {
+        const container = document.createElement("div");
+        container.className = "page-container";
+        container.dataset.page = String(pageNum);
+        container.style.width = baseSizing.styleWidth;
+        container.style.height = baseSizing.styleHeight;
+        container.style.setProperty("--total-scale-factor", String(state.scale));
+        container.style.setProperty("--scale-round-x", "1px");
+        container.style.setProperty("--scale-round-y", "1px");
+
         const canvas = document.createElement("canvas");
         canvas.className = "page";
         canvas.dataset.page = String(pageNum);
@@ -660,7 +881,22 @@
         canvas.style.width = baseSizing.styleWidth;
         canvas.style.height = baseSizing.styleHeight;
         canvas.style.filter = state.filter || baseFilter();
-        pagesEl.appendChild(canvas);
+        container.appendChild(canvas);
+
+        const textLayer = document.createElement("div");
+        textLayer.className = "textLayer text-layer";
+        textLayer.dataset.page = String(pageNum);
+        textLayer.style.setProperty("--total-scale-factor", String(state.scale));
+        textLayer.style.setProperty("--scale-round-x", "1px");
+        textLayer.style.setProperty("--scale-round-y", "1px");
+        container.appendChild(textLayer);
+
+        const annotLayer = document.createElement("div");
+        annotLayer.className = "annotation-layer";
+        annotLayer.dataset.page = String(pageNum);
+        container.appendChild(annotLayer);
+
+        pagesEl.appendChild(container);
       }
 
       // Immediately jump to the requested page or restore scroll position,
@@ -684,8 +920,11 @@
         const page = pageNum === samplePageNum ? samplePage : await state.pdf.getPage(pageNum);
         const viewport = page.getViewport({ scale: state.scale });
         const sizing = canvasSizeForViewport(viewport, dpr);
-        const canvas = pagesEl.querySelector(`canvas.page[data-page="${pageNum}"]`);
-        if (canvas) {
+        const container = pagesEl.querySelector(`.page-container[data-page="${pageNum}"]`);
+        const canvas = container ? container.querySelector("canvas.page") : pagesEl.querySelector(`canvas.page[data-page="${pageNum}"]`);
+        if (container && canvas) {
+          container.style.width = sizing.styleWidth;
+          container.style.height = sizing.styleHeight;
           if (canvas.width !== sizing.width || canvas.height !== sizing.height) {
             canvas.width = sizing.width;
             canvas.height = sizing.height;
@@ -698,11 +937,19 @@
             transform: sizing.transform,
           }).promise;
           canvas.style.filter = state.filter || baseFilter();
+
+          try {
+            const annotations = await page.getAnnotations();
+            renderExistingAnnotations(pageNum, annotations, viewport);
+          } catch {
+            /* ignore */
+          }
         }
       }
       applyFilter();
       updateVisiblePage();
       syncChrome();
+      setupTextLayerObserver();
       setStatus("");
     } catch (error) {
       fail("Could not render this document: " + describeError(error), false);
@@ -715,7 +962,350 @@
     }
   }
 
+  let textLayerObserver = null;
+  const mountedTextLayers = new Set();
+
+  function setupTextLayerObserver() {
+    if (textLayerObserver) textLayerObserver.disconnect();
+    mountedTextLayers.clear();
+    if (typeof IntersectionObserver === "undefined") {
+      mountTextLayer(state.visiblePage);
+      return;
+    }
+    textLayerObserver = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          const container = entry.target;
+          const pageNum = Number(container.dataset.page);
+          if (!pageNum) return;
+          if (entry.isIntersecting) {
+            mountTextLayer(pageNum);
+          } else {
+            unmountTextLayer(pageNum);
+          }
+        });
+      },
+      { root: pagesEl, rootMargin: "400px 0px" }
+    );
+
+    const containers = pagesEl.querySelectorAll(".page-container");
+    containers.forEach((c) => textLayerObserver.observe(c));
+  }
+
+  async function mountTextLayer(pageNum) {
+    if (mountedTextLayers.has(pageNum) || !state.pdf) return;
+    const container = pagesEl.querySelector(`.page-container[data-page="${pageNum}"]`);
+    const textLayerEl = container?.querySelector(".textLayer, .text-layer");
+    if (!container || !textLayerEl) return;
+
+    mountedTextLayers.add(pageNum);
+    try {
+      const page = await state.pdf.getPage(pageNum);
+      const viewport = page.getViewport({ scale: state.scale });
+      textLayerEl.textContent = "";
+      textLayerEl.style.setProperty("--total-scale-factor", String(state.scale));
+      textLayerEl.style.setProperty("--scale-round-x", "1px");
+      textLayerEl.style.setProperty("--scale-round-y", "1px");
+      if (pdfjsLibRef?.TextLayer) {
+        const textLayer = new pdfjsLibRef.TextLayer({
+          textContentSource: page.streamTextContent(),
+          container: textLayerEl,
+          viewport,
+        });
+        await textLayer.render();
+      }
+    } catch {
+      mountedTextLayers.delete(pageNum);
+    }
+  }
+
+  function unmountTextLayer(pageNum) {
+    if (!mountedTextLayers.has(pageNum)) return;
+    mountedTextLayers.delete(pageNum);
+    const container = pagesEl.querySelector(`.page-container[data-page="${pageNum}"]`);
+    const textLayerEl = container?.querySelector(".textLayer, .text-layer");
+    if (textLayerEl) {
+      textLayerEl.textContent = "";
+    }
+  }
+
+  function renderExistingAnnotations(pageNum, annotations, viewport) {
+    const container = pagesEl.querySelector(`.page-container[data-page="${pageNum}"]`);
+    const annotLayer = container?.querySelector(".annotation-layer");
+    if (!annotLayer) return;
+
+    if (Array.isArray(annotations) && annotations.length) {
+      annotations.forEach((annot) => {
+        if (annot.subtype === "Highlight") {
+          const quads = annot.quadPoints;
+          if (Array.isArray(quads) && quads.length >= 8) {
+            for (let i = 0; i < quads.length; i += 8) {
+              const [vx1, vy1] = viewport.convertToViewportPoint(quads[i], quads[i + 1]);
+              const [vx2, vy2] = viewport.convertToViewportPoint(quads[i + 6], quads[i + 7]);
+              const left = Math.min(vx1, vx2);
+              const top = Math.min(vy1, vy2);
+              const width = Math.abs(vx2 - vx1);
+              const height = Math.abs(vy2 - vy1);
+              if (width > 0 && height > 0) {
+                const el = document.createElement("div");
+                el.className = "highlight-annotation";
+                el.style.left = `${left}px`;
+                el.style.top = `${top}px`;
+                el.style.width = `${width}px`;
+                el.style.height = `${height}px`;
+                annotLayer.appendChild(el);
+              }
+            }
+          }
+        }
+      });
+    }
+
+    state.annotations.forEach((item) => {
+      if (item.pageNum === pageNum) {
+        renderHighlightInDom(pageNum, item.annotId, item.annot.quadPoints, viewport);
+      }
+    });
+  }
+
+  function renderHighlightInDom(pageNum, annotId, quadPoints, viewport) {
+    const container = pagesEl.querySelector(`.page-container[data-page="${pageNum}"]`);
+    const annotLayer = container?.querySelector(".annotation-layer");
+    if (!container || !annotLayer || !Array.isArray(quadPoints) || quadPoints.length < 8) return;
+
+    for (let i = 0; i < quadPoints.length; i += 8) {
+      const [vx1, vy1] = viewport.convertToViewportPoint(quadPoints[i], quadPoints[i + 1]);
+      const [vx2, vy2] = viewport.convertToViewportPoint(quadPoints[i + 6], quadPoints[i + 7]);
+      const left = Math.min(vx1, vx2);
+      const top = Math.min(vy1, vy2);
+      const width = Math.abs(vx2 - vx1);
+      const height = Math.abs(vy2 - vy1);
+      if (width > 0 && height > 0) {
+        const el = document.createElement("div");
+        el.className = "highlight-annotation";
+        el.dataset.annotationId = annotId;
+        el.title = "Click to remove highlight";
+        el.style.left = `${left}px`;
+        el.style.top = `${top}px`;
+        el.style.width = `${width}px`;
+        el.style.height = `${height}px`;
+        annotLayer.appendChild(el);
+      }
+    }
+  }
+
+  function syncAnnotationButtons() {
+    if (undoBtn) undoBtn.disabled = !state.history.canUndo;
+    if (redoBtn) redoBtn.disabled = !state.history.canRedo;
+    if (clearHighlightsBtn) clearHighlightsBtn.disabled = !state.annotations.size;
+  }
+
+  function deleteHighlight(annotId) {
+    const record = state.annotations.get(annotId);
+    if (!record) return false;
+    if (state.pdf?.annotationStorage) {
+      state.pdf.annotationStorage.remove(annotId);
+    }
+    pagesEl.querySelectorAll(`[data-annotation-id="${annotId}"]`).forEach((el) => el.remove());
+    state.annotations.delete(annotId);
+    state.history.recordDelete(record);
+    syncAnnotationButtons();
+    setStatus("Removed highlight");
+    setTimeout(() => setStatus(""), 1500);
+    return true;
+  }
+
+  function clearAllHighlights() {
+    if (!state.annotations.size) return false;
+    const items = Array.from(state.annotations.values());
+    items.forEach((item) => {
+      if (state.pdf?.annotationStorage) {
+        state.pdf.annotationStorage.remove(item.annotId);
+      }
+      pagesEl.querySelectorAll(`[data-annotation-id="${item.annotId}"]`).forEach((el) => el.remove());
+      state.annotations.delete(item.annotId);
+    });
+    state.history.recordClear(items);
+    syncAnnotationButtons();
+    setStatus("Cleared all highlights");
+    setTimeout(() => setStatus(""), 1500);
+    return true;
+  }
+
+  async function undo() {
+    const action = state.history.popUndo();
+    if (!action) return false;
+    if (action.type === "add") {
+      if (state.pdf?.annotationStorage) {
+        state.pdf.annotationStorage.remove(action.annotId);
+      }
+      pagesEl.querySelectorAll(`[data-annotation-id="${action.annotId}"]`).forEach((el) => el.remove());
+      state.annotations.delete(action.annotId);
+      state.history.pushRedo(action);
+      syncAnnotationButtons();
+      setStatus("Undo highlight");
+      setTimeout(() => setStatus(""), 1200);
+      return true;
+    }
+    if (action.type === "delete") {
+      if (state.pdf?.annotationStorage) {
+        state.pdf.annotationStorage.setValue(action.annotId, action.annot);
+      }
+      state.annotations.set(action.annotId, action);
+      if (state.pdf) {
+        const page = await state.pdf.getPage(action.pageNum);
+        const viewport = page.getViewport({ scale: state.scale });
+        renderHighlightInDom(action.pageNum, action.annotId, action.annot.quadPoints, viewport);
+      }
+      state.history.pushRedo(action);
+      syncAnnotationButtons();
+      setStatus("Restored highlight");
+      setTimeout(() => setStatus(""), 1200);
+      return true;
+    }
+    if (action.type === "clearAll") {
+      for (const item of action.items) {
+        if (state.pdf?.annotationStorage) {
+          state.pdf.annotationStorage.setValue(item.annotId, item.annot);
+        }
+        state.annotations.set(item.annotId, item);
+        if (state.pdf) {
+          const page = await state.pdf.getPage(item.pageNum);
+          const viewport = page.getViewport({ scale: state.scale });
+          renderHighlightInDom(item.pageNum, item.annotId, item.annot.quadPoints, viewport);
+        }
+      }
+      state.history.pushRedo(action);
+      syncAnnotationButtons();
+      setStatus("Restored all highlights");
+      setTimeout(() => setStatus(""), 1200);
+      return true;
+    }
+    return false;
+  }
+
+  async function redo() {
+    const action = state.history.popRedo();
+    if (!action) return false;
+    if (action.type === "add") {
+      if (state.pdf?.annotationStorage) {
+        state.pdf.annotationStorage.setValue(action.annotId, action.annot);
+      }
+      state.annotations.set(action.annotId, action);
+      if (state.pdf) {
+        const page = await state.pdf.getPage(action.pageNum);
+        const viewport = page.getViewport({ scale: state.scale });
+        renderHighlightInDom(action.pageNum, action.annotId, action.annot.quadPoints, viewport);
+      }
+      state.history.pushUndo(action);
+      syncAnnotationButtons();
+      setStatus("Redo highlight");
+      setTimeout(() => setStatus(""), 1200);
+      return true;
+    }
+    if (action.type === "delete") {
+      if (state.pdf?.annotationStorage) {
+        state.pdf.annotationStorage.remove(action.annotId);
+      }
+      pagesEl.querySelectorAll(`[data-annotation-id="${action.annotId}"]`).forEach((el) => el.remove());
+      state.annotations.delete(action.annotId);
+      state.history.pushUndo(action);
+      syncAnnotationButtons();
+      setStatus("Removed highlight");
+      setTimeout(() => setStatus(""), 1200);
+      return true;
+    }
+    if (action.type === "clearAll") {
+      action.items.forEach((item) => {
+        if (state.pdf?.annotationStorage) {
+          state.pdf.annotationStorage.remove(item.annotId);
+        }
+        pagesEl.querySelectorAll(`[data-annotation-id="${item.annotId}"]`).forEach((el) => el.remove());
+        state.annotations.delete(item.annotId);
+      });
+      state.history.pushUndo(action);
+      syncAnnotationButtons();
+      setStatus("Cleared all highlights");
+      setTimeout(() => setStatus(""), 1200);
+      return true;
+    }
+    return false;
+  }
+
+  async function highlightSelection() {
+    if (typeof window === "undefined") return;
+    const selection = window.getSelection();
+    if (!selection || selection.isCollapsed || !selection.rangeCount) return;
+    const range = selection.getRangeAt(0);
+
+    let node = range.commonAncestorContainer;
+    while (node && (!node.classList || !node.classList.contains("page-container"))) {
+      node = node.parentElement;
+    }
+    if (!node) return;
+
+    const pageNum = Number(node.dataset.page);
+    if (!pageNum || !state.pdf) return;
+
+    const page = await state.pdf.getPage(pageNum);
+    const viewport = page.getViewport({ scale: state.scale });
+    const pageRect = node.getBoundingClientRect();
+    const rawRects = Array.from(range.getClientRects());
+    if (!rawRects.length) return;
+    const rects = mergeLineRects(rawRects);
+    if (!rects.length) return;
+
+    const annot = buildHighlightAnnotation(rects, pageRect, viewport, pageNum - 1);
+    if (!annot) return;
+
+    const annotId = "pdfjs_internal_editor_" + (state.nextAnnotationId++);
+    if (state.pdf.annotationStorage) {
+      state.pdf.annotationStorage.setValue(annotId, annot);
+    }
+    const record = { annotId, annot, pageNum };
+    state.annotations.set(annotId, record);
+    state.history.recordAdd(record);
+
+    renderHighlightInDom(pageNum, annotId, annot.quadPoints, viewport);
+    syncAnnotationButtons();
+
+    selection.removeAllRanges();
+    setStatus("Highlighted text");
+    setTimeout(() => setStatus(""), 1500);
+  }
+
+  async function saveDocument() {
+    if (!state.pdf) return;
+    setStatus("Saving PDF…");
+    try {
+      const bytes =
+        state.pdf.annotationStorage?.size > 0
+          ? await state.pdf.saveDocument()
+          : await state.pdf.getData();
+      const blob = new Blob([bytes], { type: "application/pdf" });
+      const blobUrl = URL.createObjectURL(blob);
+      const originalName = fileNameOf(state.pdfUrl) || "document.pdf";
+      const downloadName = originalName.endsWith(".pdf") ? originalName : `${originalName}.pdf`;
+
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      a.download = downloadName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
+      setStatus("Saved PDF!");
+      setTimeout(() => setStatus(""), 2000);
+    } catch (error) {
+      fail("Could not save this document: " + describeError(error), false);
+    }
+  }
+
   function clearPages() {
+    if (textLayerObserver) {
+      textLayerObserver.disconnect();
+    }
+    mountedTextLayers.clear();
     while (pagesEl.firstChild) pagesEl.removeChild(pagesEl.firstChild);
   }
 
@@ -728,6 +1318,9 @@
     pageCanvases().forEach((canvas) => {
       canvas.style.filter = filter;
     });
+    if (shellEl) {
+      shellEl.classList.toggle("viewer-light", !state.darkEnabled);
+    }
     if (darkToggleBtn) {
       darkToggleBtn.setAttribute("aria-pressed", String(state.darkEnabled));
       darkToggleBtn.textContent = state.darkEnabled ? "Dark: On" : "Dark: Off";
@@ -743,12 +1336,13 @@
 
   /* Which page currently owns the middle of the scroll viewport. */
   function updateVisiblePage() {
-    const canvases = pageCanvases();
-    if (!canvases.length) return;
+    const containers = Array.from(pagesEl.querySelectorAll(".page-container"));
+    const targets = containers.length ? containers : pageCanvases();
+    if (!targets.length) return;
     const middle = pagesEl.scrollTop + pagesEl.clientHeight / 2;
     let current = 1;
-    canvases.forEach((canvas) => {
-      if (canvas.offsetTop <= middle) current = Number(canvas.dataset.page) || current;
+    targets.forEach((target) => {
+      if (target.offsetTop <= middle) current = Number(target.dataset.page) || current;
     });
     if (current !== state.visiblePage) {
       state.visiblePage = current;
@@ -759,7 +1353,9 @@
 
   function scrollToPage(pageNum) {
     const clamped = clampNumber(pageNum, 1, state.pageCount, state.visiblePage);
-    const target = pagesEl.querySelector(`canvas.page[data-page="${clamped}"]`);
+    const target =
+      pagesEl.querySelector(`.page-container[data-page="${clamped}"]`) ||
+      pagesEl.querySelector(`canvas.page[data-page="${clamped}"]`);
     if (target) {
       pagesEl.scrollTop = target.offsetTop - 12;
       state.visiblePage = clamped;
