@@ -89,6 +89,8 @@ function buildContext(billing) {
   const elements = new Map();
   const sentMessages = [];
   const syncWrites = [];
+  const tabsUpdated = [];
+  const tabsCreated = [];
   const getById = (id) => {
     if (!IDS.has(id)) return null; // mirrors Chrome exactly
     if (!elements.has(id)) elements.set(id, makeElement(id));
@@ -112,6 +114,7 @@ function buildContext(billing) {
       id: "abcdefghijklmnopabcdefghijklmnop",
       lastError: null,
       getManifest: () => ({ version: "2.2.0" }),
+      getURL: (p) => `chrome-extension://abcdefghijklmnopabcdefghijklmnop/${p}`,
       sendMessage: (msg, cb) => {
         sentMessages.push(msg);
         if (typeof cb === "function") cb({ ok: true });
@@ -132,7 +135,8 @@ function buildContext(billing) {
     },
     tabs: {
       query: () => Promise.resolve([{ id: 1, url: "https://example.com/paper.pdf" }]),
-      create: () => {},
+      create: (opts) => { tabsCreated.push(opts); return Promise.resolve({}); },
+      update: (tabId, opts) => { tabsUpdated.push({ tabId, opts }); return Promise.resolve({}); },
     },
     scripting: {
       executeScript: () => Promise.resolve([{ result: { width: 1200, height: 800 } }]),
@@ -172,11 +176,12 @@ function buildContext(billing) {
   context.globalThis = context;
   context.window.document = documentStub;
 
-  return { context, getById, windowListeners, sentMessages, syncWrites };
+  return { context, getById, windowListeners, sentMessages, syncWrites, tabsUpdated, tabsCreated };
 }
 
 async function run(billing, label) {
-  const { context, getById, windowListeners, sentMessages, syncWrites } = buildContext(billing);
+  const { context, getById, windowListeners, sentMessages, syncWrites, tabsUpdated, tabsCreated } =
+    buildContext(billing);
   vm.createContext(context);
 
   new vm.Script(coreSrc, { filename: "scripts/core.js" }).runInContext(context);
@@ -191,7 +196,7 @@ async function run(billing, label) {
   // DOMContentLoaded handler must not blow up either.
   (windowListeners.DOMContentLoaded || []).forEach((fn) => fn());
 
-  return { context, getById, sentMessages, syncWrites };
+  return { context, getById, sentMessages, syncWrites, tabsUpdated, tabsCreated };
 }
 
 async function main() {
@@ -292,7 +297,7 @@ async function main() {
   /* --------------------------------------- replace original tab toggle */
 
   {
-    const { getById, syncWrites } = await run(null, "replace-tab-toggle");
+    const { getById, syncWrites, tabsUpdated, sentMessages } = await run(null, "replace-tab-toggle");
     const toggle = getById("replaceTabToggle");
     assert.equal(toggle.checked, false, "starts false");
     toggle.checked = true;
@@ -301,6 +306,22 @@ async function main() {
       syncWrites.some((w) => w.replaceOriginalTab === true),
       "checking toggle persists replaceOriginalTab: true"
     );
+
+    const fullDarkBtn = getById("fullDarkBtn");
+    await fullDarkBtn.dispatch("click");
+    assert.equal(tabsUpdated.length, 1, "clicking fullDarkBtn in replace mode must update current tab");
+    assert.equal(tabsUpdated[0].tabId, 1);
+    assert.ok(tabsUpdated[0].opts.url.includes("viewer/viewer.html"));
+  }
+
+  {
+    const { getById, sentMessages, tabsUpdated } = await run(null, "new-tab-mode");
+    const fullDarkBtn = getById("fullDarkBtn");
+    await fullDarkBtn.dispatch("click");
+    assert.equal(tabsUpdated.length, 0, "must not update tab when replaceOriginalTab is false");
+    assert.equal(sentMessages.length, 1);
+    assert.equal(sentMessages[0].type, "open-viewer");
+    assert.equal(sentMessages[0].replaceTab, false);
   }
 
   console.log("popup-smoke: popup.js initialises cleanly for free and Pro, all ids resolve");

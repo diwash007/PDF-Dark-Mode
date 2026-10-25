@@ -111,10 +111,16 @@ function inject({ href, state, embeds = [], contentType = "text/html", preloaded
   const { document, body } = makeDom({ embeds, contentType });
   const messages = [];
   const errors = [];
+  const openedWindows = [];
 
   const context = {
     document,
-    window: { location: { href } },
+    window: {
+      location: { href },
+      open: (url, target, features) => {
+        openedWindows.push({ url, target, features });
+      },
+    },
     console: { error: (...a) => errors.push(a.join(" ")), log: () => {}, warn: () => {} },
     chrome: {
       runtime: {
@@ -162,6 +168,7 @@ function inject({ href, state, embeds = [], contentType = "text/html", preloaded
     body,
     errors,
     messages,
+    openedWindows,
     overlay: () => document.getElementById("darkDiv"),
     tint: () => document.getElementById("tintDiv"),
     dock: () => document.getElementById("pdfDarkModeDock"),
@@ -307,6 +314,32 @@ check("the dock toggle turns the page overlay off and back on", () => {
   button.click();
   assert.ok(r.overlay(), "clicking again should bring it back");
   assert.equal(button.textContent, "Dark mode: On");
+});
+
+check("the dock full dark button sends open-viewer with replaceTab setting", () => {
+  const rReplace = inject({
+    href: "https://arxiv.org/pdf/a.pdf",
+    state: legacyUserState({ replaceOriginalTab: true }),
+  });
+  const btnReplace = rReplace.dock().find("pdfDarkModeViewer");
+  assert.ok(btnReplace, "dock must have full dark viewer button");
+  btnReplace.click();
+  assert.equal(rReplace.messages.length, 1);
+  assert.equal(rReplace.messages[0].type, "open-viewer");
+  assert.equal(rReplace.messages[0].pdfUrl, "https://arxiv.org/pdf/a.pdf");
+  assert.equal(rReplace.messages[0].replaceTab, true);
+  assert.equal(rReplace.openedWindows.length, 0, "must not open window when replaceOriginalTab is true");
+
+  const rNewTab = inject({
+    href: "https://arxiv.org/pdf/a.pdf",
+    state: legacyUserState({ replaceOriginalTab: false }),
+  });
+  const btnNewTab = rNewTab.dock().find("pdfDarkModeViewer");
+  btnNewTab.click();
+  assert.equal(rNewTab.messages.length, 1);
+  assert.equal(rNewTab.messages[0].type, "open-viewer");
+  assert.equal(rNewTab.messages[0].pdfUrl, "https://arxiv.org/pdf/a.pdf");
+  assert.equal(rNewTab.messages[0].replaceTab, false);
 });
 
 console.log(`content-smoke: ${passed} scenarios passed`);

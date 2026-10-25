@@ -373,6 +373,42 @@ async function main() {
   }
 
   {
+    // Explicit replaceTab in message takes precedence over syncState
+    const { calls, fire } = boot({ syncState: { replaceOriginalTab: false } });
+    let response = null;
+    await fire(
+      "onMessage",
+      { type: "open-viewer", pdfUrl: "https://arxiv.org/pdf/a.pdf", tabId: 99, replaceTab: true },
+      {},
+      (r) => { response = r; }
+    );
+    await settle();
+
+    assert.equal(response?.ok, true);
+    assert.equal(calls.tabsCreated.length, 0);
+    assert.equal(calls.tabsUpdated.length, 1);
+    assert.equal(calls.tabsUpdated[0].tabId, 99);
+  }
+
+  {
+    // Falls back to querying active tab when tabId and sender tab are missing
+    const { calls, fire } = boot({ syncState: { replaceOriginalTab: true } });
+    let response = null;
+    await fire(
+      "onMessage",
+      { type: "open-viewer", pdfUrl: "https://arxiv.org/pdf/a.pdf" },
+      {},
+      (r) => { response = r; }
+    );
+    await settle();
+
+    assert.equal(response?.ok, true);
+    assert.equal(calls.tabsCreated.length, 0);
+    assert.equal(calls.tabsUpdated.length, 1);
+    assert.equal(calls.tabsUpdated[0].tabId, 11, "queries active tab 11");
+  }
+
+  {
     // Popup fallback when chrome.action.openPopup fails: the popup page
     // opens in a tab instead of window.open (shield-blocked in Brave).
     const { calls, fire } = boot({ syncState: {} });
