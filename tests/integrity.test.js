@@ -83,8 +83,16 @@ check("core is loaded everywhere it is used", () => {
 });
 
 check("the full-dark viewer ships its vendored renderer", () => {
-  ["viewer/viewer.html", "viewer/viewer.css", "viewer/viewer.js",
-    "vendor/pdfjs/pdf.min.mjs", "vendor/pdfjs/pdf.worker.min.mjs",
+  [
+    "viewer/viewer.html",
+    "viewer/viewer.css",
+    "viewer/viewer.js",
+    "vendor/pdfjs/pdf.min.mjs",
+    "vendor/pdfjs/pdf.worker.min.mjs",
+    "vendor/pdfjs/wasm/jbig2.wasm",
+    "vendor/pdfjs/wasm/jbig2_nowasm_fallback.js",
+    "vendor/pdfjs/wasm/openjpeg.wasm",
+    "vendor/pdfjs/wasm/qcms_bg.wasm",
   ].forEach((file) => assert.ok(exists(file), `viewer file missing: ${file}`));
 });
 

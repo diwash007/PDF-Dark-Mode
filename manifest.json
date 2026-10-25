@@ -9,6 +9,9 @@
   },
   "permissions": ["storage", "activeTab", "tabs", "scripting", "alarms"],
   "host_permissions": ["file://*/*", "https://*/*", "http://*/*"],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'"
+  },
   "action": {
     "default_popup": "popup/popup.html",
     "default_icon": {
