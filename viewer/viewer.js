@@ -419,7 +419,10 @@
       }
       const pdfjs = await import(chrome.runtime.getURL("vendor/pdfjs/pdf.min.mjs"));
       pdfjs.GlobalWorkerOptions.workerSrc = chrome.runtime.getURL("vendor/pdfjs/pdf.worker.min.mjs");
-      state.pdf = await pdfjs.getDocument({ data: bytes }).promise;
+      state.pdf = await pdfjs.getDocument({
+        data: bytes,
+        wasmUrl: chrome.runtime.getURL("vendor/pdfjs/wasm/"),
+      }).promise;
       state.pageCount = state.pdf.numPages;
       state.visiblePage = 1;
       await refreshSettings();
