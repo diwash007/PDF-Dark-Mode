@@ -1443,25 +1443,53 @@
     return message;
   }
 
+  function isContextAlive() {
+    try {
+      if (typeof chrome === "undefined" || !chrome.runtime) return false;
+      if ("id" in chrome.runtime) {
+        return Boolean(chrome.runtime.id);
+      }
+      return Boolean(chrome.runtime.getURL || chrome.runtime.sendMessage);
+    } catch {
+      return false;
+    }
+  }
+
   function getSyncState(keys) {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
+      if (!isContextAlive() || !chrome.storage?.sync) {
+        resolve({});
+        return;
+      }
       try {
-        chrome.storage.sync.get(keys, resolve);
-      } catch (error) {
-        reject(error);
+        chrome.storage.sync.get(keys, (res) => {
+          try {
+            if (chrome.runtime?.lastError) resolve({});
+            else resolve(res || {});
+          } catch {
+            resolve({});
+          }
+        });
+      } catch {
+        resolve({});
       }
     });
   }
 
   function persistSyncValue(key, value) {
+    if (!isContextAlive() || !chrome.storage?.sync) return;
     try {
       chrome.storage.sync.set({ [key]: value }, () => {
-        if (chrome.runtime.lastError) {
-          console.error("PDF Dark Mode: failed to save viewer setting", chrome.runtime.lastError);
+        try {
+          if (chrome.runtime?.lastError) {
+            console.error("PDF Dark Mode: failed to save viewer setting", chrome.runtime.lastError);
+          }
+        } catch {
+          /* ignore */
         }
       });
     } catch (error) {
-      console.error("PDF Dark Mode: failed to save viewer setting", error);
+      /* ignore */
     }
   }
 
@@ -1470,28 +1498,45 @@
     if (persistTimer) clearTimeout(persistTimer);
     persistTimer = setTimeout(async () => {
       persistTimer = null;
-      if (!state.pdfUrl || typeof chrome === "undefined" || !chrome.storage?.local) return;
+      if (!isContextAlive() || !state.pdfUrl || !chrome.storage?.local) return;
       try {
         const tab = await new Promise((resolve) => {
-          if (chrome.tabs?.getCurrent) {
-            chrome.tabs.getCurrent(resolve);
-          } else {
+          try {
+            if (isContextAlive() && chrome.tabs?.getCurrent) {
+              chrome.tabs.getCurrent((t) => {
+                try {
+                  if (chrome.runtime?.lastError) resolve(null);
+                  else resolve(t || null);
+                } catch {
+                  resolve(null);
+                }
+              });
+            } else {
+              resolve(null);
+            }
+          } catch {
             resolve(null);
           }
         });
+        if (!isContextAlive()) return;
         const tabId = tab?.id ? String(tab.id) : "default";
         chrome.storage.local.get(["activeViewerSessions"], (res) => {
-          const sessions = { ...(res?.activeViewerSessions || {}) };
-          sessions[tabId] = {
-            tabId: tab?.id,
-            pdfUrl: state.pdfUrl,
-            page: state.visiblePage || 1,
-            windowId: tab?.windowId,
-            index: tab?.index,
-            active: tab?.active,
-            updatedAt: Date.now(),
-          };
-          chrome.storage.local.set({ activeViewerSessions: sessions });
+          try {
+            if (!isContextAlive()) return;
+            const sessions = { ...(res?.activeViewerSessions || {}) };
+            sessions[tabId] = {
+              tabId: tab?.id,
+              pdfUrl: state.pdfUrl,
+              page: state.visiblePage || 1,
+              windowId: tab?.windowId,
+              index: tab?.index,
+              active: tab?.active,
+              updatedAt: Date.now(),
+            };
+            chrome.storage.local.set({ activeViewerSessions: sessions });
+          } catch {
+            /* ignore */
+          }
         });
       } catch (_e) {
         /* ignore */

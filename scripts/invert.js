@@ -42,8 +42,60 @@
     "replaceOriginalTab",
   ];
 
-  chrome.storage.sync.get(SETTINGS_KEYS, (state) => {
-    if (chrome.runtime.lastError) return;
+  function isContextAlive() {
+    try {
+      if (typeof chrome === "undefined" || !chrome.runtime) return false;
+      if ("id" in chrome.runtime) {
+        return Boolean(chrome.runtime.id);
+      }
+      return Boolean(chrome.runtime.getURL || chrome.runtime.sendMessage);
+    } catch {
+      return false;
+    }
+  }
+
+  function safeStorageGet(keys, callback) {
+    if (!isContextAlive()) return;
+    try {
+      chrome.storage.sync.get(keys, (res) => {
+        try {
+          if (chrome.runtime?.lastError) return;
+          callback(res);
+        } catch {
+          /* context invalidated during callback */
+        }
+      });
+    } catch {
+      /* context invalidated synchronously */
+    }
+  }
+
+  function safeSendMessage(message, callback) {
+    if (!isContextAlive()) return;
+    try {
+      chrome.runtime.sendMessage(message, (res) => {
+        try {
+          if (chrome.runtime?.lastError) return;
+          if (typeof callback === "function") callback(res);
+        } catch {
+          /* context invalidated during callback */
+        }
+      });
+    } catch {
+      /* context invalidated synchronously */
+    }
+  }
+
+  function safeGetURL(path) {
+    if (!isContextAlive() || !chrome.runtime?.getURL) return "";
+    try {
+      return chrome.runtime.getURL(path);
+    } catch {
+      return "";
+    }
+  }
+
+  safeStorageGet(SETTINGS_KEYS, (state) => {
     render(state);
   });
 
@@ -113,8 +165,7 @@
         timer = null;
         if (!core.isPdfDocument()) return;
         stop();
-        chrome.storage.sync.get(SETTINGS_KEYS, (fresh) => {
-          if (chrome.runtime.lastError) return;
+        safeStorageGet(SETTINGS_KEYS, (fresh) => {
           render(fresh);
         });
       }, EMBED_DEBOUNCE_MS);
@@ -176,15 +227,9 @@
 
   function handleVisibilityOrFocus() {
     if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
-    try {
-      if (!globalThis.chrome?.storage?.sync?.get) return;
-      chrome.storage.sync.get(SETTINGS_KEYS, (fresh) => {
-        if (chrome.runtime?.lastError) return;
-        render(fresh);
-      });
-    } catch {
-      /* Context invalidated during extension auto-update */
-    }
+    safeStorageGet(SETTINGS_KEYS, (fresh) => {
+      render(fresh);
+    });
   }
 
   if (!window.__pdfDarkModeVisibilityBound) {
@@ -281,9 +326,8 @@
     toggleButton.addEventListener("click", () => {
       setPageEnabled(!isPageEnabled());
       syncToggleLabel(toggleButton);
-      chrome.runtime.sendMessage({ type: "analytics-event", event: "pageToggle" });
-      chrome.storage.sync.get(SETTINGS_KEYS, (state) => {
-        if (chrome.runtime.lastError) return;
+      safeSendMessage({ type: "analytics-event", event: "pageToggle" });
+      safeStorageGet(SETTINGS_KEYS, (state) => {
         render(state);
       });
     });
@@ -306,28 +350,21 @@
     // popup page in a tab via the worker is the fallback. window.open is only
     // the last resort — shield/popup blockers eat it (Brave:
     // ERR_BLOCKED_BY_CLIENT).
-    const openTabFallback = () => {
-      if (!globalThis.chrome?.runtime?.sendMessage) {
-        windowFallback();
-        return;
+    const windowFallback = () => {
+      const popupUrl = safeGetURL("popup/popup.html");
+      if (popupUrl) {
+        window.open(popupUrl, "_blank", "noopener,noreferrer");
       }
-      chrome.runtime.sendMessage({ type: "open-popup-tab" }, (response) => {
-        if (chrome.runtime.lastError || !response?.ok) windowFallback();
+    };
+
+    const openTabFallback = () => {
+      safeSendMessage({ type: "open-popup-tab" }, (response) => {
+        if (!response?.ok) windowFallback();
       });
     };
-    const windowFallback = () => {
-      if (globalThis.chrome?.runtime?.getURL) {
-        window.open(chrome.runtime.getURL("popup/popup.html"), "_blank", "noopener,noreferrer");
-      }
-    };
 
-    if (!globalThis.chrome?.runtime?.sendMessage) {
-      windowFallback();
-      return;
-    }
-
-    chrome.runtime.sendMessage({ type: "open-popup" }, (response) => {
-      if (chrome.runtime.lastError || !response?.ok) openTabFallback();
+    safeSendMessage({ type: "open-popup" }, (response) => {
+      if (!response?.ok) openTabFallback();
     });
   }
 
@@ -335,49 +372,34 @@
     // window.open from the page is eaten by popup/shield blockers (Brave
     // shows ERR_BLOCKED_BY_CLIENT), so the service worker opens the tab via
     // chrome.tabs.create or chrome.tabs.update — the same path the popup button uses.
-    if (!globalThis.chrome?.runtime?.getURL) return;
-    const viewerUrl = chrome.runtime.getURL(
+    const viewerUrl = safeGetURL(
       "viewer/viewer.html?pdf=" + encodeURIComponent(window.location.href)
     );
 
     const executeOpen = (replaceTab) => {
-      try {
-        if (!globalThis.chrome?.runtime?.sendMessage) {
-          if (!replaceTab) {
-            window.open(viewerUrl, "_blank", "noopener,noreferrer");
-          }
-          return;
-        }
-
-        chrome.runtime.sendMessage(
-          { type: "open-viewer", pdfUrl: window.location.href, replaceTab },
-          (response) => {
-            if (!replaceTab && (chrome.runtime?.lastError || !response?.ok)) {
-              window.open(viewerUrl, "_blank", "noopener,noreferrer");
-            }
-          }
-        );
-      } catch {
-        if (!replaceTab) {
+      if (!isContextAlive() || !globalThis.chrome?.runtime?.sendMessage) {
+        if (!replaceTab && viewerUrl) {
           window.open(viewerUrl, "_blank", "noopener,noreferrer");
         }
+        return;
       }
+
+      safeSendMessage(
+        { type: "open-viewer", pdfUrl: window.location.href, replaceTab },
+        (response) => {
+          if (!replaceTab && !response?.ok) {
+            if (viewerUrl) window.open(viewerUrl, "_blank", "noopener,noreferrer");
+          }
+        }
+      );
     };
 
     if (typeof currentSettings?.replaceOriginalTab === "boolean") {
       executeOpen(currentSettings.replaceOriginalTab);
     } else {
-      try {
-        if (globalThis.chrome?.storage?.sync?.get) {
-          chrome.storage.sync.get(["replaceOriginalTab"], (res) => {
-            executeOpen(Boolean(res?.replaceOriginalTab));
-          });
-        } else {
-          executeOpen(false);
-        }
-      } catch {
-        executeOpen(false);
-      }
+      safeStorageGet(["replaceOriginalTab"], (res) => {
+        executeOpen(Boolean(res?.replaceOriginalTab));
+      });
     }
   }
 })();
