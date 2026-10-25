@@ -18,6 +18,7 @@ function loadViewer() {
   const sandbox = {
     globalThis: {},
     module: { exports: {} },
+    URL,
     URLSearchParams,
   };
   sandbox.globalThis = sandbox;
@@ -41,6 +42,35 @@ assert.equal(viewer.parsePdfParam("?other=1"), "");
 assert.equal(
   viewer.viewerUrlFor("https://x.com/a.pdf"),
   "viewer/viewer.html?pdf=" + encodeURIComponent("https://x.com/a.pdf")
+);
+
+/* -------------------------------------------------- file name + title */
+
+assert.equal(viewer.fileNameOf("https://x.com/a.pdf"), "a.pdf");
+assert.equal(viewer.fileNameOf("file:///path/to/my%20doc.pdf"), "my doc.pdf");
+assert.equal(viewer.fileNameOf("https://x.com/doc.pdf?v=1#p=2"), "doc.pdf");
+assert.equal(viewer.fileNameOf(""), "No PDF selected.");
+assert.equal(viewer.fileNameOf(null), "No PDF selected.");
+
+assert.equal(
+  viewer.formatViewerTitle("a.pdf", "Full dark viewer — PDF Dark Mode"),
+  "a.pdf - Full dark viewer — PDF Dark Mode"
+);
+assert.equal(
+  viewer.formatViewerTitle("a.pdf"),
+  "a.pdf - Full dark viewer — PDF Dark Mode"
+);
+assert.equal(
+  viewer.formatViewerTitle("No PDF selected.", "Full dark viewer — PDF Dark Mode"),
+  "Full dark viewer — PDF Dark Mode"
+);
+assert.equal(
+  viewer.formatViewerTitle("", "Full dark viewer — PDF Dark Mode"),
+  "Full dark viewer — PDF Dark Mode"
+);
+assert.equal(
+  viewer.formatViewerTitle("a.pdf", "a.pdf - Full dark viewer — PDF Dark Mode"),
+  "a.pdf - Full dark viewer — PDF Dark Mode"
 );
 
 /* ---------------------------------------------------------- PDF magic */
