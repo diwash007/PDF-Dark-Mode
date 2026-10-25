@@ -227,11 +227,25 @@ if (fullDarkBtn) {
         : (await getSyncState(["replaceOriginalTab"])).replaceOriginalTab
     );
     const viewerUrl = chrome.runtime.getURL("viewer/viewer.html?pdf=" + encodeURIComponent(pdf));
-    // Via the worker so Back can return to this tab; direct tabs.create/update is
-    // the fallback if the worker is unreachable.
+
+    if (shouldReplace && tabId && chrome.tabs?.update) {
+      try {
+        await chrome.tabs.update(tabId, { url: viewerUrl });
+        if (typeof window !== "undefined" && typeof window.close === "function") {
+          window.close();
+        }
+        return;
+      } catch (_err) {
+        // Fall through to worker message fallback
+      }
+    }
+
     const openDirectly = () => {
-      if (shouldReplace && tabId) {
+      if (shouldReplace && tabId && chrome.tabs?.update) {
         chrome.tabs.update(tabId, { url: viewerUrl });
+        if (typeof window !== "undefined" && typeof window.close === "function") {
+          window.close();
+        }
       } else {
         chrome.tabs.create({ url: viewerUrl });
       }
@@ -240,6 +254,7 @@ if (fullDarkBtn) {
       type: "open-viewer",
       pdfUrl: pdf,
       tabId,
+      replaceTab: shouldReplace,
     });
     if (!response?.ok) openDirectly();
   });

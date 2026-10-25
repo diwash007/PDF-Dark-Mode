@@ -211,34 +211,44 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       return false;
     }
     const viewerUrl = chrome.runtime.getURL("viewer/viewer.html?pdf=" + encodeURIComponent(pdfUrl));
-    const targetTabId = (typeof message.tabId === "number" ? message.tabId : null) ?? sender?.tab?.id;
 
-    chrome.storage.sync.get(["replaceOriginalTab"], ({ replaceOriginalTab }) => {
-      if (replaceOriginalTab && targetTabId) {
-        chrome.tabs.update(targetTabId, { url: viewerUrl }, () => {
+    (async () => {
+      try {
+        let targetTabId = (typeof message.tabId === "number" ? message.tabId : null) ?? sender?.tab?.id;
+        if (!targetTabId && chrome.tabs?.query) {
+          const tabs = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+          targetTabId = tabs?.[0]?.id ?? null;
+        }
+
+        let shouldReplace = typeof message.replaceTab === "boolean" ? message.replaceTab : null;
+        if (shouldReplace === null) {
+          const syncState = await chrome.storage.sync.get(["replaceOriginalTab"]);
+          shouldReplace = Boolean(syncState?.replaceOriginalTab);
+        }
+
+        if (shouldReplace && targetTabId) {
+          // Send response immediately so port disconnect on tab navigation does not
+          // cause an unhandled message port closed error in the caller.
+          sendResponse({ ok: true });
+          chrome.tabs.update(targetTabId, { url: viewerUrl }, () => {
+            if (chrome.runtime.lastError) {
+              chrome.tabs.create({ url: viewerUrl });
+            }
+          });
+          return;
+        }
+
+        chrome.tabs.create({ url: viewerUrl }, () => {
           if (chrome.runtime.lastError) {
-            chrome.tabs.create({ url: viewerUrl }, () => {
-              if (chrome.runtime.lastError) {
-                sendResponse({ ok: false, error: chrome.runtime.lastError.message || "Failed to open viewer." });
-                return;
-              }
-              sendResponse({ ok: true });
-            });
+            sendResponse({ ok: false, error: chrome.runtime.lastError.message || "Failed to open viewer." });
             return;
           }
           sendResponse({ ok: true });
         });
-        return;
+      } catch (err) {
+        sendResponse({ ok: false, error: err?.message || "Failed to open viewer." });
       }
-
-      chrome.tabs.create({ url: viewerUrl }, () => {
-        if (chrome.runtime.lastError) {
-          sendResponse({ ok: false, error: chrome.runtime.lastError.message || "Failed to open viewer." });
-          return;
-        }
-        sendResponse({ ok: true });
-      });
-    });
+    })();
     return true;
   }
 

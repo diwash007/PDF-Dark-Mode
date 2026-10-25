@@ -23,6 +23,7 @@
   const EMBED_DEBOUNCE_MS = 120;
 
   const href = window.location.href;
+  let currentSettings = {};
 
   // The full-dark viewer renders its own dark pages — never overlay or dock it.
   if (core.isViewerUrl && core.isViewerUrl(href)) return;
@@ -37,6 +38,7 @@
     "overlayAreaSettings",
     "siteOverlayAreas",
     "showDock",
+    "replaceOriginalTab",
   ];
 
   chrome.storage.sync.get(SETTINGS_KEYS, (state) => {
@@ -45,6 +47,7 @@
   });
 
   function render(state) {
+    currentSettings = state || {};
     const entitlement = core.getEntitlement(state.billing);
     const policy = core.buildPolicy(href, state.siteRules || {}, entitlement);
     const isPdf = policy.requiresPdfEmbed ? core.isPdfDocument() : false;
@@ -281,24 +284,36 @@
   function openFullDarkViewer() {
     // window.open from the page is eaten by popup/shield blockers (Brave
     // shows ERR_BLOCKED_BY_CLIENT), so the service worker opens the tab via
-    // chrome.tabs.create — the same path the popup button uses.
+    // chrome.tabs.create or chrome.tabs.update — the same path the popup button uses.
     if (!globalThis.chrome?.runtime?.getURL) return;
     const viewerUrl = chrome.runtime.getURL(
       "viewer/viewer.html?pdf=" + encodeURIComponent(window.location.href)
     );
 
-    if (!globalThis.chrome?.runtime?.sendMessage) {
-      window.open(viewerUrl, "_blank", "noopener,noreferrer");
-      return;
-    }
-
-    chrome.runtime.sendMessage(
-      { type: "open-viewer", pdfUrl: window.location.href },
-      (response) => {
-        if (chrome.runtime.lastError || !response?.ok) {
+    const executeOpen = (replaceTab) => {
+      if (!globalThis.chrome?.runtime?.sendMessage) {
+        if (!replaceTab) {
           window.open(viewerUrl, "_blank", "noopener,noreferrer");
         }
+        return;
       }
-    );
+
+      chrome.runtime.sendMessage(
+        { type: "open-viewer", pdfUrl: window.location.href, replaceTab },
+        (response) => {
+          if (!replaceTab && (chrome.runtime.lastError || !response?.ok)) {
+            window.open(viewerUrl, "_blank", "noopener,noreferrer");
+          }
+        }
+      );
+    };
+
+    if (typeof currentSettings?.replaceOriginalTab === "boolean") {
+      executeOpen(currentSettings.replaceOriginalTab);
+    } else {
+      chrome.storage.sync.get(["replaceOriginalTab"], (res) => {
+        executeOpen(Boolean(res?.replaceOriginalTab));
+      });
+    }
   }
 })();
