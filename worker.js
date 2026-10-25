@@ -256,9 +256,30 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           return;
         }
 
-        chrome.tabs.create({ url: viewerUrl }, (newTab) => {
+        const createOpts = { url: viewerUrl };
+        if (targetTabId && chrome.tabs?.get) {
+          try {
+            const targetTab = await new Promise((resolve) => {
+              chrome.tabs.get(targetTabId, (tab) => {
+                if (chrome.runtime.lastError || !tab) resolve(null);
+                else resolve(tab);
+              });
+            });
+            if (targetTab) {
+              if (typeof targetTab.index === "number") createOpts.index = targetTab.index + 1;
+              if (typeof targetTab.windowId === "number") createOpts.windowId = targetTab.windowId;
+            }
+          } catch {
+            /* ignore */
+          }
+        }
+
+        chrome.tabs.create(createOpts, (newTab) => {
           if (chrome.runtime.lastError) {
-            sendResponse({ ok: false, error: chrome.runtime.lastError.message || "Failed to open viewer." });
+            chrome.tabs.create({ url: viewerUrl }, (fallbackTab) => {
+              if (fallbackTab?.id) recordViewerSession(fallbackTab.id, pdfUrl);
+            });
+            sendResponse({ ok: true });
             return;
           }
           if (newTab?.id) recordViewerSession(newTab.id, pdfUrl);
@@ -326,15 +347,33 @@ async function refreshOpenTabs() {
 function recordViewerSession(tabId, pdfUrl, page = 1) {
   if (!chrome.storage?.local || !tabId || !pdfUrl) return;
   const key = String(tabId);
-  chrome.storage.local.get(["activeViewerSessions"], (res) => {
-    const sessions = { ...(res?.activeViewerSessions || {}) };
-    sessions[key] = {
-      pdfUrl,
-      page,
-      updatedAt: Date.now(),
-    };
-    chrome.storage.local.set({ activeViewerSessions: sessions });
-  });
+  const save = (tabInfo) => {
+    chrome.storage.local.get(["activeViewerSessions"], (res) => {
+      const sessions = { ...(res?.activeViewerSessions || {}) };
+      sessions[key] = {
+        tabId: Number(tabId),
+        pdfUrl,
+        page,
+        windowId: tabInfo?.windowId,
+        index: tabInfo?.index,
+        active: tabInfo?.active,
+        updatedAt: Date.now(),
+      };
+      chrome.storage.local.set({ activeViewerSessions: sessions });
+    });
+  };
+
+  if (chrome.tabs?.get) {
+    try {
+      chrome.tabs.get(Number(tabId), (tab) => {
+        save(chrome.runtime.lastError ? null : tab);
+      });
+      return;
+    } catch {
+      /* ignore */
+    }
+  }
+  save(null);
 }
 
 function cleanViewerSession(tabId) {
@@ -350,16 +389,16 @@ function cleanViewerSession(tabId) {
 }
 
 async function restoreActiveViewerSessions() {
-  if (!chrome.storage?.local || !chrome.tabs?.create) return;
+  if (!chrome.storage?.local) return;
   try {
     const { activeViewerSessions } = await chrome.storage.local.get(["activeViewerSessions"]);
     if (!activeViewerSessions || typeof activeViewerSessions !== "object") return;
 
-    const sessions = Object.values(activeViewerSessions).filter(
-      (s) => s && typeof s.pdfUrl === "string" && s.pdfUrl.length > 0
+    const entries = Object.entries(activeViewerSessions).filter(
+      ([, s]) => s && typeof s.pdfUrl === "string" && s.pdfUrl.length > 0
     );
 
-    for (const session of sessions) {
+    for (const [key, session] of entries) {
       if (session.updatedAt && Date.now() - session.updatedAt > 24 * 60 * 60 * 1000) {
         continue;
       }
@@ -367,7 +406,48 @@ async function restoreActiveViewerSessions() {
       const viewerUrl = chrome.runtime.getURL(
         "viewer/viewer.html?pdf=" + encodeURIComponent(session.pdfUrl) + pageHash
       );
-      chrome.tabs.create({ url: viewerUrl });
+
+      const numericTabId = Number(key);
+      let existingTab = null;
+      if (Number.isInteger(numericTabId) && chrome.tabs?.get) {
+        existingTab = await new Promise((resolve) => {
+          chrome.tabs.get(numericTabId, (tab) => {
+            if (chrome.runtime.lastError || !tab) resolve(null);
+            else resolve(tab);
+          });
+        });
+      }
+
+      // If the tab is still open in the browser, update it in-place so no duplicate
+      // tab is created and it stays at its original tab bar location.
+      const isViewerOrExtensionTab =
+        existingTab &&
+        (existingTab.url?.startsWith(chrome.runtime.getURL("")) ||
+          existingTab.url?.startsWith("chrome-extension://") ||
+          existingTab.url?.startsWith("chrome-error://") ||
+          existingTab.url?.startsWith("about:") ||
+          existingTab.url === session.pdfUrl);
+
+      if (isViewerOrExtensionTab && chrome.tabs?.update) {
+        chrome.tabs.update(existingTab.id, { url: viewerUrl });
+        continue;
+      }
+
+      // If the tab was closed or gone, recreate it at its original index and window.
+      if (chrome.tabs?.create) {
+        const createOpts = { url: viewerUrl };
+        if (typeof session.index === "number") createOpts.index = session.index;
+        if (typeof session.windowId === "number") createOpts.windowId = session.windowId;
+        if (typeof session.active === "boolean") createOpts.active = session.active;
+
+        chrome.tabs.create(createOpts, (newTab) => {
+          if (chrome.runtime.lastError) {
+            chrome.tabs.create({ url: viewerUrl });
+          } else if (newTab?.id) {
+            recordViewerSession(newTab.id, session.pdfUrl, session.page);
+          }
+        });
+      }
     }
 
     chrome.storage.local.set({ activeViewerSessions: {} });

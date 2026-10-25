@@ -20,6 +20,7 @@ function boot({
   fileAccess = null,
   licenseResponse = null,
   localState = {},
+  tabPropsById = {},
 } = {}) {
   const calls = {
     executeScript: [],
@@ -85,7 +86,9 @@ function boot({
         return Promise.resolve({});
       },
       get: (tabId, cb) => {
-        const tab = tabId === 21
+        const tab = tabPropsById[tabId]
+          ? { id: tabId, ...tabPropsById[tabId] }
+          : tabId === 21
           ? { id: 21, url: "file:///Users/me/reading/thesis.pdf" }
           : { id: tabId, url: "https://example.com/" };
         if (typeof cb === "function") return cb(tab);
@@ -639,6 +642,66 @@ async function main() {
         encodeURIComponent("file:///Users/diwash/Downloads/Green%20Book.pdf") +
         "#page=211"
     );
+  }
+
+  {
+    // When the viewer tab is still open in the browser during update, reload it in-place
+    const { calls, fire } = boot({
+      syncState: {},
+      localState: {
+        activeViewerSessions: {
+          "105": {
+            pdfUrl: "file:///Users/diwash/Downloads/Green%20Book.pdf",
+            page: 42,
+            windowId: 1,
+            index: 2,
+            updatedAt: Date.now(),
+          },
+        },
+      },
+      tabPropsById: {
+        105: {
+          url: "chrome-extension://test-id/viewer/viewer.html?pdf=foo",
+          windowId: 1,
+          index: 2,
+        },
+      },
+    });
+
+    await fire("onInstalled", { reason: "update" });
+    await settle();
+
+    assert.equal(calls.tabsCreated.length, 0, "must not spawn a new tab when tab is still open");
+    assert.equal(calls.tabsUpdated.length, 1, "must update the existing tab in-place");
+    assert.equal(calls.tabsUpdated[0].tabId, 105);
+    assert.ok(calls.tabsUpdated[0].opts.url.includes("#page=42"));
+  }
+
+  {
+    // When recreating a closed tab, restore it at its previous index and window
+    const { calls, fire } = boot({
+      syncState: {},
+      localState: {
+        activeViewerSessions: {
+          "200": {
+            pdfUrl: "https://arxiv.org/pdf/a.pdf",
+            page: 1,
+            windowId: 7,
+            index: 4,
+            active: true,
+            updatedAt: Date.now(),
+          },
+        },
+      },
+    });
+
+    await fire("onInstalled", { reason: "update" });
+    await settle();
+
+    assert.equal(calls.tabsCreated.length, 1);
+    assert.equal(calls.tabsCreated[0].windowId, 7);
+    assert.equal(calls.tabsCreated[0].index, 4);
+    assert.equal(calls.tabsCreated[0].active, true);
   }
 
   {
