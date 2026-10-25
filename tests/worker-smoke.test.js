@@ -28,6 +28,7 @@ function boot({
     localWrites: [],
     tabsCreated: [],
     tabsUpdated: [],
+    windowsUpdated: [],
     tabsQueried: 0,
     badgeTexts: [],
     badgeColors: [],
@@ -71,14 +72,22 @@ function boot({
         return Promise.resolve();
       },
     },
+    windows: {
+      update: (winId, opts, cb) => {
+        calls.windowsUpdated.push({ winId, opts });
+        if (typeof cb === "function") cb({});
+        return Promise.resolve({});
+      },
+    },
     tabs: {
       onUpdated: register("onUpdated"),
       onActivated: register("onActivated"),
       onRemoved: register("onRemoved"),
       create: (opts, cb) => {
         calls.tabsCreated.push(opts);
-        if (typeof cb === "function") cb();
-        return Promise.resolve({});
+        const newTab = { id: 100 + calls.tabsCreated.length, ...opts };
+        if (typeof cb === "function") cb(newTab);
+        return Promise.resolve(newTab);
       },
       update: (tabId, opts, cb) => {
         calls.tabsUpdated.push({ tabId, opts });
@@ -309,6 +318,7 @@ async function main() {
 
     assert.equal(response?.ok, true, "open-viewer must succeed for a PDF URL");
     assert.equal(calls.tabsCreated.length, 1, "open-viewer must open exactly one tab");
+    assert.equal(calls.tabsCreated[0].active, true, "viewer tab must explicitly request active focus (fixes Edge background tab bug)");
     assert.equal(
       calls.tabsCreated[0].url,
       "chrome-extension://test-id/viewer/viewer.html?pdf=" +
@@ -350,6 +360,7 @@ async function main() {
       "chrome-extension://test-id/viewer/viewer.html?pdf=" +
         encodeURIComponent("https://arxiv.org/pdf/a.pdf")
     );
+    assert.equal(calls.tabsUpdated[0].opts.active, true, "replace mode must explicitly request active focus");
   }
 
   {
