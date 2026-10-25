@@ -205,4 +205,77 @@ assert.deepEqual(JSON.stringify(viewer.buildRenderOrder(3, 5)), JSON.stringify([
 assert.deepEqual(JSON.stringify(viewer.buildRenderOrder(10, 5)), JSON.stringify([5, 4, 3, 2, 1]), "out-of-range center clamps to totalPages");
 assert.deepEqual(JSON.stringify(viewer.buildRenderOrder(-1, 5)), JSON.stringify([1, 2, 3, 4, 5]), "negative center clamps to 1");
 
+/* ------------------------------------------------- highlight annotations */
+
+const mockViewport = {
+  convertToPdfPoint: (x, y) => [x * 0.75, 792 - y * 0.75],
+};
+const pageRect = { left: 50, top: 100 };
+const clientRects = [
+  { left: 100, top: 150, right: 300, bottom: 170, width: 200, height: 20 },
+];
+
+const annot = viewer.buildHighlightAnnotation(clientRects, pageRect, mockViewport, 0, [1, 0.9, 0]);
+assert.ok(annot, "must create highlight annotation");
+assert.equal(annot.annotationType, 9, "must be highlight annotation type");
+assert.equal(annot.pageIndex, 0);
+assert.equal(annot.quadPoints.length, 8, "must generate 8 quadpoints per line");
+assert.equal(annot.outlines.length, 1, "must generate 1 outline polygon per line");
+assert.deepEqual(JSON.stringify(annot.color), JSON.stringify([1, 0.9, 0]));
+assert.equal(annot.rect.length, 4);
+
+assert.equal(viewer.buildHighlightAnnotation([], pageRect, mockViewport), null, "empty rects returns null");
+assert.equal(viewer.buildHighlightAnnotation(null, pageRect, mockViewport), null, "null rects returns null");
+
+/* ------------------------------------------------- mergeLineRects (gap removal) */
+
+const gappedRects = [
+  { left: 100, top: 150, right: 140, bottom: 170, width: 40, height: 20 },
+  { left: 148, top: 150, right: 200, bottom: 170, width: 52, height: 20 }, // 8px gap on same line
+  { left: 100, top: 180, right: 250, bottom: 200, width: 150, height: 20 }, // next line
+];
+const merged = viewer.mergeLineRects(gappedRects);
+assert.equal(merged.length, 2, "must merge 2 rects on same line into 1, leaving next line separate");
+assert.equal(merged[0].left, 100);
+assert.equal(merged[0].right, 200);
+assert.equal(merged[0].width, 100, "merged rect spans across the gap seamlessly");
+assert.equal(merged[1].top, 180);
+
+const annotWithGaps = viewer.buildHighlightAnnotation(gappedRects, pageRect, mockViewport, 0);
+assert.ok(annotWithGaps);
+assert.equal(annotWithGaps.quadPoints.length, 16, "2 lines = 16 quadpoints, gap between words merged");
+
+/* ------------------------------------------------- createAnnotationHistory (undo / redo / clear) */
+
+const history = viewer.createAnnotationHistory();
+assert.equal(history.canUndo, false);
+assert.equal(history.canRedo, false);
+
+history.recordAdd({ annotId: "a1", pageNum: 1 });
+assert.equal(history.canUndo, true);
+assert.equal(history.canRedo, false);
+
+const poppedAdd = history.popUndo();
+assert.equal(poppedAdd.type, "add");
+assert.equal(poppedAdd.annotId, "a1");
+assert.equal(history.canUndo, false);
+
+history.pushRedo(poppedAdd);
+assert.equal(history.canRedo, true);
+
+const poppedRedo = history.popRedo();
+assert.equal(poppedRedo.annotId, "a1");
+assert.equal(history.canRedo, false);
+
+history.recordDelete({ annotId: "a1", pageNum: 1 });
+assert.equal(history.canUndo, true);
+const poppedDel = history.popUndo();
+assert.equal(poppedDel.type, "delete");
+
+history.recordClear([{ annotId: "a1" }, { annotId: "a2" }]);
+assert.equal(history.canUndo, true);
+const poppedClear = history.popUndo();
+assert.equal(poppedClear.type, "clearAll");
+assert.equal(poppedClear.items.length, 2);
+
 console.log("viewer-smoke: helpers, self-exclusion and dark filter all behave");

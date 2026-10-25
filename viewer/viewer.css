@@ -234,11 +234,14 @@ body {
   z-index: 20;
   display: flex;
   flex-direction: column;
+  justify-content: flex-end;
   gap: 8px;
   max-width: min(420px, calc(100vw - 24px));
+  pointer-events: none;
 }
 
 .beta-notice {
+  pointer-events: auto;
   display: flex;
   align-items: flex-start;
   gap: 12px;
@@ -305,6 +308,7 @@ body {
 }
 
 .beta-pill {
+  pointer-events: auto;
   align-self: flex-start;
   display: flex;
   align-items: center;
@@ -330,14 +334,16 @@ body {
 }
 
 .status-bar {
+  pointer-events: auto;
   align-self: flex-start;
   max-width: 100%;
   padding: 6px 12px;
   font-size: 12px;
   color: #e5e7eb;
-  background: rgba(17, 24, 39, 0.92);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(17, 24, 39, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 999px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
 }
 
 .error-box {
@@ -380,10 +386,129 @@ body {
   background: var(--viewer-bg, #111827);
 }
 
+.page-container {
+  position: relative;
+  margin: 0 auto 12px;
+  display: block;
+}
+
 .page {
   display: block;
-  margin: 0 auto 12px;
+  margin: 0 auto;
   background: #ffffff;
+}
+
+.textLayer,
+.text-layer {
+  position: absolute;
+  text-align: initial;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  overflow: hidden;
+  opacity: 1;
+  line-height: 1;
+  -webkit-text-size-adjust: none;
+  -moz-text-size-adjust: none;
+  text-size-adjust: none;
+  forced-color-adjust: none;
+  transform-origin: 0 0;
+  z-index: 2;
+  pointer-events: auto;
+  --min-font-size: 1;
+  --text-scale-factor: calc(var(--total-scale-factor, 1) * var(--min-font-size, 1));
+  --min-font-size-inv: calc(1 / var(--min-font-size, 1));
+}
+
+.textLayer :is(span, br),
+.text-layer :is(span, br) {
+  color: transparent;
+  position: absolute;
+  white-space: pre;
+  cursor: text;
+  transform-origin: 0% 0%;
+  line-height: 1;
+}
+
+.textLayer > :not(.markedContent),
+.textLayer .markedContent span:not(.markedContent),
+.text-layer > :not(.markedContent),
+.text-layer .markedContent span:not(.markedContent) {
+  --font-height: 0;
+  font-size: calc(var(--text-scale-factor) * var(--font-height));
+  --scale-x: 1;
+  --rotate: 0deg;
+  transform: rotate(var(--rotate)) scaleX(var(--scale-x)) scale(var(--min-font-size-inv));
+}
+
+.textLayer span.markedContent,
+.text-layer span.markedContent {
+  top: 0;
+  height: 0;
+}
+
+.textLayer span,
+.text-layer span {
+  box-sizing: content-box;
+  margin: 0;
+  padding: 0;
+  word-spacing: 0px !important;
+  letter-spacing: normal !important;
+}
+
+.textLayer ::selection,
+.text-layer ::selection {
+  background: rgba(0, 150, 255, 0.45);
+  color: transparent;
+}
+
+.textLayer .endOfContent,
+.text-layer .endOfContent {
+  display: block;
+  position: absolute;
+  inset: 100% 0 0;
+  z-index: -1;
+  cursor: default;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  user-select: none;
+}
+
+.textLayer .endOfContent.active,
+.text-layer .endOfContent.active {
+  top: 0;
+}
+
+.annotation-layer {
+  position: absolute;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.highlight-annotation {
+  position: absolute;
+  background: rgba(255, 235, 59, 0.45);
+  mix-blend-mode: screen;
+  border-radius: 2px;
+  pointer-events: auto;
+  cursor: pointer;
+  transition: background-color 0.15s ease, outline 0.15s ease;
+}
+
+.highlight-annotation:hover {
+  outline: 1.5px solid rgba(239, 68, 68, 0.85);
+  background: rgba(239, 68, 68, 0.35);
+}
+
+button.active {
+  background: #3b82f6 !important;
+  color: #ffffff !important;
+  border-color: #60a5fa !important;
 }
 
 .hidden {

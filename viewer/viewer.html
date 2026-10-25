@@ -28,6 +28,13 @@
             <button id="zoomInBtn" type="button" title="Zoom in">+</button>
             <button id="fitWidthBtn" type="button" title="Fit to width">Fit</button>
           </div>
+          <div class="toolbar-group">
+            <button id="highlightBtn" type="button" aria-pressed="false" title="Highlight text">🖍 Highlight</button>
+            <button id="undoBtn" type="button" title="Undo highlight (Cmd+Z / Ctrl+Z)" disabled>↶</button>
+            <button id="redoBtn" type="button" title="Redo highlight (Cmd+Shift+Z / Ctrl+Y)" disabled>↷</button>
+            <button id="clearHighlightsBtn" type="button" title="Clear all highlights" disabled>Clear</button>
+            <button id="saveBtn" type="button" title="Save annotated PDF">💾 Save</button>
+          </div>
         </div>
         <div class="toolbar-group">
           <button id="optionsBtn" type="button" aria-expanded="true" aria-controls="optionsTier" title="Hide appearance options">Appearance ▴</button>
@@ -64,6 +71,7 @@
     </header>
 
     <div id="betaCluster" class="beta-cluster">
+      <div id="statusBar" class="status-bar hidden" role="status" aria-live="polite"></div>
       <div id="betaNotice" class="beta-notice" role="status">
         <div class="beta-body">
           <div class="beta-eyebrow">Experimental</div>
@@ -74,7 +82,6 @@
         <button id="betaDismissBtn" type="button" title="Minimize this notice" aria-label="Minimize beta notice">✕</button>
       </div>
       <button id="betaPill" type="button" class="beta-pill hidden" title="About this beta viewer">Beta</button>
-      <div id="statusBar" class="status-bar hidden" role="status" aria-live="polite"></div>
     </div>
 
     <div id="errorBox" class="error-box hidden" role="alert">
