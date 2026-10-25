@@ -507,7 +507,8 @@ input[type="range"] {
   text-decoration: none;
 }
 
-.overlay-area-box {
+.overlay-area-box,
+.viewer-settings-box {
   display: flex;
   flex-direction: column;
   gap: 6px;

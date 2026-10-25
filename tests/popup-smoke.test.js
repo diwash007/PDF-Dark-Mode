@@ -88,6 +88,7 @@ function makeElement(id) {
 function buildContext(billing) {
   const elements = new Map();
   const sentMessages = [];
+  const syncWrites = [];
   const getById = (id) => {
     if (!IDS.has(id)) return null; // mirrors Chrome exactly
     if (!elements.has(id)) elements.set(id, makeElement(id));
@@ -119,7 +120,10 @@ function buildContext(billing) {
     storage: {
       sync: {
         get: (_keys, cb) => cb(billing ? { billing } : {}),
-        set: (_items, cb) => { if (cb) cb(); },
+        set: (items, cb) => {
+          syncWrites.push(items);
+          if (cb) cb();
+        },
       },
       local: {
         get: (_keys, cb) => cb({ analytics: { events: {}, pdfAppliesByDay: {} } }),
@@ -168,11 +172,11 @@ function buildContext(billing) {
   context.globalThis = context;
   context.window.document = documentStub;
 
-  return { context, getById, windowListeners, sentMessages };
+  return { context, getById, windowListeners, sentMessages, syncWrites };
 }
 
 async function run(billing, label) {
-  const { context, getById, windowListeners, sentMessages } = buildContext(billing);
+  const { context, getById, windowListeners, sentMessages, syncWrites } = buildContext(billing);
   vm.createContext(context);
 
   new vm.Script(coreSrc, { filename: "scripts/core.js" }).runInContext(context);
@@ -187,7 +191,7 @@ async function run(billing, label) {
   // DOMContentLoaded handler must not blow up either.
   (windowListeners.DOMContentLoaded || []).forEach((fn) => fn());
 
-  return { context, getById, sentMessages };
+  return { context, getById, sentMessages, syncWrites };
 }
 
 async function main() {
@@ -224,6 +228,11 @@ async function main() {
       getById("allowCurrentSiteBtn").disabled,
       true,
       "site rules are gated for free users"
+    );
+    assert.equal(
+      getById("replaceTabToggle").checked,
+      false,
+      "replace original tab toggle defaults to unchecked"
     );
   }
 
@@ -277,6 +286,20 @@ async function main() {
       activation.browser || "",
       /^[a-z]+-[a-z]+$/,
       "activation must carry a family-os browser tag"
+    );
+  }
+
+  /* --------------------------------------- replace original tab toggle */
+
+  {
+    const { getById, syncWrites } = await run(null, "replace-tab-toggle");
+    const toggle = getById("replaceTabToggle");
+    assert.equal(toggle.checked, false, "starts false");
+    toggle.checked = true;
+    await toggle.dispatch("change");
+    assert.ok(
+      syncWrites.some((w) => w.replaceOriginalTab === true),
+      "checking toggle persists replaceOriginalTab: true"
     );
   }
 
