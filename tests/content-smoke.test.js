@@ -406,4 +406,41 @@ check("visibilitychange event re-renders the overlay if missing", () => {
   assert.ok(r.overlay(), "overlay restored on visibilitychange");
 });
 
+check("extension context invalidation during background reload does not throw uncaught errors", () => {
+  const r = inject({
+    href: "https://arxiv.org/pdf/a.pdf",
+    state: legacyUserState(),
+  });
+  assert.ok(r.overlay(), "initially dark");
+
+  // Invalidate extension runtime context (as Chrome does when reloading in background)
+  r.context.chrome.runtime = {
+    get id() { throw new Error("Extension context invalidated."); },
+    getURL() { throw new Error("Extension context invalidated."); },
+    sendMessage() { throw new Error("Extension context invalidated."); },
+  };
+  r.context.chrome.storage = {
+    sync: {
+      get() { throw new Error("Extension context invalidated."); },
+    },
+  };
+
+  // Tab visibilitychange event when context is dead must not throw
+  assert.doesNotThrow(() => {
+    r.context.document.visibilityState = "visible";
+    r.triggerEvent("visibilitychange");
+  });
+
+  // Dock buttons click when context is dead must not throw
+  const toggleBtn = r.dock().find("pdfDarkModeToggle");
+  assert.doesNotThrow(() => {
+    toggleBtn.click();
+  });
+
+  const viewerBtn = r.dock().find("pdfDarkModeViewer");
+  assert.doesNotThrow(() => {
+    viewerBtn.click();
+  });
+});
+
 console.log(`content-smoke: ${passed} scenarios passed`);

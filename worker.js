@@ -153,11 +153,14 @@ chrome.runtime.onInstalled.addListener((details) => {
   if (details.reason === chrome.runtime.OnInstalledReason.UPDATE) {
     restoreActiveViewerSessions();
   }
+
+  refreshOpenTabs();
 });
 
 chrome.runtime.onStartup.addListener(() => {
   ensureLicenseAlarm();
   revalidateStoredLicenseIfNeeded();
+  refreshOpenTabs();
 });
 
 chrome.alarms.onAlarm.addListener((alarm) => {
