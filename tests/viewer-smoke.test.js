@@ -278,4 +278,175 @@ const poppedClear = history.popUndo();
 assert.equal(poppedClear.type, "clearAll");
 assert.equal(poppedClear.items.length, 2);
 
-console.log("viewer-smoke: helpers, self-exclusion and dark filter all behave");
+/* ------------------------------------------------- matrix & transform helpers */
+
+assert.equal(
+  JSON.stringify(viewer.multiplyMatrix([1, 0, 0, 1, 0, 0], [1, 0, 0, 1, 10, 20])),
+  JSON.stringify([1, 0, 0, 1, 10, 20]),
+  "identity multiplied by translation"
+);
+
+assert.equal(
+  JSON.stringify(viewer.multiplyMatrix([2, 0, 0, 3, 0, 0], [1, 0, 0, 1, 5, 10])),
+  JSON.stringify([2, 0, 0, 3, 10, 30]),
+  "scale multiplied by translation"
+);
+
+assert.equal(
+  JSON.stringify(viewer.transformPoint([1, 0, 0, 1, 50, 100], 10, 20)),
+  JSON.stringify([60, 120]),
+  "transformPoint applies translation"
+);
+
+assert.equal(
+  JSON.stringify(viewer.transformPoint([2, 0, 0, 3, 10, 20], 5, 10)),
+  JSON.stringify([20, 50]),
+  "transformPoint applies scale and translation"
+);
+
+/* ------------------------------------------------- mergeAdjacentBoxes */
+
+assert.equal(JSON.stringify(viewer.mergeAdjacentBoxes([])), JSON.stringify([]));
+assert.equal(JSON.stringify(viewer.mergeAdjacentBoxes(null)), JSON.stringify([]));
+
+const singleBox = [{ left: 10, top: 20, width: 100, height: 80 }];
+assert.equal(
+  JSON.stringify(viewer.mergeAdjacentBoxes(singleBox)),
+  JSON.stringify(singleBox)
+);
+
+const distinctBoxes = [
+  { left: 10, top: 10, width: 50, height: 50 },
+  { left: 200, top: 200, width: 80, height: 80 },
+];
+assert.equal(
+  JSON.stringify(viewer.mergeAdjacentBoxes(distinctBoxes)),
+  JSON.stringify(distinctBoxes)
+);
+
+const adjacentBoxes = [
+  { left: 10, top: 10, width: 50, height: 50 },
+  { left: 62, top: 10, width: 50, height: 50 }, // 2px gap <= 4px gap
+];
+assert.equal(
+  JSON.stringify(viewer.mergeAdjacentBoxes(adjacentBoxes)),
+  JSON.stringify([{ left: 10, top: 10, width: 102, height: 50 }]),
+  "adjacent tiled figure strips are merged"
+);
+
+const multiTiledBoxes = [
+  { left: 10, top: 10, width: 50, height: 50 },
+  { left: 60, top: 10, width: 50, height: 50 },
+  { left: 110, top: 10, width: 50, height: 50 },
+];
+assert.equal(
+  JSON.stringify(viewer.mergeAdjacentBoxes(multiTiledBoxes)),
+  JSON.stringify([{ left: 10, top: 10, width: 150, height: 50 }]),
+  "chain of 3 adjacent tiles merges into 1 unified figure box"
+);
+
+/* ------------------------------------------------- extractImageBoxes */
+
+const mockOPS = {
+  save: 10,
+  restore: 11,
+  transform: 12,
+  paintImageXObject: 85,
+  paintInlineImageXObject: 86,
+  paintImageMaskXObject: 83,
+};
+
+const mockOpList = {
+  fnArray: [
+    mockOPS.save,
+    mockOPS.transform,
+    mockOPS.paintImageXObject,
+    mockOPS.restore,
+    mockOPS.save,
+    mockOPS.transform,
+    mockOPS.paintInlineImageXObject,
+    mockOPS.restore,
+  ],
+  argsArray: [
+    [],
+    [100, 0, 0, 80, 50, 60], // width 100, height 80 at (50, 60)
+    ["img_1"],
+    [],
+    [],
+    [5, 0, 0, 5, 10, 10], // tiny width 5, height 5 (noise, should be filtered out)
+    ["img_tiny"],
+    [],
+  ],
+};
+
+const mockVp = {
+  convertToViewportPoint: (x, y) => [x, y],
+};
+
+const extracted = viewer.extractImageBoxes(mockOpList, mockVp, mockOPS);
+assert.equal(extracted.length, 1, "extracts valid image and filters tiny sub-pixel noise");
+assert.equal(
+  JSON.stringify(extracted[0]),
+  JSON.stringify({ left: 50, top: 60, width: 100, height: 80 })
+);
+
+const mockVpFallback = {
+  convertToViewportRectangle: ([x1, y1, x2, y2]) => [x1, y1, x2, y2],
+};
+const extractedFallback = viewer.extractImageBoxes(mockOpList, mockVpFallback, mockOPS);
+assert.equal(extractedFallback.length, 1, "supports convertToViewportRectangle fallback");
+assert.equal(
+  JSON.stringify(extractedFallback[0]),
+  JSON.stringify({ left: 50, top: 60, width: 100, height: 80 })
+);
+
+/* ------------------------------------------- calculateThumbnailDimensions */
+
+const standardA4 = viewer.calculateThumbnailDimensions(595, 842, 120);
+assert.equal(standardA4.width, 120);
+assert.equal(standardA4.height, 170, "A4 height scaled to 120px width is ~170px");
+assert.ok(Math.abs(standardA4.scale - 120 / 595) < 0.001);
+
+const landscapePage = viewer.calculateThumbnailDimensions(800, 600, 120);
+assert.equal(landscapePage.width, 120);
+assert.equal(landscapePage.height, 90, "800x600 landscape scaled to 120px width is 90px");
+
+const fallbackDims = viewer.calculateThumbnailDimensions(0, -50, 120);
+assert.equal(fallbackDims.width, 120);
+assert.ok(fallbackDims.height > 0, "handles zero/negative dimensions safely");
+
+/* ------------------------------------------------- resolveOutlineDestination */
+
+const mockPdf = {
+  async getDestination(name) {
+    if (name === "ch1") return [{ num: 5, gen: 0 }, { name: "XYZ" }];
+    if (name === "directPage") return [9, { name: "Fit" }];
+    return null;
+  },
+  async getPageIndex(ref) {
+    if (ref && ref.num === 5) return 4;
+    return 0;
+  },
+};
+
+(async () => {
+  assert.equal(await viewer.resolveOutlineDestination(mockPdf, null), null);
+  assert.equal(await viewer.resolveOutlineDestination(mockPdf, "nonexistent"), null);
+  assert.equal(await viewer.resolveOutlineDestination(mockPdf, "ch1"), 5, "ref resolves to 1-based page 5");
+  assert.equal(await viewer.resolveOutlineDestination(mockPdf, "directPage"), 10, "numeric dest resolves to page 10");
+  assert.equal(
+    await viewer.resolveOutlineDestination(mockPdf, [{ num: 5, gen: 0 }, { name: "XYZ" }]),
+    5,
+    "direct array with ref resolves to page 5"
+  );
+  assert.equal(
+    await viewer.resolveOutlineDestination(mockPdf, [2, { name: "Fit" }]),
+    3,
+    "direct array with index 2 resolves to page 3"
+  );
+})().then(() => {
+  console.log("viewer-smoke: helpers, self-exclusion and dark filter all behave");
+}).catch((err) => {
+  console.error(err);
+  process.exit(1);
+});

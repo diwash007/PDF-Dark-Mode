@@ -15,6 +15,7 @@
   <div class="viewer-shell">
     <header class="viewer-toolbar" aria-label="PDF controls">
       <div class="toolbar-tier toolbar-tier-basics">
+        <button id="outlineToggleBtn" type="button" class="toolbar-nav-btn" aria-expanded="false" aria-controls="outlineSidebar" title="Toggle navigation panel (Thumbnails & Table of Contents)">☰</button>
         <span id="docTitle" class="doc-title">No PDF selected.</span>
         <div class="toolbar-center">
           <div class="toolbar-group">
@@ -42,6 +43,7 @@
       </div>
       <div id="optionsTier" class="toolbar-tier toolbar-tier-options" aria-label="Appearance options">
         <button id="darkToggleBtn" type="button" aria-pressed="true" title="Toggle full dark rendering">Dark: On</button>
+        <button id="smartImagesBtn" type="button" aria-pressed="true" title="Preserve original colors for figures, charts and photos">Images: Preserved</button>
         <label class="inline-field" for="modeSelect">
           <span class="label">Mode</span>
           <select id="modeSelect">
@@ -94,7 +96,29 @@
       </div>
     </div>
 
-    <main id="pages" class="pages" aria-label="PDF pages"></main>
+    <div class="viewer-main">
+      <aside id="outlineSidebar" class="outline-sidebar hidden" aria-label="Navigation panel">
+        <div class="sidebar-header">
+          <div class="sidebar-tabs" role="tablist" aria-label="Navigation views">
+            <button id="tabThumbnailsBtn" type="button" class="sidebar-tab active" role="tab" aria-selected="true" aria-controls="thumbnailView" title="Page thumbnails">
+              <span class="tab-icon">⊞</span> Thumbnails
+            </button>
+            <button id="tabOutlineBtn" type="button" class="sidebar-tab" role="tab" aria-selected="false" aria-controls="outlineView" title="Table of contents">
+              <span class="tab-icon">📑</span> Contents
+            </button>
+          </div>
+          <button id="closeOutlineBtn" type="button" class="sidebar-close-btn" title="Close navigation panel" aria-label="Close navigation panel">✕</button>
+        </div>
+        <div id="thumbnailView" class="sidebar-view thumbnail-view" role="tabpanel" aria-label="Page thumbnails">
+          <div id="thumbnailList" class="thumbnail-list"></div>
+        </div>
+        <div id="outlineView" class="sidebar-view outline-view hidden" role="tabpanel" aria-label="Table of contents">
+          <div id="outlineList" class="outline-list" role="tree" aria-label="Table of contents"></div>
+          <div id="outlineEmpty" class="outline-empty hidden">This PDF does not contain an embedded table of contents.</div>
+        </div>
+      </aside>
+      <main id="pages" class="pages" aria-label="PDF pages"></main>
+    </div>
 
     <button id="floatingProBtn" type="button" class="floating-pro-btn hidden" title="Get PDF Dark Mode Pro">✨ Get Pro</button>
   </div>

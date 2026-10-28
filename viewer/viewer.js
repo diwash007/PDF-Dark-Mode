@@ -322,6 +322,176 @@
     };
   }
 
+  /* Multiplies two 2D affine transformation matrices [a, b, c, d, e, f]. */
+  function multiplyMatrix(m1, m2) {
+    if (!Array.isArray(m1) || !Array.isArray(m2)) return [1, 0, 0, 1, 0, 0];
+    return [
+      m1[0] * m2[0] + m1[2] * m2[1],
+      m1[1] * m2[0] + m1[3] * m2[1],
+      m1[0] * m2[2] + m1[2] * m2[3],
+      m1[1] * m2[2] + m1[3] * m2[3],
+      m1[0] * m2[4] + m1[2] * m2[5] + m1[4],
+      m1[1] * m2[4] + m1[3] * m2[5] + m1[5],
+    ];
+  }
+
+  /* Transforms a 2D point (x, y) by an affine matrix [a, b, c, d, e, f]. */
+  function transformPoint(m, x, y) {
+    if (!Array.isArray(m) || m.length < 6) return [x, y];
+    return [
+      m[0] * x + m[2] * y + m[4],
+      m[1] * x + m[3] * y + m[5],
+    ];
+  }
+
+  /*
+   * Merges bounding boxes of adjacent or overlapping image chunks (such as
+   * LaTeX/scientific paper tiled figures) to prevent hairline seam artifacts.
+   */
+  function mergeAdjacentBoxes(boxes, gap = 4) {
+    if (!Array.isArray(boxes) || boxes.length <= 1) return boxes ? [...boxes] : [];
+    const list = boxes
+      .filter((b) => b && b.width > 0 && b.height > 0)
+      .map((b) => ({
+        left: b.left,
+        top: b.top,
+        right: b.left + b.width,
+        bottom: b.top + b.height,
+      }));
+
+    let merged = true;
+    while (merged) {
+      merged = false;
+      for (let i = 0; i < list.length; i++) {
+        for (let j = i + 1; j < list.length; j++) {
+          const a = list[i];
+          const b = list[j];
+          const overlapX = a.left - gap <= b.right && b.left - gap <= a.right;
+          const overlapY = a.top - gap <= b.bottom && b.top - gap <= a.bottom;
+          if (overlapX && overlapY) {
+            a.left = Math.min(a.left, b.left);
+            a.top = Math.min(a.top, b.top);
+            a.right = Math.max(a.right, b.right);
+            a.bottom = Math.max(a.bottom, b.bottom);
+            list.splice(j, 1);
+            merged = true;
+            break;
+          }
+        }
+        if (merged) break;
+      }
+    }
+
+    return list.map((b) => ({
+      left: b.left,
+      top: b.top,
+      width: b.right - b.left,
+      height: b.bottom - b.top,
+    }));
+  }
+
+  /*
+   * Extracts image bounding boxes from a PDF.js operator list in viewport coordinates.
+   */
+  function extractImageBoxes(opList, viewport, OPS) {
+    if (!opList || !Array.isArray(opList.fnArray) || !viewport || !OPS) return [];
+    const boxes = [];
+    const matrixStack = [];
+    let currentMatrix = [1, 0, 0, 1, 0, 0];
+
+    const imageOps = new Set([
+      OPS.paintImageXObject,
+      OPS.paintInlineImageXObject,
+      OPS.paintImageMaskXObject,
+    ]);
+
+    for (let i = 0; i < opList.fnArray.length; i++) {
+      const fn = opList.fnArray[i];
+      const args = opList.argsArray[i];
+
+      if (fn === OPS.save) {
+        matrixStack.push(currentMatrix.slice());
+      } else if (fn === OPS.restore) {
+        currentMatrix = matrixStack.pop() || [1, 0, 0, 1, 0, 0];
+      } else if (fn === OPS.transform && Array.isArray(args) && args.length >= 6) {
+        currentMatrix = multiplyMatrix(currentMatrix, args);
+      } else if (imageOps.has(fn)) {
+        const p0 = transformPoint(currentMatrix, 0, 0);
+        const p1 = transformPoint(currentMatrix, 1, 0);
+        const p2 = transformPoint(currentMatrix, 0, 1);
+        const p3 = transformPoint(currentMatrix, 1, 1);
+
+        const minX = Math.min(p0[0], p1[0], p2[0], p3[0]);
+        const minY = Math.min(p0[1], p1[1], p2[1], p3[1]);
+        const maxX = Math.max(p0[0], p1[0], p2[0], p3[0]);
+        const maxY = Math.max(p0[1], p1[1], p2[1], p3[1]);
+
+        if (typeof viewport.convertToViewportPoint === "function") {
+          const [vx1, vy1] = viewport.convertToViewportPoint(minX, minY);
+          const [vx2, vy2] = viewport.convertToViewportPoint(maxX, maxY);
+          const left = Math.floor(Math.min(vx1, vx2));
+          const top = Math.floor(Math.min(vy1, vy2));
+          const width = Math.ceil(Math.abs(vx2 - vx1));
+          const height = Math.ceil(Math.abs(vy2 - vy1));
+
+          // Filter out sub-pixel lines, hairline borders, or tiny spacers:
+          if (width >= 20 && height >= 20) {
+            boxes.push({ left, top, width, height });
+          }
+        } else if (typeof viewport.convertToViewportRectangle === "function") {
+          const rect = viewport.convertToViewportRectangle([minX, minY, maxX, maxY]);
+          const left = Math.floor(Math.min(rect[0], rect[2]));
+          const top = Math.floor(Math.min(rect[1], rect[3]));
+          const width = Math.ceil(Math.abs(rect[2] - rect[0]));
+          const height = Math.ceil(Math.abs(rect[3] - rect[1]));
+
+          // Filter out sub-pixel lines, hairline borders, or tiny spacers:
+          if (width >= 20 && height >= 20) {
+            boxes.push({ left, top, width, height });
+          }
+        }
+      }
+    }
+
+    return mergeAdjacentBoxes(boxes);
+  }
+
+  /*
+   * Resolves a PDF outline destination (string or array) to a 1-based page number.
+   */
+  async function resolveOutlineDestination(pdf, dest) {
+    if (!pdf || !dest) return null;
+    let explicitDest = dest;
+    try {
+      if (typeof dest === "string") {
+        explicitDest = await pdf.getDestination(dest);
+      }
+      if (!Array.isArray(explicitDest) || !explicitDest.length) return null;
+      const destRef = explicitDest[0];
+      if (typeof destRef === "object" && destRef !== null) {
+        const pageIndex = await pdf.getPageIndex(destRef);
+        return pageIndex + 1;
+      }
+      if (typeof destRef === "number") {
+        return destRef + 1;
+      }
+    } catch {
+      return null;
+    }
+    return null;
+  }
+
+  function calculateThumbnailDimensions(pageWidth, pageHeight, targetWidth = 120) {
+    const width = clampNumber(pageWidth, 1, 100000, 595);
+    const height = clampNumber(pageHeight, 1, 100000, 842);
+    const scale = targetWidth / width;
+    return {
+      scale,
+      width: targetWidth,
+      height: Math.max(1, Math.round(height * scale)),
+    };
+  }
+
   const api = {
     MAX_PDF_BYTES,
     ZOOM_MIN,
@@ -335,6 +505,7 @@
     isPdfMagic,
     buildViewerFilter,
     canvasSizeForViewport,
+    calculateThumbnailDimensions,
     resolveViewerTheme,
     isFileUrl,
     isViewerUrl,
@@ -344,6 +515,11 @@
     mergeLineRects,
     buildHighlightAnnotation,
     createAnnotationHistory,
+    multiplyMatrix,
+    transformPoint,
+    mergeAdjacentBoxes,
+    extractImageBoxes,
+    resolveOutlineDestination,
   };
 
   globalThis.PDFDarkModeViewer = api;
@@ -391,6 +567,17 @@
   const optionsBtn = document.getElementById("optionsBtn");
   const optionsTier = document.getElementById("optionsTier");
   const darkToggleBtn = document.getElementById("darkToggleBtn");
+  const smartImagesBtn = document.getElementById("smartImagesBtn");
+  const outlineToggleBtn = document.getElementById("outlineToggleBtn");
+  const outlineSidebar = document.getElementById("outlineSidebar");
+  const closeOutlineBtn = document.getElementById("closeOutlineBtn");
+  const tabThumbnailsBtn = document.getElementById("tabThumbnailsBtn");
+  const tabOutlineBtn = document.getElementById("tabOutlineBtn");
+  const thumbnailView = document.getElementById("thumbnailView");
+  const thumbnailList = document.getElementById("thumbnailList");
+  const outlineView = document.getElementById("outlineView");
+  const outlineList = document.getElementById("outlineList");
+  const outlineEmpty = document.getElementById("outlineEmpty");
   const modeSelect = document.getElementById("modeSelect");
   const strengthSlider = document.getElementById("strengthSlider");
   const contrastSlider = document.getElementById("contrastSlider");
@@ -409,6 +596,11 @@
     optionsOpen: true,
     betaMinimized: false,
     darkEnabled: true,
+    smartImages: true,
+    outlineOpen: false,
+    outline: null,
+    activeSidebarTab: "thumbnails",
+    renderedThumbnails: new Set(),
     highlightMode: false,
     nextAnnotationId: 1,
     annotations: new Map(),
@@ -542,6 +734,34 @@
         syncControls();
       });
     }
+    if (smartImagesBtn) {
+      smartImagesBtn.addEventListener("click", () => {
+        state.smartImages = !state.smartImages;
+        persistSyncValue("smartImages", state.smartImages);
+        syncControls();
+        applyFigureLayerVisibility();
+      });
+    }
+    if (outlineToggleBtn) {
+      outlineToggleBtn.addEventListener("click", () => {
+        setOutlineOpen(!state.outlineOpen);
+      });
+    }
+    if (closeOutlineBtn) {
+      closeOutlineBtn.addEventListener("click", () => {
+        setOutlineOpen(false);
+      });
+    }
+    if (tabThumbnailsBtn) {
+      tabThumbnailsBtn.addEventListener("click", () => {
+        switchSidebarTab("thumbnails");
+      });
+    }
+    if (tabOutlineBtn) {
+      tabOutlineBtn.addEventListener("click", () => {
+        switchSidebarTab("outline");
+      });
+    }
     if (modeSelect) {
       modeSelect.addEventListener("change", () => {
         state.mode = enforceAllowedMode(modeSelect.value);
@@ -673,6 +893,11 @@
           applyTheme();
           syncControls();
         }
+        if (changes.smartImages !== undefined) {
+          state.smartImages = changes.smartImages.newValue !== false;
+          syncControls();
+          applyFigureLayerVisibility();
+        }
       });
     }
   }
@@ -704,6 +929,11 @@
       state.visiblePage = 1;
       persistViewerSession();
       await refreshSettings();
+      initThumbnails();
+      await loadOutline();
+      if (state.outlineOpen) {
+        setOutlineOpen(true);
+      }
       await renderAllPages();
       persistViewerSession();
     } catch (error) {
@@ -720,6 +950,7 @@
         "mode",
         "billing",
         "viewerTheme",
+        "smartImages",
       ]);
       let savedDark = null;
       try {
@@ -733,6 +964,23 @@
         state.darkEnabled = savedDark === "true";
       } else if (stored.active !== undefined) {
         state.darkEnabled = stored.active !== false;
+      }
+      if (stored.smartImages !== undefined) {
+        state.smartImages = stored.smartImages !== false;
+      } else {
+        state.smartImages = true;
+      }
+      try {
+        if (typeof sessionStorage !== "undefined" && sessionStorage?.getItem) {
+          const userClosed = sessionStorage.getItem("__pdm_viewer_toc_closed");
+          if (userClosed === "false") {
+            state.outlineOpen = true;
+          } else if (userClosed === "true") {
+            state.outlineOpen = false;
+          }
+        }
+      } catch {
+        /* ignore */
       }
       state.isPro = core ? !!core.getEntitlement(stored.billing).isPro : false;
       state.mode = enforceAllowedMode(stored.mode);
@@ -849,6 +1097,12 @@
 
   function syncControls() {
     setOptionsOpen(state.optionsOpen);
+    setOutlineOpen(state.outlineOpen);
+    switchSidebarTab(state.activeSidebarTab || "thumbnails");
+    if (smartImagesBtn) {
+      smartImagesBtn.setAttribute("aria-pressed", String(state.smartImages));
+      smartImagesBtn.textContent = state.smartImages ? "Images: Preserved" : "Images: Inverted";
+    }
     if (modeSelect) modeSelect.value = state.mode;
     if (strengthSlider) strengthSlider.value = String(state.strength);
     if (contrastSlider) contrastSlider.value = String(state.contrast);
@@ -861,6 +1115,345 @@
         button.setAttribute("aria-pressed", String(button.dataset.theme === state.themeId));
       });
     }
+  }
+
+  function switchSidebarTab(tabName) {
+    state.activeSidebarTab = tabName;
+    const isThumbnails = tabName === "thumbnails";
+    if (tabThumbnailsBtn) {
+      tabThumbnailsBtn.classList.toggle("active", isThumbnails);
+      tabThumbnailsBtn.setAttribute("aria-selected", String(isThumbnails));
+    }
+    if (tabOutlineBtn) {
+      tabOutlineBtn.classList.toggle("active", !isThumbnails);
+      tabOutlineBtn.setAttribute("aria-selected", String(!isThumbnails));
+    }
+    if (thumbnailView) {
+      thumbnailView.classList.toggle("hidden", !isThumbnails);
+    }
+    if (outlineView) {
+      outlineView.classList.toggle("hidden", isThumbnails);
+    }
+    if (isThumbnails) {
+      scrollActiveThumbnailIntoView();
+    }
+  }
+
+  function scrollActiveThumbnailIntoView() {
+    if (!thumbnailList) return;
+    const activeCard = thumbnailList.querySelector(".thumbnail-card.active");
+    if (activeCard && typeof activeCard.scrollIntoView === "function") {
+      activeCard.scrollIntoView({ block: "nearest", behavior: "auto" });
+    }
+  }
+
+  function syncActiveThumbnail(pageNum) {
+    if (!thumbnailList) return;
+    const cards = thumbnailList.querySelectorAll(".thumbnail-card");
+    cards.forEach((card) => {
+      const p = Number(card.dataset.page);
+      card.classList.toggle("active", p === pageNum);
+    });
+  }
+
+  let thumbnailObserver = null;
+
+  function initThumbnails() {
+    if (!thumbnailList) return;
+    thumbnailList.innerHTML = "";
+    state.renderedThumbnails.clear();
+
+    if (thumbnailObserver) {
+      thumbnailObserver.disconnect();
+      thumbnailObserver = null;
+    }
+
+    if (!state.pdf || state.pageCount < 1) return;
+
+    if (typeof IntersectionObserver !== "undefined") {
+      thumbnailObserver = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            if (entry.isIntersecting) {
+              const card = entry.target;
+              const pageNum = Number(card.dataset.page);
+              if (pageNum && !state.renderedThumbnails.has(pageNum)) {
+                state.renderedThumbnails.add(pageNum);
+                renderThumbnail(pageNum, card);
+              }
+            }
+          });
+        },
+        {
+          root: thumbnailView || outlineSidebar,
+          rootMargin: "200px 0px",
+        }
+      );
+    }
+
+    const fragment = document.createDocumentFragment();
+    for (let p = 1; p <= state.pageCount; p += 1) {
+      const card = document.createElement("div");
+      card.className = "thumbnail-card" + (p === state.visiblePage ? " active" : "");
+      card.dataset.page = String(p);
+
+      const preview = document.createElement("div");
+      preview.className = "thumbnail-preview";
+
+      const canvas = document.createElement("canvas");
+      canvas.className = "thumbnail-canvas";
+      canvas.width = 120;
+      canvas.height = 170;
+      if (state.darkEnabled) {
+        canvas.style.filter = state.filter || baseFilter();
+      }
+      preview.appendChild(canvas);
+      card.appendChild(preview);
+
+      const num = document.createElement("div");
+      num.className = "thumbnail-num";
+      num.textContent = String(p);
+      card.appendChild(num);
+
+      card.addEventListener("click", () => {
+        scrollToPage(p);
+        syncActiveThumbnail(p);
+      });
+
+      fragment.appendChild(card);
+      if (thumbnailObserver) {
+        thumbnailObserver.observe(card);
+      } else {
+        renderThumbnail(p, card);
+      }
+    }
+    thumbnailList.appendChild(fragment);
+  }
+
+  async function renderThumbnail(pageNum, card) {
+    if (!state.pdf || !card) return;
+    const canvas = card.querySelector("canvas.thumbnail-canvas");
+    if (!canvas) return;
+    try {
+      const page = await state.pdf.getPage(pageNum);
+      const baseViewport = page.getViewport({ scale: 1 });
+      const dims = calculateThumbnailDimensions(baseViewport.width, baseViewport.height, 120);
+      const dpr = Math.min(typeof window !== "undefined" && window.devicePixelRatio ? window.devicePixelRatio : 1, 2);
+      const viewport = page.getViewport({ scale: dims.scale });
+
+      canvas.width = Math.round(dims.width * dpr);
+      canvas.height = Math.round(dims.height * dpr);
+      canvas.style.width = `${dims.width}px`;
+      canvas.style.height = `${dims.height}px`;
+
+      const ctx = canvas.getContext("2d");
+      const transform = dpr !== 1 ? [dpr, 0, 0, dpr, 0, 0] : null;
+      await page.render({
+        canvasContext: ctx,
+        viewport,
+        transform,
+      }).promise;
+
+      canvas.style.filter = state.darkEnabled ? (state.filter || baseFilter()) : "";
+    } catch {
+      /* ignore thumbnail render failure */
+    }
+  }
+
+  function setOutlineOpen(open) {
+    state.outlineOpen = Boolean(open);
+    if (outlineSidebar) outlineSidebar.classList.toggle("hidden", !open);
+    if (outlineToggleBtn) {
+      outlineToggleBtn.setAttribute("aria-expanded", String(open));
+      outlineToggleBtn.classList.toggle("active", open);
+    }
+    if (open) {
+      syncActiveThumbnail(state.visiblePage);
+      if (state.activeSidebarTab === "thumbnails") {
+        setTimeout(scrollActiveThumbnailIntoView, 50);
+      }
+    }
+    try {
+      if (typeof sessionStorage !== "undefined" && sessionStorage?.setItem) {
+        sessionStorage.setItem("__pdm_viewer_toc_closed", String(!open));
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+
+  async function loadOutline() {
+    if (!state.pdf || typeof state.pdf.getOutline !== "function") return;
+    try {
+      const outline = await state.pdf.getOutline();
+      state.outline = outline;
+      const hasOutline = Array.isArray(outline) && outline.length > 0;
+      renderOutline(outline);
+      if (tabOutlineBtn) {
+        tabOutlineBtn.title = hasOutline
+          ? "Table of contents"
+          : "No table of contents in this PDF";
+      }
+      if (outlineToggleBtn) {
+        outlineToggleBtn.title = "Toggle navigation panel (Thumbnails & Table of Contents)";
+        outlineToggleBtn.disabled = false;
+      }
+      if (hasOutline) {
+        let userClosed = false;
+        try {
+          userClosed = sessionStorage?.getItem("__pdm_viewer_toc_closed") === "true";
+        } catch {
+          /* ignore */
+        }
+        if (!userClosed) {
+          switchSidebarTab("outline");
+          setOutlineOpen(true);
+        }
+      } else {
+        switchSidebarTab("thumbnails");
+      }
+    } catch {
+      state.outline = null;
+      renderOutline(null);
+      switchSidebarTab("thumbnails");
+    }
+  }
+
+  function renderOutline(items) {
+    if (!outlineList) return;
+    outlineList.innerHTML = "";
+    const hasItems = Array.isArray(items) && items.length > 0;
+    if (outlineEmpty) outlineEmpty.classList.toggle("hidden", hasItems);
+    if (outlineList) outlineList.classList.toggle("hidden", !hasItems);
+    if (!hasItems) return;
+
+    const fragment = document.createDocumentFragment();
+    buildOutlineTreeNodes(items, fragment);
+    outlineList.appendChild(fragment);
+  }
+
+  function buildOutlineTreeNodes(items, container) {
+    if (!Array.isArray(items)) return;
+    items.forEach((item) => {
+      const itemEl = document.createElement("div");
+      itemEl.className = "outline-item";
+      itemEl.setAttribute("role", "treeitem");
+
+      const rowEl = document.createElement("div");
+      rowEl.className = "outline-row";
+
+      const hasChildren = Array.isArray(item.items) && item.items.length > 0;
+      let toggleBtn = null;
+      if (hasChildren) {
+        toggleBtn = document.createElement("button");
+        toggleBtn.type = "button";
+        toggleBtn.className = "outline-toggle";
+        toggleBtn.textContent = "▼";
+        toggleBtn.title = "Collapse section";
+        toggleBtn.setAttribute("aria-label", "Toggle sub-items");
+        rowEl.appendChild(toggleBtn);
+      } else {
+        const spacer = document.createElement("span");
+        spacer.className = "outline-spacer";
+        rowEl.appendChild(spacer);
+      }
+
+      const labelBtn = document.createElement("button");
+      labelBtn.type = "button";
+      labelBtn.className = "outline-label";
+      labelBtn.textContent = (item.title || "Untitled").trim();
+      labelBtn.title = labelBtn.textContent;
+      if (item.bold) labelBtn.style.fontWeight = "bold";
+      if (item.italic) labelBtn.style.fontStyle = "italic";
+      rowEl.appendChild(labelBtn);
+
+      itemEl.appendChild(rowEl);
+
+      let childrenEl = null;
+      if (hasChildren) {
+        childrenEl = document.createElement("div");
+        childrenEl.className = "outline-children";
+        childrenEl.setAttribute("role", "group");
+        buildOutlineTreeNodes(item.items, childrenEl);
+        itemEl.appendChild(childrenEl);
+
+        toggleBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const collapsed = childrenEl.classList.toggle("hidden");
+          toggleBtn.textContent = collapsed ? "▶" : "▼";
+          toggleBtn.title = collapsed ? "Expand section" : "Collapse section";
+        });
+      }
+
+      const handleNav = async () => {
+        if (item.url) {
+          window.open(item.url, "_blank", "noopener,noreferrer");
+          return;
+        }
+        if (item.dest) {
+          const pageNum = await resolveOutlineDestination(state.pdf, item.dest);
+          if (pageNum) {
+            scrollToPage(pageNum);
+            if (outlineList) {
+              outlineList.querySelectorAll(".outline-row.active").forEach((r) => r.classList.remove("active"));
+              rowEl.classList.add("active");
+            }
+          }
+        }
+      };
+
+      rowEl.addEventListener("click", handleNav);
+
+      container.appendChild(itemEl);
+    });
+  }
+
+  async function renderPageFigures(page, pageNum, viewport, dpr) {
+    const container = pagesEl.querySelector(`.page-container[data-page="${pageNum}"]`);
+    const figureLayer = container?.querySelector(".figure-layer");
+    const canvas = container?.querySelector("canvas.page");
+    if (!container || !figureLayer || !canvas) return;
+
+    figureLayer.innerHTML = "";
+    try {
+      const opList = await page.getOperatorList();
+      const boxes = extractImageBoxes(opList, viewport, pdfjsLibRef?.OPS);
+      if (!boxes.length) return;
+
+      boxes.forEach((box) => {
+        const patchCanvas = document.createElement("canvas");
+        patchCanvas.className = "figure-patch";
+        patchCanvas.style.left = `${box.left}px`;
+        patchCanvas.style.top = `${box.top}px`;
+        patchCanvas.style.width = `${box.width}px`;
+        patchCanvas.style.height = `${box.height}px`;
+
+        const sx = Math.floor(box.left * dpr);
+        const sy = Math.floor(box.top * dpr);
+        const sw = Math.ceil(box.width * dpr);
+        const sh = Math.ceil(box.height * dpr);
+
+        patchCanvas.width = sw;
+        patchCanvas.height = sh;
+
+        const pctx = patchCanvas.getContext("2d");
+        if (pctx) {
+          pctx.drawImage(canvas, sx, sy, sw, sh, 0, 0, sw, sh);
+        }
+        figureLayer.appendChild(patchCanvas);
+      });
+      figureLayer.classList.toggle("hidden", !state.smartImages || !state.darkEnabled);
+    } catch {
+      /* ignore figure extraction error */
+    }
+  }
+
+  function applyFigureLayerVisibility() {
+    const show = state.smartImages && state.darkEnabled;
+    if (!pagesEl) return;
+    pagesEl.querySelectorAll(".figure-layer").forEach((layer) => {
+      layer.classList.toggle("hidden", !show);
+    });
   }
 
   /* Renders every page into a vertical stack, like the native viewer. */
@@ -917,6 +1510,14 @@
         canvas.style.filter = state.filter || baseFilter();
         container.appendChild(canvas);
 
+        const figureLayer = document.createElement("div");
+        figureLayer.className = "figure-layer";
+        figureLayer.dataset.page = String(pageNum);
+        if (!state.smartImages || !state.darkEnabled) {
+          figureLayer.classList.add("hidden");
+        }
+        container.appendChild(figureLayer);
+
         const textLayer = document.createElement("div");
         textLayer.className = "textLayer text-layer";
         textLayer.dataset.page = String(pageNum);
@@ -971,6 +1572,8 @@
             transform: sizing.transform,
           }).promise;
           canvas.style.filter = state.filter || baseFilter();
+
+          await renderPageFigures(page, pageNum, viewport, dpr);
 
           try {
             const annotations = await page.getAnnotations();
@@ -1352,6 +1955,11 @@
     pageCanvases().forEach((canvas) => {
       canvas.style.filter = filter;
     });
+    if (thumbnailList) {
+      thumbnailList.querySelectorAll("canvas.thumbnail-canvas").forEach((canvas) => {
+        canvas.style.filter = filter;
+      });
+    }
     if (shellEl) {
       shellEl.classList.toggle("viewer-light", !state.darkEnabled);
     }
@@ -1359,6 +1967,7 @@
       darkToggleBtn.setAttribute("aria-pressed", String(state.darkEnabled));
       darkToggleBtn.textContent = state.darkEnabled ? "Dark: On" : "Dark: Off";
     }
+    applyFigureLayerVisibility();
   }
 
   function syncChrome() {
@@ -1381,6 +1990,7 @@
     if (current !== state.visiblePage) {
       state.visiblePage = current;
       syncChrome();
+      syncActiveThumbnail(current);
       persistViewerSession();
     }
   }
@@ -1394,6 +2004,7 @@
       pagesEl.scrollTop = target.offsetTop - 12;
       state.visiblePage = clamped;
       syncChrome();
+      syncActiveThumbnail(clamped);
       persistViewerSession();
     }
   }
