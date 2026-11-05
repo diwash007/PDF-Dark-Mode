@@ -469,6 +469,35 @@
     );
   }
 
+  /* ------------------------------------------------------------- review */
+
+  const REVIEW_URL = "https://pdf-dark.com/review";
+  const REVIEW_MIN_INSTALLED_MS = 7 * 24 * 60 * 60 * 1000;
+  const REVIEW_MIN_APPLIES = 5;
+  const REVIEW_SNOOZE_MS = 14 * 24 * 60 * 60 * 1000;
+
+  function defaultReviewNudge() {
+    return { installedAt: Date.now(), dismissed: false, rated: false, snoozedUntil: 0 };
+  }
+
+  function normalizeReviewNudge(stored) {
+    return {
+      ...defaultReviewNudge(),
+      ...(stored || {}),
+      installedAt: Number(stored?.installedAt) || Date.now(),
+    };
+  }
+
+  function isReviewEligible(storedNudge, appliesCount, now = Date.now()) {
+    const nudge = normalizeReviewNudge(storedNudge);
+    if (nudge.dismissed || nudge.rated) return false;
+    if (nudge.snoozedUntil && now < Number(nudge.snoozedUntil)) return false;
+    if (now - nudge.installedAt < REVIEW_MIN_INSTALLED_MS) return false;
+    const applies = Number(appliesCount) || 0;
+    if (applies < REVIEW_MIN_APPLIES) return false;
+    return true;
+  }
+
   const api = {
     DARK_LAYER_ID,
     TINT_LAYER_ID,
@@ -494,6 +523,13 @@
     paintOverlay,
     removeOverlay,
     isPdfDocument,
+    REVIEW_URL,
+    REVIEW_MIN_INSTALLED_MS,
+    REVIEW_MIN_APPLIES,
+    REVIEW_SNOOZE_MS,
+    defaultReviewNudge,
+    normalizeReviewNudge,
+    isReviewEligible,
   };
 
   globalThis.PDFDarkModeCore = api;

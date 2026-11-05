@@ -543,6 +543,8 @@
   const shellEl = document.querySelector(".viewer-shell");
   const pagesEl = document.getElementById("pages");
   const pageIndicator = document.getElementById("pageIndicator");
+  const pageInput = document.getElementById("pageInput");
+  const pageCount = document.getElementById("pageCount");
   const zoomLabel = document.getElementById("zoomLabel");
   const statusBar = document.getElementById("statusBar");
   const errorBox = document.getElementById("errorBox");
@@ -688,6 +690,30 @@
   }
 
   function wireControls() {
+    if (pageInput) {
+      const commitPageJump = () => {
+        const target = parseInt(pageInput.value, 10);
+        if (Number.isFinite(target)) {
+          scrollToPage(target);
+        } else {
+          pageInput.value = state.visiblePage;
+        }
+      };
+      pageInput.addEventListener("change", commitPageJump);
+      pageInput.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          commitPageJump();
+          pageInput.blur();
+        } else if (event.key === "Escape") {
+          pageInput.value = state.visiblePage;
+          pageInput.blur();
+        }
+      });
+      pageInput.addEventListener("focus", () => {
+        pageInput.select();
+      });
+    }
     if (prevPageBtn) prevPageBtn.addEventListener("click", () => scrollToPage(state.visiblePage - 1));
     if (nextPageBtn) nextPageBtn.addEventListener("click", () => scrollToPage(state.visiblePage + 1));
     if (zoomInBtn) zoomInBtn.addEventListener("click", () => stepZoom(1.2));
@@ -816,6 +842,27 @@
       window.addEventListener("keydown", (event) => {
         const isMac = typeof navigator !== "undefined" && /mac/i.test(navigator.platform || navigator.userAgent);
         const mod = isMac ? event.metaKey : event.ctrlKey;
+
+        const activeTag = document.activeElement?.tagName?.toLowerCase();
+        const isInputFocused =
+          activeTag === "input" ||
+          activeTag === "textarea" ||
+          activeTag === "select" ||
+          Boolean(document.activeElement?.isContentEditable);
+
+        if (event.key === "Escape") {
+          if (isInputFocused) {
+            document.activeElement.blur();
+            return;
+          }
+          if (state.outlineOpen) {
+            setOutlineOpen(false);
+            return;
+          }
+        }
+
+        if (isInputFocused) return;
+
         if (mod && !event.altKey) {
           const key = event.key ? event.key.toLowerCase() : "";
           if (key === "z") {
@@ -829,6 +876,45 @@
           } else if (key === "y" && !isMac) {
             event.preventDefault();
             redo();
+          } else if (key === "=" || key === "+") {
+            event.preventDefault();
+            stepZoom(1.2);
+          } else if (key === "-") {
+            event.preventDefault();
+            stepZoom(1 / 1.2);
+          } else if (key === "0") {
+            event.preventDefault();
+            fitWidth();
+          }
+        } else if (!mod && !event.altKey) {
+          const key = event.key ? event.key.toLowerCase() : "";
+          if (key === "j" || event.key === "PageDown") {
+            event.preventDefault();
+            scrollToPage(state.visiblePage + 1);
+          } else if (key === "k" || event.key === "PageUp") {
+            event.preventDefault();
+            scrollToPage(state.visiblePage - 1);
+          } else if (event.key === "Home") {
+            event.preventDefault();
+            scrollToPage(1);
+          } else if (event.key === "End") {
+            event.preventDefault();
+            scrollToPage(state.pageCount);
+          } else if (key === "d") {
+            event.preventDefault();
+            if (darkToggleBtn) darkToggleBtn.click();
+          } else if (key === "t" || key === "m") {
+            event.preventDefault();
+            setOutlineOpen(!state.outlineOpen);
+          } else if (key === "+" || key === "=") {
+            event.preventDefault();
+            stepZoom(1.2);
+          } else if (key === "-") {
+            event.preventDefault();
+            stepZoom(1 / 1.2);
+          } else if (key === "0") {
+            event.preventDefault();
+            fitWidth();
           }
         }
       });
@@ -936,6 +1022,16 @@
       }
       await renderAllPages();
       persistViewerSession();
+      try {
+        if (chrome.runtime?.sendMessage) {
+          chrome.runtime.sendMessage({ type: "record-pdf-apply" }, () => {
+            void chrome.runtime.lastError;
+          });
+        }
+      } catch {
+        /* ignore */
+      }
+      maybeShowViewerReviewNotice();
     } catch (error) {
       fail(describeError(error), isFileUrl(state.pdfUrl));
     }
@@ -1971,7 +2067,15 @@
   }
 
   function syncChrome() {
-    if (pageIndicator) pageIndicator.textContent = `${state.visiblePage} / ${state.pageCount}`;
+    if (pageInput && document.activeElement !== pageInput) {
+      pageInput.value = state.visiblePage;
+      pageInput.max = String(state.pageCount || 1);
+    }
+    if (pageCount) {
+      pageCount.textContent = String(state.pageCount || "–");
+    } else if (pageIndicator) {
+      pageIndicator.textContent = `${state.visiblePage} / ${state.pageCount}`;
+    }
     if (zoomLabel) zoomLabel.textContent = `${Math.round((state.scale / DEFAULT_SCALE) * 100)}%`;
     if (prevPageBtn) prevPageBtn.disabled = state.visiblePage <= 1;
     if (nextPageBtn) nextPageBtn.disabled = state.visiblePage >= state.pageCount;
@@ -2100,6 +2204,67 @@
         }
       });
     } catch (error) {
+      /* ignore */
+    }
+  }
+
+  let viewerReviewTimer = null;
+  async function maybeShowViewerReviewNotice() {
+    if (!isContextAlive() || !chrome.storage?.sync?.get) return;
+
+    try {
+      chrome.storage.sync.get("reviewNudge", async ({ reviewNudge }) => {
+        if (!isContextAlive()) return;
+        let analytics = null;
+        try {
+          analytics = await new Promise((resolve) => {
+            if (!chrome.storage?.local?.get) return resolve(null);
+            chrome.storage.local.get("analytics", (res) => resolve(res?.analytics || null));
+          });
+        } catch {
+          analytics = null;
+        }
+
+        const applies = Number(analytics?.events?.pdfApplies) || 0;
+        if (!core.isReviewEligible?.(reviewNudge, applies)) return;
+
+        const nudge = core.normalizeReviewNudge(reviewNudge);
+
+        const reviewNotice = document.getElementById("reviewNotice");
+        const rateLink = document.getElementById("viewerRateLink");
+        const laterBtn = document.getElementById("viewerReviewLaterBtn");
+        const dismissBtn = document.getElementById("viewerReviewDismissBtn");
+
+        if (rateLink) {
+          rateLink.onclick = () => {
+            persistSyncValue("reviewNudge", { ...nudge, rated: true });
+            if (reviewNotice) reviewNotice.classList.add("hidden");
+          };
+        }
+        if (laterBtn) {
+          laterBtn.onclick = () => {
+            persistSyncValue("reviewNudge", {
+              ...nudge,
+              snoozedUntil: Date.now() + (core.REVIEW_SNOOZE_MS || 14 * 24 * 60 * 60 * 1000),
+            });
+            if (reviewNotice) reviewNotice.classList.add("hidden");
+          };
+        }
+        if (dismissBtn) {
+          dismissBtn.onclick = () => {
+            persistSyncValue("reviewNudge", { ...nudge, dismissed: true });
+            if (reviewNotice) reviewNotice.classList.add("hidden");
+          };
+        }
+
+        // Delay prompt by 30 seconds of active reading so it doesn't interrupt loading
+        if (viewerReviewTimer) clearTimeout(viewerReviewTimer);
+        viewerReviewTimer = setTimeout(() => {
+          if (!isContextAlive()) return;
+          if (reviewNotice) reviewNotice.classList.remove("hidden");
+        }, 30000);
+      });
+    } catch {
       /* ignore */
     }
   }

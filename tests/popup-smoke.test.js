@@ -85,7 +85,9 @@ function makeElement(id) {
   return el;
 }
 
-function buildContext(billing) {
+function buildContext(billing, opts = {}) {
+  const syncExtra = opts.syncExtra || {};
+  const localAnalytics = opts.localAnalytics || { events: {}, pdfAppliesByDay: {} };
   const elements = new Map();
   const sentMessages = [];
   const syncWrites = [];
@@ -122,14 +124,14 @@ function buildContext(billing) {
     },
     storage: {
       sync: {
-        get: (_keys, cb) => cb(billing ? { billing } : {}),
+        get: (_keys, cb) => cb({ ...(billing ? { billing } : {}), ...syncExtra }),
         set: (items, cb) => {
           syncWrites.push(items);
           if (cb) cb();
         },
       },
       local: {
-        get: (_keys, cb) => cb({ analytics: { events: {}, pdfAppliesByDay: {} } }),
+        get: (_keys, cb) => cb({ analytics: localAnalytics }),
         set: (_items, cb) => { if (cb) cb(); },
       },
     },
@@ -179,9 +181,9 @@ function buildContext(billing) {
   return { context, getById, windowListeners, sentMessages, syncWrites, tabsUpdated, tabsCreated };
 }
 
-async function run(billing, label) {
+async function run(billing, label, opts = {}) {
   const { context, getById, windowListeners, sentMessages, syncWrites, tabsUpdated, tabsCreated } =
-    buildContext(billing);
+    buildContext(billing, opts);
   vm.createContext(context);
 
   new vm.Script(coreSrc, { filename: "scripts/core.js" }).runInContext(context);
@@ -322,6 +324,73 @@ async function main() {
     assert.equal(sentMessages.length, 1);
     assert.equal(sentMessages[0].type, "open-viewer");
     assert.equal(sentMessages[0].replaceTab, false);
+  }
+
+  /* --------------------------------------- review nudge behaviour */
+
+  {
+    // Fresh profile: installed 0 days ago, 0 applies. Nudge must stay hidden.
+    const { getById } = await run(null, "review-new-user");
+    await new Promise((resolve) => setImmediate(resolve));
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.equal(
+      getById("reviewNudge").classList.contains("hidden"),
+      true,
+      "fresh installs must not see the review nudge"
+    );
+  }
+
+  {
+    // Established reader: installed 8 days ago, 6 confirmed PDF applies.
+    const eightDaysAgo = Date.now() - 8 * 24 * 60 * 60 * 1000;
+    const { getById } = await run(
+      null,
+      "review-eligible",
+      {
+        syncExtra: {
+          reviewNudge: { installedAt: eightDaysAgo, dismissed: false, rated: false, snoozedUntil: 0 },
+        },
+        localAnalytics: { events: { pdfApplies: 6 }, pdfAppliesByDay: {} },
+      }
+    );
+    await new Promise((resolve) => setImmediate(resolve));
+    await new Promise((resolve) => setImmediate(resolve));
+
+    assert.equal(
+      getById("reviewNudge").classList.contains("hidden"),
+      false,
+      "established readers should see the review nudge"
+    );
+
+    // Dismissing hides the card without throwing.
+    await getById("reviewNeverBtn").dispatch("click");
+    assert.equal(
+      getById("reviewNudge").classList.contains("hidden"),
+      true,
+      "dismissing must hide the review nudge"
+    );
+  }
+
+  {
+    // Dismissed readers never see it again, however active they are.
+    const eightDaysAgo = Date.now() - 8 * 24 * 60 * 60 * 1000;
+    const { getById } = await run(
+      null,
+      "review-dismissed",
+      {
+        syncExtra: {
+          reviewNudge: { installedAt: eightDaysAgo, dismissed: true, rated: false, snoozedUntil: 0 },
+        },
+        localAnalytics: { events: { pdfApplies: 60 }, pdfAppliesByDay: {} },
+      }
+    );
+    await new Promise((resolve) => setImmediate(resolve));
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.equal(
+      getById("reviewNudge").classList.contains("hidden"),
+      true,
+      "dismissed readers must not see the review nudge"
+    );
   }
 
   console.log("popup-smoke: popup.js initialises cleanly for free and Pro, all ids resolve");

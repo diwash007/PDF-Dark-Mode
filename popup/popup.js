@@ -59,6 +59,11 @@ const saveAreaBtn = document.getElementById("saveAreaBtn");
 const areaStatus = document.getElementById("areaStatus");
 const previewArea = document.getElementById("previewArea");
 const overlayAreaBox = document.querySelector(".overlay-area-box");
+const reviewNudge = document.getElementById("reviewNudge");
+const reviewRateLink = document.getElementById("reviewRateLink");
+const reviewLaterBtn = document.getElementById("reviewLaterBtn");
+const reviewNeverBtn = document.getElementById("reviewNeverBtn");
+const footerRateLink = document.getElementById("footerRateLink");
 
 let activeState = true;
 let currentTab = null;
@@ -421,6 +426,7 @@ async function initializePopup() {
     "siteOverlayAreas",
     "showDock",
     "replaceOriginalTab",
+    "reviewNudge",
   ]);
 
   entitlement = getEntitlement(syncState.billing);
@@ -453,6 +459,7 @@ async function initializePopup() {
   }
 
   renderLicenseStatus("", "");
+  await maybeShowReviewNudge(syncState.reviewNudge);
 }
 
 async function detectAndUpdateSliderMax(tab) {
@@ -932,6 +939,69 @@ function canAccessFileUrls() {
 
     chrome.extension.isAllowedFileSchemeAccess((allowed) => {
       resolve(Boolean(allowed));
+    });
+  });
+}
+
+/*
+ * Review flywheel: a gentle nudge asking established readers for a store
+ * rating. Opt-in: links open only on click, dismissing is permanent, snoozing
+ * lasts 14 days, and nothing is ever gated on rating. All usage counting stays
+ * local (the existing analytics bucket) and shared via core.
+ */
+function getLocalAnalytics() {
+  return new Promise((resolve) => {
+    if (!chrome.storage?.local?.get) {
+      resolve(null);
+      return;
+    }
+    chrome.storage.local.get("analytics", (result) => {
+      if (chrome.runtime.lastError) {
+        resolve(null);
+        return;
+      }
+      resolve(result?.analytics || null);
+    });
+  });
+}
+
+async function maybeShowReviewNudge(stored) {
+  if (!reviewNudge) return;
+  reviewNudge.classList.add("hidden");
+
+  const analytics = await getLocalAnalytics();
+  const applies = Number(analytics?.events?.pdfApplies) || 0;
+  if (!core.isReviewEligible(stored, applies)) return;
+
+  const nudge = core.normalizeReviewNudge(stored);
+  reviewNudge.classList.remove("hidden");
+
+  if (reviewRateLink) {
+    reviewRateLink.addEventListener("click", () => {
+      persistSyncValue("reviewNudge", { ...nudge, rated: true });
+      reviewNudge.classList.add("hidden");
+    });
+  }
+  if (reviewLaterBtn) {
+    reviewLaterBtn.addEventListener("click", () => {
+      persistSyncValue("reviewNudge", { ...nudge, snoozedUntil: Date.now() + core.REVIEW_SNOOZE_MS });
+      reviewNudge.classList.add("hidden");
+    });
+  }
+  if (reviewNeverBtn) {
+    reviewNeverBtn.addEventListener("click", () => {
+      persistSyncValue("reviewNudge", { ...nudge, dismissed: true });
+      reviewNudge.classList.add("hidden");
+    });
+  }
+}
+
+if (footerRateLink) {
+  footerRateLink.addEventListener("click", () => {
+    chrome.storage.sync.get("reviewNudge", ({ reviewNudge: current }) => {
+      const nudge = core.normalizeReviewNudge(current);
+      persistSyncValue("reviewNudge", { ...nudge, rated: true });
+      if (reviewNudge) reviewNudge.classList.add("hidden");
     });
   });
 }

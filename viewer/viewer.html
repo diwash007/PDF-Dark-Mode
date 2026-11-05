@@ -20,7 +20,11 @@
         <div class="toolbar-center">
           <div class="toolbar-group">
             <button id="prevPageBtn" type="button" title="Previous page">‹</button>
-            <span id="pageIndicator" class="page-indicator" aria-live="polite">– / –</span>
+            <span id="pageIndicator" class="page-indicator" aria-live="polite">
+              <input id="pageInput" class="page-input" type="number" min="1" value="1" aria-label="Page number" title="Jump to page" />
+              <span class="page-sep">/</span>
+              <span id="pageCount">1</span>
+            </span>
             <button id="nextPageBtn" type="button" title="Next page">›</button>
           </div>
           <div class="toolbar-group">
@@ -74,6 +78,17 @@
 
     <div id="betaCluster" class="beta-cluster">
       <div id="statusBar" class="status-bar hidden" role="status" aria-live="polite"></div>
+      <div id="reviewNotice" class="review-notice hidden" role="status" aria-live="polite">
+        <div class="review-body">
+          <div class="review-eyebrow">Enjoying PDF Dark Mode?</div>
+          <div class="review-text">A quick store rating helps other readers find this tool.</div>
+          <div class="review-actions">
+            <a id="viewerRateLink" class="review-btn review-btn-primary" href="https://pdf-dark.com/review" target="_blank" rel="noopener noreferrer">⭐ Rate Extension</a>
+            <button id="viewerReviewLaterBtn" type="button" class="review-btn review-btn-ghost">Later</button>
+          </div>
+        </div>
+        <button id="viewerReviewDismissBtn" type="button" class="review-dismiss-btn" title="Don't ask again" aria-label="Dismiss review notice">✕</button>
+      </div>
       <div id="betaNotice" class="beta-notice" role="status">
         <div class="beta-body">
           <div class="beta-eyebrow">Experimental</div>

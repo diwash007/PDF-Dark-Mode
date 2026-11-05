@@ -325,6 +325,17 @@ check("re-injection does not duplicate layers or docks", () => {
   assert.equal(docks.length, 1, "exactly one dock");
 });
 
+check("dock element instance is preserved across focus/visibility/render cycles", () => {
+  const r = inject({ href: "https://arxiv.org/pdf/a.pdf", state: legacyUserState() });
+  const dockBefore = r.dock();
+  assert.ok(dockBefore, "dock exists");
+
+  // Simulates window focus or tab activation triggering handleVisibilityOrFocus
+  r.triggerEvent("visibilitychange");
+  const dockAfter = r.dock();
+  assert.equal(dockBefore, dockAfter, "dock DOM element must not be replaced across renders");
+});
+
 check("the dock toggle turns the page overlay off and back on", () => {
   const r = inject({ href: "https://arxiv.org/pdf/a.pdf", state: legacyUserState() });
   const dock = r.dock();

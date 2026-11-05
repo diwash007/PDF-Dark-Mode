@@ -227,4 +227,19 @@ check("extension details URL targets this extension", () => {
   assert.equal(core.extensionDetailsUrl(undefined), "chrome://extensions/");
 });
 
+check("review eligibility requires 7 days and 5 applies", () => {
+  const now = 1700000000000;
+  const eightDaysAgo = now - 8 * 24 * 60 * 60 * 1000;
+  const sixDaysAgo = now - 6 * 24 * 60 * 60 * 1000;
+
+  assert.equal(core.isReviewEligible(null, 5, now), false, "missing nudge not eligible");
+  assert.equal(core.isReviewEligible({ installedAt: eightDaysAgo }, 4, now), false, "under applies threshold");
+  assert.equal(core.isReviewEligible({ installedAt: sixDaysAgo }, 10, now), false, "under days threshold");
+  assert.equal(core.isReviewEligible({ installedAt: eightDaysAgo, dismissed: true }, 10, now), false, "dismissed not eligible");
+  assert.equal(core.isReviewEligible({ installedAt: eightDaysAgo, rated: true }, 10, now), false, "rated not eligible");
+  assert.equal(core.isReviewEligible({ installedAt: eightDaysAgo, snoozedUntil: now + 1000 }, 10, now), false, "snoozed not eligible");
+  assert.equal(core.isReviewEligible({ installedAt: eightDaysAgo, snoozedUntil: now - 1000 }, 5, now), true, "snooze expired and eligible");
+  assert.equal(core.isReviewEligible({ installedAt: eightDaysAgo }, 5, now), true, "eligible reader");
+});
+
 console.log(`policy: ${passed} assertions passed`);

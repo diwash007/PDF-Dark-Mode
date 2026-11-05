@@ -610,6 +610,69 @@ input[type="range"] {
   margin-top: 2px;
 }
 
+.review-nudge {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.review-nudge-copy {
+  font-size: 11px;
+  color: #d1d5db;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.review-nudge-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.review-rate-link {
+  display: block;
+  text-align: center;
+  background: #508b5e;
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 7px 6px;
+  text-decoration: none;
+}
+
+.review-rate-link:hover {
+  filter: brightness(1.08);
+}
+
+.review-nudge-dismiss {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.footer-links {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.footer-separator {
+  color: #6b7280;
+  font-size: 10px;
+}
+
+.footer-link {
+  color: #93c5fd;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.footer-link:hover {
+  text-decoration: underline;
+}
+
 /*
  * Utility hide class. It MUST stay the last display rule in this file:
  * same specificity as component classes (e.g. .file-access-banner sets

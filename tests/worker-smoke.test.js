@@ -221,6 +221,33 @@ async function main() {
     );
   }
 
+  /* --------------------------------------- review nudge defaults backfill */
+
+  {
+    // Fresh profile: ensureDefaults backfills the flywheel state as
+    // "installed now" so existing users qualify on activity, never instantly.
+    const before = Date.now();
+    const { store } = boot();
+    await settle();
+    const nudge = store.reviewNudge;
+    assert.ok(nudge, "reviewNudge defaults must be backfilled");
+    assert.equal(nudge.dismissed, false, "nudge must not start dismissed");
+    assert.equal(nudge.rated, false, "nudge must not start rated");
+    assert.equal(nudge.snoozedUntil, 0, "nudge must not start snoozed");
+    assert.ok(
+      typeof nudge.installedAt === "number" && nudge.installedAt >= before,
+      "installedAt must backfill as now"
+    );
+  }
+
+  {
+    // Existing state is preserved, never overwritten by defaults.
+    const existing = { installedAt: 1700000000000, dismissed: true, rated: false, snoozedUntil: 0 };
+    const { store } = boot({ syncState: { reviewNudge: existing } });
+    await settle();
+    assert.deepEqual(store.reviewNudge, existing, "stored nudge state must survive ensureDefaults");
+  }
+
   /* ------------------------------------------------------ tab injection */
 
   {
@@ -617,7 +644,7 @@ async function main() {
 
   {
     const { calls } = boot({
-      syncState: { active: false, strength: 210, contrast: 90, mode: "sepia", siteRules: {}, showDock: false, billing: {} },
+      syncState: { active: false, strength: 210, contrast: 90, mode: "sepia", siteRules: {}, showDock: false, billing: {}, reviewNudge: { installedAt: 1700000000000, dismissed: false, rated: false, snoozedUntil: 0 } },
     });
     await settle();
     assert.equal(

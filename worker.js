@@ -38,7 +38,14 @@ const SYNC_DEFAULTS = {
   siteRules: {},
   showDock: true,
   billing: core.defaultBilling(),
+  // Review flywheel state. Backfilled as "installed now" for existing users so
+  // they qualify on activity no earlier than 7 days later — never instantly.
+  reviewNudge: defaultReviewNudge(),
 };
+
+function defaultReviewNudge() {
+  return { installedAt: Date.now(), dismissed: false, rated: false, snoozedUntil: 0 };
+}
 
 ensureDefaults();
 revalidateStoredLicenseIfNeeded();
@@ -190,6 +197,12 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
 });
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message?.type === "record-pdf-apply") {
+    recordPdfApply();
+    sendResponse({ ok: true });
+    return false;
+  }
+
   if (message?.type === "analytics-event" && message?.event) {
     recordAnalyticsEvent(message.event);
     sendResponse({ ok: true });

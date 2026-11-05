@@ -18,6 +18,7 @@
   const INFO_BUTTON_ID = "pdfDarkModeInfo";
   const VIEWER_BUTTON_ID = "pdfDarkModeViewer";
   const PAGE_ENABLED_KEY = "__pdm_page_enabled";
+  const INSTANCE_ID = Math.random();
 
   /* How long to keep watching for a PDF to appear on an ambiguous HTML page. */
   const EMBED_WATCH_MS = 10000;
@@ -269,6 +270,12 @@
     }
 
     const existing = document.getElementById(ACTION_DOCK_ID);
+    if (existing && existing.__pdmInstance === INSTANCE_ID && existing.isConnected !== false) {
+      const toggle = document.getElementById(TOGGLE_BUTTON_ID);
+      if (toggle) syncToggleLabel(toggle);
+      return;
+    }
+
     if (existing) {
       existing.remove();
     }
@@ -277,14 +284,15 @@
 
     const dock = document.createElement("div");
     dock.id = ACTION_DOCK_ID;
+    dock.__pdmInstance = INSTANCE_ID;
     dock.setAttribute(
       "style",
-      "position:fixed;right:16px;bottom:16px;z-index:2147483647;" +
+      "position:fixed;right:16px;bottom:16px;z-index:2147483647;pointer-events:auto;" +
         "display:flex;flex-direction:column;align-items:flex-end;gap:8px;"
     );
 
     const buttonStyle =
-      "border:1px solid rgba(255,255,255,0.18);border-radius:999px;" +
+      "pointer-events:auto;border:1px solid rgba(255,255,255,0.18);border-radius:999px;" +
       "background:rgba(17,24,39,0.92);color:#f9fafb;cursor:pointer;" +
       "box-shadow:0 6px 18px rgba(0,0,0,0.18);" +
       'font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;';
